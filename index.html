@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Opciones Day Trading 0-DTE | D+ARQ Intelligence</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="brand">
+                <div class="brand-logo">⚡</div>
+                <div>
+                    <h1>Wall Street Options & Day Trading Lab</h1>
+                    <p class="subtitle">Day Trading 0-DTE / 1-DTE en ETFs de Wall Street (SPY, QQQ, IWM)</p>
+                </div>
+            </div>
+
+            <div class="market-status-bar">
+                <div class="status-indicator">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text" id="live-mode-text">MODO: PAPER TRADING (SIMULACIÓN)</span>
+                </div>
+                <div class="fed-rate-badge">BROKER CONECTOR: <strong id="broker-badge">IBKR READY</strong></div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="tab-daytrade">
+                <span class="icon">⚡</span> Day Trading 0-DTE & Conector Broker
+            </button>
+            <button class="tab-btn" data-tab="tab-etfs">
+                <span class="icon">📊</span> ETFs y Volatilidad (IV)
+            </button>
+            <button class="tab-btn" data-tab="tab-chain">
+                <span class="icon">🔗</span> Cadena de Opciones & Griegas
+            </button>
+            <button class="tab-btn" data-tab="tab-builder">
+                <span class="icon">🎯</span> Arquitecto de Estrategias (Payoff)
+            </button>
+            <button class="tab-btn" data-tab="tab-portfolio">
+                <span class="icon">💼</span> Portafolio Simulado
+            </button>
+        </nav>
+
+        <!-- Main Content Areas -->
+        <main class="content-area">
+            
+            <!-- TAB DAY TRADING -->
+            <section id="tab-daytrade" class="tab-content active">
+                <div class="builder-grid">
+                    <!-- Control Panel & Mode Switcher -->
+                    <div class="card">
+                        <h3>Panel de Control Day Trading 0-DTE</h3>
+                        <p class="subtitle-sm">Alterna entre Paper Trading y conexión directa a Broker Real.</p>
+
+                        <div class="mode-toggle-box">
+                            <label for="select-mode">Modo de Operación:</label>
+                            <select id="select-mode" class="custom-select w-100">
+                                <option value="PAPER_TRADING" selected>🧪 Paper Trading (Simulación Alta Fidelidad)</option>
+                                <option value="LIVE_BROKER">🚀 Broker Real (Conexión API Automática)</option>
+                            </select>
+                        </div>
+
+                        <div class="mode-toggle-box" style="margin-top: 12px">
+                            <label for="select-broker">Broker Objetivo:</label>
+                            <select id="select-broker" class="custom-select w-100">
+                                <option value="INTERACTIVE_BROKERS" selected>Interactive Brokers (TWS / IB Gateway API)</option>
+                                <option value="ALPACA">Alpaca Options API (Live / Paper)</option>
+                                <option value="TRADIER">Tradier Brokerage API</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-top: 16px;">
+                            <button id="btn-save-mode" class="btn btn-secondary w-100">💾 Guardar Configuración de Broker</button>
+                            <button id="btn-run-scan" class="btn btn-primary w-100" style="margin-top: 10px">⚡ Ejecutar Escaneo Intradiario Ahora</button>
+                        </div>
+
+                        <hr style="border-color: var(--card-border); margin: 20px 0;">
+
+                        <h4>Parámetros de Gestión de Riesgo (Day Trading):</h4>
+                        <ul class="risk-rules-list">
+                            <li>🎯 <strong>Take Profit (TP)</strong>: +35% de prima</li>
+                            <li>🛑 <strong>Stop Loss (SL)</strong>: -18% de prima</li>
+                            <li>⚠️ <strong>Límite Pérdida Diaria</strong>: -$300 USD (Circuit Breaker)</li>
+                            <li>⏰ <strong>Cierre Hard EOD</strong>: 15:45 EST (Sin overnight)</li>
+                            <li>🛡️ <strong>Protección PDT</strong>: Cuenta Cash / Control Reg T</li>
+                        </ul>
+                    </div>
+
+                    <!-- Live Intraday Monitor & Log -->
+                    <div class="card">
+                        <div class="chart-header">
+                            <h3>Monitoreo de Operaciones Intradiarias 0-DTE / 1-DTE</h3>
+                            <div>PnL del Día: <strong id="dt-daily-pnl" class="text-green">+$0.00 USD</strong></div>
+                        </div>
+
+                        <div id="dt-active-positions" style="margin-top: 16px;">
+                            <div class="loading-spinner">Cargando estado del bot intradiario...</div>
+                        </div>
+
+                        <h4 style="margin-top: 24px;">Historial de Posiciones Intradiarias Cerradas Hoy:</h4>
+                        <div class="table-responsive" style="margin-top: 10px">
+                            <table class="chain-table">
+                                <thead>
+                                    <tr>
+                                        <th>Hora</th>
+                                        <th>Opción</th>
+                                        <th>Entrada $</th>
+                                        <th>Salida $</th>
+                                        <th>Motivo</th>
+                                        <th>PnL Net USD</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dt-history-body">
+                                    <tr><td colspan="6" style="color:var(--text-muted)">Sin operaciones cerradas aún hoy.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 1: ETFs & IV Rank -->
+            <section id="tab-etfs" class="tab-content">
+                <div class="section-title">
+                    <h2>ETFs de Wall Street & Rango de Volatilidad Implícita (IV Rank)</h2>
+                    <p>Filtro de oportunidades según nivel de volatilidad (High IV = Venta de Primas / Low IV = Compra de Opciones)</p>
+                </div>
+
+                <div class="etf-grid" id="etf-cards-container">
+                    <div class="loading-spinner">Cargando cotizaciones en tiempo real...</div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Option Chain -->
+            <section id="tab-chain" class="tab-content">
+                <div class="chain-controls card">
+                    <div class="control-group">
+                        <label for="select-symbol">ETF Objetivo:</label>
+                        <select id="select-symbol" class="custom-select">
+                            <option value="SPY">SPY - S&P 500 ETF ($560.50)</option>
+                            <option value="QQQ">QQQ - Nasdaq 100 ETF ($485.20)</option>
+                            <option value="IWM">IWM - Russell 2000 ETF ($220.10)</option>
+                            <option value="TLT">TLT - 20+ Yr Treasury ($98.40)</option>
+                            <option value="GLD">GLD - Gold Shares ($232.80)</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="select-dte">Días a Expiración (DTE):</label>
+                        <select id="select-dte" class="custom-select">
+                            <option value="0">0 Días (0-DTE Intradiario)</option>
+                            <option value="1">1 Día (1-DTE Short-term)</option>
+                            <option value="7">7 Días (Semanal)</option>
+                            <option value="30" selected>30 Días (Estándar)</option>
+                            <option value="45">45 Días (Sweet Spot Ventas)</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-fetch-chain" class="btn btn-primary">🔄 Actualizar Cadena</button>
+                </div>
+
+                <div class="chain-header-info">
+                    <div class="info-pill"><span class="label">Precio ETF:</span> <span id="chain-etf-price" class="val">$0.00</span></div>
+                    <div class="info-pill"><span class="label">Volatilidad Implícita (IV):</span> <span id="chain-iv" class="val">0.0%</span></div>
+                    <div class="info-pill"><span class="label">Expiración:</span> <span id="chain-exp-date" class="val">YYYY-MM-DD</span></div>
+                </div>
+
+                <div class="table-responsive card">
+                    <table class="chain-table" id="option-chain-table">
+                        <thead>
+                            <tr>
+                                <th colspan="5" class="call-header">CALLS (COMPRA / DERECHO DE ALZA)</th>
+                                <th class="strike-header">STRIKE</th>
+                                <th colspan="5" class="put-header">PUTS (VENTA / DERECHO DE BAJA)</th>
+                            </tr>
+                            <tr>
+                                <th>Delta ($\Delta$)</th>
+                                <th>Theta ($\Theta$)</th>
+                                <th>Bid</th>
+                                <th>Ask</th>
+                                <th>Prima</th>
+                                <th>Precio K</th>
+                                <th>Prima</th>
+                                <th>Bid</th>
+                                <th>Ask</th>
+                                <th>Theta ($\Theta$)</th>
+                                <th>Delta ($\Delta$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chain-table-body">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB 3: Strategy Builder & Payoff Chart -->
+            <section id="tab-builder" class="tab-content">
+                <div class="builder-grid">
+                    <div class="builder-controls card">
+                        <h3>Configurador de Estrategia</h3>
+                        <p class="subtitle-sm">Selecciona una estrategia estándar o construye una personalizada leg por leg.</p>
+
+                        <div class="preset-buttons">
+                            <button class="preset-btn" onclick="loadPreset('covered_call')">Covered Call</button>
+                            <button class="preset-btn" onclick="loadPreset('cash_put')">Cash-Secured Put</button>
+                            <button class="preset-btn" onclick="loadPreset('bull_put_spread')">Bull Put Spread (Credit)</button>
+                            <button class="preset-btn" onclick="loadPreset('iron_condor')">Iron Condor</button>
+                        </div>
+
+                        <div class="legs-list-container">
+                            <h4>Patas / Leg de la Posición:</h4>
+                            <div id="legs-container">
+                                <!-- Dynamic Leg Row Item -->
+                            </div>
+                            <button class="btn btn-secondary btn-sm" id="btn-add-leg">+ Agregar Pata (Leg)</button>
+                        </div>
+
+                        <div class="action-bar">
+                            <button id="btn-calculate-payoff" class="btn btn-primary w-100">📊 Simular Curva de Rendimiento</button>
+                            <button id="btn-execute-paper" class="btn btn-success w-100">🚀 Abrir Posición en Paper Trading</button>
+                        </div>
+                    </div>
+
+                    <div class="builder-chart-panel card">
+                        <div class="chart-header">
+                            <h3>Curva de Rendimiento al Vencimiento (Payoff Curve)</h3>
+                            <div class="payoff-metrics">
+                                <div>Max Ganancia: <strong id="metric-max-profit" class="text-green">$0.00</strong></div>
+                                <div>Max Pérdida: <strong id="metric-max-loss" class="text-red">$0.00</strong></div>
+                                <div>Puntos de Equilibrio: <strong id="metric-breakevens" class="text-cyan">--</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="chart-wrapper">
+                            <canvas id="payoffChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: Simulated Portfolio -->
+            <section id="tab-portfolio" class="tab-content">
+                <div class="portfolio-metrics-grid">
+                    <div class="metric-card card">
+                        <div class="label">Capital de Cartera</div>
+                        <div class="value" id="port-capital">$50,000.00 USD</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Net Delta Exposure</div>
+                        <div class="value text-cyan" id="port-delta">+0.00</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Net Theta Decay / Día</div>
+                        <div class="value text-green" id="port-theta">+$0.00 / día</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Posiciones Activas</div>
+                        <div class="value" id="port-active-count">0</div>
+                    </div>
+                </div>
+
+                <div class="positions-container card">
+                    <h3>Posiciones de Opciones en Cartera</h3>
+                    <div id="portfolio-positions-list">
+                        <p class="empty-msg">No hay posiciones de opciones abiertas. Crea una desde la pestaña 'Arquitecto de Estrategias'.</p>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

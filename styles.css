@@ -1,0 +1,533 @@
+:root {
+    --bg-dark: #0B0F19;
+    --card-bg: #111827;
+    --card-border: rgba(255, 255, 255, 0.08);
+    --card-hover: #1F2937;
+    
+    --primary-cyan: #00F2FE;
+    --primary-blue: #4FACFE;
+    --accent-green: #00FF87;
+    --accent-red: #FF0844;
+    --accent-purple: #7F00FF;
+    --accent-gold: #FFB300;
+    
+    --text-main: #F3F4F6;
+    --text-muted: #9CA3AF;
+    --text-dark: #6B7280;
+
+    --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-heading: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: var(--font-main);
+    line-height: 1.5;
+    padding: 24px;
+    min-height: 100vh;
+}
+
+.app-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header */
+.main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, rgba(17, 24, 39, 0.8), rgba(31, 41, 55, 0.6));
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 20px 28px;
+    margin-bottom: 24px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.brand-logo {
+    font-size: 32px;
+    background: linear-gradient(135deg, #00F2FE, #4FACFE);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(0, 242, 254, 0.3);
+}
+
+h1 {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #FFFFFF, #9CA3AF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.market-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 255, 135, 0.1);
+    border: 1px solid rgba(0, 255, 135, 0.3);
+    padding: 6px 14px;
+    border-radius: 20px;
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent-green);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent-green);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 135, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(0, 255, 135, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 135, 0); }
+}
+
+.status-text {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--accent-green);
+}
+
+.fed-rate-badge {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Tabs Navigation */
+.nav-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.tab-btn {
+    background: rgba(17, 24, 39, 0.6);
+    border: 1px solid var(--card-border);
+    color: var(--text-muted);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-btn:hover {
+    background: var(--card-hover);
+    color: var(--text-main);
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(79, 172, 254, 0.15));
+    border-color: var(--primary-cyan);
+    color: var(--primary-cyan);
+    font-weight: 600;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.2);
+}
+
+/* Cards & Layout */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.section-title {
+    margin-bottom: 20px;
+}
+
+.section-title h2 {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    margin-bottom: 4px;
+}
+
+.section-title p {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* ETF Grid Cards */
+.etf-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.etf-card {
+    background: linear-gradient(145deg, #111827, #1F2937);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.etf-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-cyan);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+.etf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.etf-symbol {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.etf-change {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+.etf-change.pos {
+    background: rgba(0, 255, 135, 0.15);
+    color: var(--accent-green);
+}
+
+.etf-change.neg {
+    background: rgba(255, 8, 68, 0.15);
+    color: var(--accent-red);
+}
+
+.etf-price {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.etf-name {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.iv-bar-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.iv-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+.iv-progress {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.iv-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00FF87, #00F2FE, #FF0844);
+    border-radius: 3px;
+}
+
+/* Option Chain Controls */
+.chain-controls {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.control-group label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.custom-select {
+    background: #1F2937;
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+}
+
+.custom-select:focus {
+    border-color: var(--primary-cyan);
+}
+
+.chain-header-info {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.info-pill {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+}
+
+.info-pill .label {
+    color: var(--text-muted);
+}
+
+.info-pill .val {
+    font-weight: 600;
+    margin-left: 6px;
+}
+
+/* Table Styling */
+.table-responsive {
+    overflow-x: auto;
+}
+
+.chain-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: center;
+}
+
+.chain-table th {
+    background: rgba(31, 41, 55, 0.8);
+    padding: 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.chain-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-family: var(--font-mono);
+}
+
+.call-header {
+    color: var(--primary-cyan) !important;
+    border-bottom: 2px solid var(--primary-cyan) !important;
+}
+
+.put-header {
+    color: var(--accent-red) !important;
+    border-bottom: 2px solid var(--accent-red) !important;
+}
+
+.strike-header {
+    background: #1F2937 !important;
+    color: var(--text-main) !important;
+}
+
+.strike-cell {
+    background: rgba(31, 41, 55, 0.5);
+    font-weight: 700;
+    color: var(--accent-gold);
+}
+
+.itm-row {
+    background: rgba(0, 242, 254, 0.03);
+}
+
+/* Strategy Builder */
+.builder-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+}
+
+.preset-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.preset-btn {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.preset-btn:hover {
+    background: var(--card-hover);
+    border-color: var(--primary-cyan);
+}
+
+.leg-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--card-border);
+}
+
+.leg-row select, .leg-row input {
+    background: #1F2937;
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    width: 100%;
+}
+
+.btn-remove-leg {
+    background: transparent;
+    border: none;
+    color: var(--accent-red);
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 380px;
+    width: 100%;
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #00F2FE, #4FACFE);
+    color: #000000;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.4);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #00FF87, #60EFFF);
+    color: #000000;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.w-100 {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Portfolio Metrics */
+.portfolio-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.metric-card .label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.metric-card .value {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+.text-green { color: var(--accent-green); }
+.text-red { color: var(--accent-red); }
+.text-cyan { color: var(--primary-cyan); }

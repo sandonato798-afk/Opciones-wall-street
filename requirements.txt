@@ -1,0 +1,2 @@
+# El bot de opciones utiliza la librería estándar de Python
+# No se requieren dependencias pesadas de terceros
