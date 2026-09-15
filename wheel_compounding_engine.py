@@ -197,6 +197,25 @@ class WheelCompoundingEngine:
             self.save_state()
             return cycle_record
 
+    def auto_check_and_run_cycle(self):
+        """Verifica automáticamente si es momento de iniciar o renovar el ciclo de 30 días"""
+        try:
+            if not self.history:
+                log_msg("AUTO_WHEEL", "Iniciando primer ciclo automático de Rueda & Compuesto...")
+                return self.run_wheel_cycle()
+
+            last_cycle = self.history[-1]
+            last_ts_str = last_cycle.get("timestamp")
+            if last_ts_str:
+                last_dt = datetime.strptime(last_ts_str, "%Y-%m-%d %H:%M:%S")
+                # Si han pasado 30 días desde el último ciclo, renovar automáticamente
+                if datetime.now() - last_dt >= timedelta(days=CONFIG["target_dte"]):
+                    log_msg("AUTO_WHEEL", f"Ciclo de {CONFIG['target_dte']} días completado. Renovando nuevo ciclo...")
+                    return self.run_wheel_cycle()
+        except Exception as e:
+            log_msg("WARN", f"Error en verificación automática de Rueda: {e}")
+        return None
+
 if __name__ == "__main__":
     wheel = WheelCompoundingEngine()
     print("Simulación de Proyecciones a 10 años:")

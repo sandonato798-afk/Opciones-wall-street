@@ -26,9 +26,13 @@ def is_market_open():
     return 1030 <= time_num <= 1700
 
 def background_trading_loop():
-    print("⚡ Motor de Day Trading intradiario iniciado en segundo plano.")
+    print("⚡ Motores de Opciones (Day Trading 0-DTE & Rueda Automática) iniciados en segundo plano.")
     while True:
         try:
+            # 1. Chequeo automático de Rueda & Compounding (mensual/30 DTE)
+            wheel_engine.auto_check_and_run_cycle()
+
+            # 2. Escaneo intradiario 0-DTE si el mercado está abierto
             if is_market_open():
                 daytrade_bot.run_intraday_scan()
             time.sleep(60)
