@@ -33,6 +33,55 @@
             </div>
         </header>
 
+        <!-- MASTER PORTFOLIO SUMMARY HUB -->
+        <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(17, 24, 39, 0.95) 100%); border: 1px solid rgba(0, 242, 254, 0.25); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">💼</span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; color: #FFFFFF;">Resumen Consolidado del Portafolio Maestro</h3>
+                        <p style="margin: 0; font-size: 11px; color: #9CA3AF;">Estado financiero en vivo: Efectivo disponible, tenencia en Rueda y PnL de Day Trading en tiempo real</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="badge" style="background: rgba(0, 255, 135, 0.15); color: #00FF87; font-weight: 600;">● Sincronizado en Tiempo Real</span>
+                </div>
+            </div>
+
+            <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 0;">
+                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 179, 0, 0.35);">
+                    <div class="label">Patrimonio Total (NAV)</div>
+                    <div class="value text-gold" id="master-nav">$100,000.00 USD</div>
+                    <div style="font-size: 11px; color:#9CA3AF;">Efectivo + Acciones</div>
+                </div>
+                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
+                    <div class="label">Efectivo Total (Cash)</div>
+                    <div class="value text-green" id="master-cash">$100,000.00 USD</div>
+                    <div style="font-size: 11px; color:#9CA3AF;">Incluye PnL Realizado</div>
+                </div>
+                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
+                    <div class="label">Efectivo Libre Disponible</div>
+                    <div class="value text-cyan" id="master-free-cash">$100,000.00 USD</div>
+                    <div style="font-size: 11px; color:#9CA3AF;">Para nuevas órdenes</div>
+                </div>
+                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
+                    <div class="label">En Opciones Abiertas</div>
+                    <div class="value" id="master-in-trades" style="color:#A78BFA">$0.00 USD</div>
+                    <div style="font-size: 11px; color:#9CA3AF;" id="master-open-trades-count">0 operaciones abiertas</div>
+                </div>
+                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
+                    <div class="label">Acciones Poseídas (Rueda)</div>
+                    <div class="value text-cyan" id="master-shares-val">$0.00 USD</div>
+                    <div style="font-size: 11px; color:#9CA3AF;" id="master-shares-count">0.0000 acciones SPY</div>
+                </div>
+                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
+                    <div class="label">Rendimiento Day Trading</div>
+                    <div class="value text-green" id="master-dt-pnl">+$0.00 USD</div>
+                    <div style="font-size: 11px; color:#9CA3AF;" id="master-dt-pct">+0.00% acumulado</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Navigation Tabs -->
         <nav class="nav-tabs">
             <button class="tab-btn active" data-tab="tab-wheel">
@@ -256,18 +305,18 @@
                             <div class="loading-spinner">Cargando estado del bot intradiario...</div>
                         </div>
 
-                        <h4 style="margin-top: 24px;">Historial de Posiciones Intradiarias Cerradas Hoy:</h4>
+                        <h4 style="margin-top: 24px;">Historial Detallado de Operaciones Intradiarias (Day Trading):</h4>
                         <div class="table-responsive" style="margin-top: 10px">
                             <table class="chain-table">
                                 <thead>
                                     <tr>
-                                        <th>Hora</th>
-                                        <th>Opción</th>
-                                        <th>Entrada $</th>
-                                        <th>Salida $</th>
-                                        <th>Comisión $</th>
-                                        <th>Motivo</th>
-                                        <th>PnL Net USD</th>
+                                        <th>Hora Salida</th>
+                                        <th>Contrato / Cantidad</th>
+                                        <th>Líquido Entrada (Invertido)</th>
+                                        <th>Líquido Salida (Cobrado)</th>
+                                        <th>Comisión Broker</th>
+                                        <th>Motivo de Salida</th>
+                                        <th>Rendimiento Neto (USD y %)</th>
                                     </tr>
                                 </thead>
                                 <tbody id="dt-history-body">

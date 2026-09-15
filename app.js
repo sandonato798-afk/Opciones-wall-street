@@ -64,25 +64,83 @@ function initTabs() {
 }
 
 let distributionChart = null;
+let latestWheelData = null;
+let latestDayTradeData = null;
+
+function syncMasterPortfolio() {
+    if (!latestWheelData || !latestDayTradeData) return;
+
+    const dtCapital = latestDayTradeData.capital || 100000.0;
+    const initialCap = latestDayTradeData.initial_capital_usd || 100000.0;
+    const dtTotalPnlUsd = latestDayTradeData.total_pnl_usd || 0.0;
+    const dtTotalPnlPct = latestDayTradeData.total_pnl_pct || 0.0;
+
+    // Calculate cash in open daytrade positions
+    let cashInTrades = 0.0;
+    if (latestDayTradeData.open_positions && latestDayTradeData.open_positions.length > 0) {
+        latestDayTradeData.open_positions.forEach(p => {
+            const cost = p.total_cost_usd || ((p.entry_premium * 100 * p.contracts) + (p.open_fee_usd || 0));
+            cashInTrades += cost;
+        });
+    }
+
+    const freeCash = Math.max(0.0, dtCapital - cashInTrades);
+    const shares = latestWheelData.etf_shares || 0.0;
+    const etfPrice = latestWheelData.etf_price || 560.50;
+    const sharesVal = shares * etfPrice;
+    const totalNav = dtCapital + sharesVal;
+
+    // Update Master Hub Elements
+    const masterNavEl = document.getElementById('master-nav');
+    if (masterNavEl) masterNavEl.innerText = `$${totalNav.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+    const masterCashEl = document.getElementById('master-cash');
+    if (masterCashEl) masterCashEl.innerText = `$${dtCapital.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+    const masterFreeCashEl = document.getElementById('master-free-cash');
+    if (masterFreeCashEl) masterFreeCashEl.innerText = `$${freeCash.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+    const masterInTradesEl = document.getElementById('master-in-trades');
+    if (masterInTradesEl) masterInTradesEl.innerText = `$${cashInTrades.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+    const masterOpenCountEl = document.getElementById('master-open-trades-count');
+    if (masterOpenCountEl) masterOpenCountEl.innerText = `${latestDayTradeData.open_positions ? latestDayTradeData.open_positions.length : 0} operaciones abiertas`;
+
+    const masterSharesValEl = document.getElementById('master-shares-val');
+    if (masterSharesValEl) masterSharesValEl.innerText = `$${sharesVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+    const masterSharesCountEl = document.getElementById('master-shares-count');
+    if (masterSharesCountEl) masterSharesCountEl.innerText = `${shares.toFixed(4)} acciones ${latestWheelData.etf_symbol || 'SPY'}`;
+
+    const masterDtPnlEl = document.getElementById('master-dt-pnl');
+    if (masterDtPnlEl) {
+        masterDtPnlEl.innerText = (dtTotalPnlUsd >= 0 ? '+' : '') + `$${dtTotalPnlUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        masterDtPnlEl.className = dtTotalPnlUsd >= 0 ? 'value text-green' : 'value text-red';
+    }
+
+    const masterDtPctEl = document.getElementById('master-dt-pct');
+    if (masterDtPctEl) masterDtPctEl.innerText = (dtTotalPnlPct >= 0 ? '+' : '') + `${dtTotalPnlPct.toFixed(2)}% realizado`;
+}
 
 // TAB WHEEL & COMPOUNDING
 async function loadWheelStatus() {
     try {
         const res = await fetch('/api/wheel/status');
         const data = await res.json();
+        latestWheelData = data;
 
         const initialCap = data.initial_capital_usd || 100000.0;
         const shares = data.etf_shares || 0.0;
         const etfPrice = data.etf_price || 560.50;
         const sharesVal = shares * etfPrice;
-        const cashVal = data.cash_balance !== undefined ? data.cash_balance : (initialCap - sharesVal);
+        const cashVal = data.cash_balance !== undefined ? data.cash_balance : initialCap;
         const navVal = data.portfolio_nav_usd || (sharesVal + cashVal);
         const totalReinvest = data.total_reinvested_usd || 0.0;
 
         const sharesPct = navVal > 0 ? ((sharesVal / navVal) * 100.0).toFixed(1) : "0.0";
         const cashPct = navVal > 0 ? ((cashVal / navVal) * 100.0).toFixed(1) : "100.0";
 
-        // Update Top KPIs
+        // Update Top KPIs in Wheel Tab
         document.getElementById('wheel-initial-cap').innerText = `$${initialCap.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
         document.getElementById('wheel-shares').innerText = `${shares.toFixed(4)} acciones`;
         document.getElementById('wheel-total-reinvest').innerText = `+$${totalReinvest.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
@@ -127,6 +185,8 @@ async function loadWheelStatus() {
                 <td style="color:#FFB300;">Rueda Auto-Compounding</td>
             </tr>
         `;
+
+        syncMasterPortfolio();
     } catch (err) {
         console.error("Error cargando estado de Rueda y Distribución:", err);
     }
@@ -187,6 +247,7 @@ async function loadDayTradeStatus() {
     try {
         const res = await fetch('/api/daytrade/status');
         const data = await res.json();
+        latestDayTradeData = data;
 
         const isPaper = data.config.execution_mode === 'PAPER_TRADING';
         document.getElementById('live-mode-text').innerText = isPaper ? 'MODO: PAPER TRADING (SIMULACIÓN)' : `MODO: BROKER REAL (${data.config.broker_name})`;
@@ -224,19 +285,26 @@ async function loadDayTradeStatus() {
             data.open_positions.forEach(pos => {
                 const isProfit = pos.pnl_usd >= 0;
                 const pnlClass = isProfit ? 'text-green' : 'text-red';
+                const entryCostUsd = pos.total_cost_usd || ((pos.entry_premium * 100 * pos.contracts) + (pos.open_fee_usd || 0));
+                const currValUsd = (pos.current_premium * 100 * pos.contracts);
 
                 posContainer.innerHTML += `
                     <div class="card" style="margin-bottom: 12px; border-left: 4px solid ${isProfit ? '#00FF87' : '#FF0844'}">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div>
                                 <strong style="font-size: 16px; color:#00F2FE">${pos.option_ticker}</strong>
-                                <div style="font-size: 12px; color:#9CA3AF">Entrada: $${pos.entry_premium.toFixed(2)} | Target TP: $${pos.target_profit_price.toFixed(2)} | Stop SL: $${pos.stop_loss_price.toFixed(2)} | Comisión Apertura: $${pos.open_fee_usd.toFixed(2)}</div>
+                                <span class="badge" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE; margin-left: 8px;">${pos.contracts} Contrato(s)</span>
+                                <div style="font-size: 12px; color:#9CA3AF; margin-top: 4px;">
+                                    Inversión: <strong>$${entryCostUsd.toFixed(2)} USD</strong> ($${pos.entry_premium.toFixed(2)}/acción) | 
+                                    Valor Actual: <strong>$${currValUsd.toFixed(2)} USD</strong> ($${pos.current_premium.toFixed(2)}/acción) | 
+                                    TP: $${pos.target_profit_price.toFixed(2)} | SL: $${pos.stop_loss_price.toFixed(2)}
+                                </div>
                             </div>
                             <div style="text-align:right">
                                 <div class="${pnlClass}" style="font-size: 18px; font-weight:700;">
-                                    ${pos.pnl_pct >= 0 ? '+' : ''}${pos.pnl_pct.toFixed(2)}% ($${pos.pnl_usd.toFixed(2)} USD)
+                                    ${pos.pnl_pct >= 0 ? '+' : ''}${pos.pnl_pct.toFixed(2)}% (${pos.pnl_usd >= 0 ? '+' : ''}$${pos.pnl_usd.toFixed(2)} USD)
                                 </div>
-                                <div style="font-size: 11px; color:#9CA3AF">${pos.contracts} Contrato(s)</div>
+                                <div style="font-size: 11px; color:#9CA3AF">Comisión: -$${pos.open_fee_usd.toFixed(2)} USD</div>
                             </div>
                         </div>
                     </div>
@@ -245,25 +313,51 @@ async function loadDayTradeStatus() {
         }
 
         const historyBody = document.getElementById('dt-history-body');
-        if (data.closed_trades.length > 0) {
+        if (data.closed_trades && data.closed_trades.length > 0) {
             historyBody.innerHTML = '';
             data.closed_trades.forEach(t => {
-                const isProf = t.final_pnl_usd >= 0;
+                const contracts = t.contracts || 1;
+                const openFee = t.open_fee_usd || (contracts * 0.65);
+                const closeFee = t.close_fee_usd || (contracts * 0.65);
+                const totalFees = t.total_fees_usd || (openFee + closeFee);
+                
+                const entryCapitalUsd = t.total_cost_usd || ((t.entry_premium * 100 * contracts) + openFee);
+                const exitCapitalUsd = (t.exit_premium * 100 * contracts) - closeFee;
+                const netPnlUsd = t.final_pnl_usd !== undefined ? t.final_pnl_usd : (exitCapitalUsd - entryCapitalUsd);
+                const netPnlPct = entryCapitalUsd > 0 ? ((netPnlUsd / entryCapitalUsd) * 100.0) : (t.final_pnl_pct || 0);
+
+                const isProf = netPnlUsd >= 0;
+                const reasonBadgeColor = t.exit_reason === 'TAKE_PROFIT' ? '#00FF87' : (t.exit_reason === 'STOP_LOSS' ? '#FF0844' : '#FFB300');
+                const reasonLabel = t.exit_reason === 'TAKE_PROFIT' ? '🎯 Take Profit (+35%)' : (t.exit_reason === 'STOP_LOSS' ? '🛑 Stop Loss (-18%)' : '⏰ Cierre EOD');
+
                 historyBody.innerHTML += `
                     <tr>
-                        <td>${t.exit_time ? t.exit_time.split(' ')[1] : ''}</td>
-                        <td style="color:#00F2FE">${t.option_ticker}</td>
-                        <td>$${t.entry_premium.toFixed(2)}</td>
-                        <td>$${t.exit_premium.toFixed(2)}</td>
-                        <td style="color:#FF0844">-$${(t.total_fees_usd || 1.30).toFixed(2)}</td>
-                        <td><span class="info-pill">${t.exit_reason}</span></td>
-                        <td style="color:${isProf ? '#00FF87' : '#FF0844'}; font-weight:700">
-                            ${isProf ? '+' : ''}$${t.final_pnl_usd.toFixed(2)} USD
+                        <td>
+                            <div style="font-weight:600;">${t.exit_time ? t.exit_time.split(' ')[1] : '-'}</div>
+                            <div style="font-size:10px; color:#9CA3AF;">${t.entry_time ? 'Entrada: ' + t.entry_time.split(' ')[1] : ''}</div>
+                        </td>
+                        <td>
+                            <div style="color:#00F2FE; font-weight:700;">${t.option_ticker}</div>
+                            <div style="font-size:11px; color:#9CA3AF;">${contracts} Contrato(s)</div>
+                        </td>
+                        <td style="font-weight:700; color:#FFFFFF;">$${entryCapitalUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                        <td style="font-weight:700; color:${isProf ? '#00FF87' : '#FF0844'};">$${exitCapitalUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                        <td style="color:#FF0844;">-$${totalFees.toFixed(2)} USD</td>
+                        <td><span class="badge" style="background: rgba(255,255,255,0.06); color:${reasonBadgeColor}; border: 1px solid ${reasonBadgeColor}33;">${reasonLabel}</span></td>
+                        <td style="color:${isProf ? '#00FF87' : '#FF0844'}; font-weight:700; font-size: 14px;">
+                            ${isProf ? '+' : ''}$${netPnlUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD
+                            <div style="font-size: 11px;">(${isProf ? '+' : ''}${netPnlPct.toFixed(2)}%)</div>
                         </td>
                     </tr>
                 `;
             });
         }
+
+        syncMasterPortfolio();
+    } catch (err) {
+        console.error("Error cargando estado Day Trading:", err);
+    }
+}
     } catch (err) {
         console.error("Error cargando estado Day Trading:", err);
     }
