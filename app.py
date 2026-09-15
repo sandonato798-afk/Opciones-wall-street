@@ -9,12 +9,14 @@ import time
 from datetime import datetime
 from options_engine import OptionsTradingEngine
 from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
+from wheel_compounding_engine import WheelCompoundingEngine, CONFIG as WHEEL_CONFIG
 
 PORT = int(os.environ.get("PORT", 5050))
 DIRECTORY = os.path.dirname(__file__)
 
 engine = OptionsTradingEngine()
 daytrade_bot = DayTradeOptionsBot()
+wheel_engine = WheelCompoundingEngine()
 
 def is_market_open():
     now = datetime.now()
@@ -119,6 +121,30 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             }
             return self.send_json_response(state)
 
+        elif path == "/api/wheel/status":
+            etf_price = wheel_engine.fetch_etf_live_price(WHEEL_CONFIG["etf_target"])
+            nav_usd = round(wheel_engine.cash_balance + (wheel_engine.etf_shares * etf_price), 2)
+            cagr = round((((nav_usd / wheel_engine.initial_capital) ** 1) - 1) * 100.0, 2)
+
+            state = {
+                "config": WHEEL_CONFIG,
+                "initial_capital_usd": wheel_engine.initial_capital,
+                "cash_balance": wheel_engine.cash_balance,
+                "etf_symbol": WHEEL_CONFIG["etf_target"],
+                "etf_price": etf_price,
+                "etf_shares": wheel_engine.etf_shares,
+                "portfolio_nav_usd": nav_usd,
+                "accumulated_premiums_usd": wheel_engine.accumulated_premiums_usd,
+                "total_reinvested_usd": wheel_engine.total_reinvested_usd,
+                "cagr_pct": cagr,
+                "history": wheel_engine.history
+            }
+            return self.send_json_response(state)
+
+        elif path == "/api/wheel/projections":
+            projections = wheel_engine.calculate_compounding_projections(years=10)
+            return self.send_json_response(projections)
+
         return super().do_GET()
 
     def do_POST(self):
@@ -158,19 +184,11 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
                 "daily_pnl_usd": daytrade_bot.daily_pnl_usd
             })
 
-        elif path == "/api/daytrade/mode":
-            new_mode = payload.get("mode", "PAPER_TRADING")
-            new_broker = payload.get("broker", "INTERACTIVE_BROKERS")
-            DAYTRADE_CONFIG["execution_mode"] = new_mode
-            DAYTRADE_CONFIG["broker_name"] = new_broker
-            daytrade_bot.broker_adapter.mode = new_mode
-            daytrade_bot.broker_adapter.broker = new_broker
-            daytrade_bot.broker_adapter.connect()
-            daytrade_bot.save_state()
+        elif path == "/api/wheel/run-cycle":
+            cycle_result = wheel_engine.run_wheel_cycle()
             return self.send_json_response({
                 "status": "SUCCESS",
-                "execution_mode": new_mode,
-                "broker": new_broker
+                "cycle": cycle_result
             })
 
         return self.send_json_response({"error": "Endpoint no encontrado"}, 404)

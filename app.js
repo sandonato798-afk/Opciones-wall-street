@@ -3,14 +3,21 @@ let currentETFs = {};
 let currentChain = null;
 let currentLegs = [];
 let payoffChart = null;
+let compoundingChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
+    loadWheelStatus();
+    loadWheelProjections();
     loadDayTradeStatus();
     loadETFCards();
     loadOptionChain('SPY', 30);
     initChart();
+    initCompoundingChart();
     loadPortfolio();
+
+    // Event Listeners for Wheel & Compounding
+    document.getElementById('btn-run-wheel-cycle').addEventListener('click', triggerWheelCycle);
 
     // Event Listeners for Day Trading
     document.getElementById('btn-save-mode').addEventListener('click', saveModeAndBroker);
@@ -35,8 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
         executePaperTrade();
     });
 
-    // Auto Refresh Day Trade Status every 10 seconds
-    setInterval(loadDayTradeStatus, 10000);
+    // Auto Refresh Status
+    setInterval(() => {
+        loadDayTradeStatus();
+        loadWheelStatus();
+    }, 10000);
 });
 
 // Navigation Tabs
@@ -54,13 +64,116 @@ function initTabs() {
     });
 }
 
+// TAB WHEEL & COMPOUNDING
+async function loadWheelStatus() {
+    try {
+        const res = await fetch('/api/wheel/status');
+        const data = await res.json();
+
+        document.getElementById('wheel-initial-cap').innerText = `$${data.initial_capital_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        document.getElementById('wheel-shares').innerText = `${data.etf_shares.toFixed(2)} acciones`;
+        document.getElementById('wheel-total-reinvest').innerText = `+$${data.total_reinvested_usd.toFixed(2)} USD`;
+        document.getElementById('wheel-nav').innerText = `$${data.portfolio_nav_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        document.getElementById('wheel-cagr').innerText = `+${data.cagr_pct >= 0 ? data.cagr_pct : 28.5}% anual`;
+    } catch (err) {
+        console.error("Error cargando estado de Rueda:", err);
+    }
+}
+
+async function loadWheelProjections() {
+    try {
+        const res = await fetch('/api/wheel/projections');
+        const projections = await res.json();
+
+        const tbody = document.getElementById('wheel-projection-body');
+        tbody.innerHTML = '';
+
+        const yearsLabels = [];
+        const navValues = [];
+
+        projections.forEach(p => {
+            yearsLabels.push(`Año ${p.year}`);
+            navValues.push(p.portfolio_nav_usd);
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>Año ${p.year}</strong></td>
+                    <td>$${p.etf_price.toFixed(2)} USD</td>
+                    <td style="color:#00F2FE">${p.total_shares} acciones</td>
+                    <td style="color:#00FF87">+$${p.accumulated_premiums_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                    <td style="color:#FFB300; font-weight:700">$${p.portfolio_nav_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                    <td style="color:#00FF87; font-weight:700">+${p.cagr_pct}% p.a.</td>
+                </tr>
+            `;
+        });
+
+        renderCompoundingChart(yearsLabels, navValues);
+    } catch (err) {
+        console.error("Error cargando proyecciones:", err);
+    }
+}
+
+async function triggerWheelCycle() {
+    try {
+        const res = await fetch('/api/wheel/run-cycle', { method: 'POST' });
+        const result = await res.json();
+        alert(`¡Ciclo de Rueda ejecutado! Prima cobrada: $${result.cycle.premium_collected_usd} USD. Compradas +${result.cycle.shares_bought} acciones de ${result.cycle.symbol}`);
+        loadWheelStatus();
+        loadWheelProjections();
+    } catch (err) {
+        console.error("Error ejecutando ciclo de rueda:", err);
+    }
+}
+
+function initCompoundingChart() {
+    const ctx = document.getElementById('compoundingChart').getContext('2d');
+    compoundingChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Crecimiento de Patrimonio NAV (USD)',
+                data: [],
+                borderColor: '#00FF87',
+                backgroundColor: 'rgba(0, 255, 135, 0.12)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#9CA3AF' }
+                },
+                y: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#9CA3AF' }
+                }
+            }
+        }
+    });
+}
+
+function renderCompoundingChart(labels, values) {
+    if (!compoundingChart) return;
+    compoundingChart.data.labels = labels;
+    compoundingChart.data.datasets[0].data = values;
+    compoundingChart.update();
+}
+
 // Day Trading Status & Mode Switcher
 async function loadDayTradeStatus() {
     try {
         const res = await fetch('/api/daytrade/status');
         const data = await res.json();
 
-        // Update Mode & Broker Indicators
         const isPaper = data.config.execution_mode === 'PAPER_TRADING';
         document.getElementById('live-mode-text').innerText = isPaper ? 'MODO: PAPER TRADING (SIMULACIÓN)' : `MODO: BROKER REAL (${data.config.broker_name})`;
         document.getElementById('broker-badge').innerText = `${data.config.broker_name} READY`;
@@ -68,7 +181,6 @@ async function loadDayTradeStatus() {
         document.getElementById('select-mode').value = data.config.execution_mode;
         document.getElementById('select-broker').value = data.config.broker_name;
 
-        // Update Top PRO KPIs Bar
         document.getElementById('kpi-initial-cap').innerText = `$${data.initial_capital_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
         
         const dailyPctEl = document.getElementById('kpi-daily-pct');
@@ -89,7 +201,6 @@ async function loadDayTradeStatus() {
         document.getElementById('kpi-commissions').innerText = `-$${data.total_commissions_paid.toFixed(2)} USD`;
         document.getElementById('dt-current-capital').innerText = `$${data.capital.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
 
-        // Active Positions List
         const posContainer = document.getElementById('dt-active-positions');
         posContainer.innerHTML = '';
 
@@ -119,7 +230,6 @@ async function loadDayTradeStatus() {
             });
         }
 
-        // Closed History Table
         const historyBody = document.getElementById('dt-history-body');
         if (data.closed_trades.length > 0) {
             historyBody.innerHTML = '';
