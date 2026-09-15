@@ -75,7 +75,7 @@ def black_scholes(option_type, S, K, T, r, sigma):
 class OptionsTradingEngine:
     def __init__(self):
         self.risk_free_rate = 0.0525  # 5.25% Fed Rate
-        self.portfolio_capital = 50000.0
+        self.portfolio_capital = 100000.0
         self.positions = []
         self.trade_history = []
         self.load_state()

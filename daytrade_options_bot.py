@@ -13,12 +13,12 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "daytrade_bot.log")
 CONFIG = {
     "execution_mode": "PAPER_TRADING",      # "PAPER_TRADING" or "LIVE_BROKER"
     "broker_name": "INTERACTIVE_BROKERS",    # "INTERACTIVE_BROKERS", "ALPACA", "TRADIER"
-    "initial_capital_usd": 10000.0,
+    "initial_capital_usd": 100000.0,
     "max_simultaneous_trades": 4,           # Max 4 open intraday option positions
-    "max_capital_per_trade_pct": 5.0,       # 5% ($500 USD) max allocation per trade
+    "max_capital_per_trade_pct": 5.0,       # 5% ($5,000 USD) max allocation per trade
     "broker_fee_per_contract": 0.65,        # $0.65 USD fee per option contract (IBKR / E*Trade standard)
     "bid_ask_slippage_pct": 1.0,            # 1.0% bid-ask spread friction
-    "max_daily_loss_usd": 300.0,            # Daily drawdown limit circuit breaker (-3%)
+    "max_daily_loss_usd": 3000.0,           # Daily drawdown limit circuit breaker (-3%)
     "target_profit_pct": 35.0,              # TP: +35% option premium gain
     "stop_loss_pct": 18.0,                  # SL: -18% option premium loss
     "hard_eod_exit_time": "15:45",          # Close all positions at 15:45 EST

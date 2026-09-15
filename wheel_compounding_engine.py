@@ -10,7 +10,7 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "wheel_compounding.log")
 
 # Configuration for Wheel Strategy & Compounding
 CONFIG = {
-    "initial_capital_usd": 10000.0,
+    "initial_capital_usd": 100000.0,
     "etf_target": "SPY",               # Primary compounding ETF (SPY or QQQ)
     "monthly_premium_target_pct": 2.0,  # 2.0% monthly options premium yield (~24% annual yield)
     "etf_annual_appreciation_pct": 9.0, # 9.0% average historical ETF appreciation

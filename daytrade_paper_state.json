@@ -1,7 +1,7 @@
 {
   "last_update": "2026-09-14 19:59:32",
   "execution_mode": "PAPER_TRADING",
-  "capital": 10000.0,
+  "capital": 100000.0,
   "daily_pnl": 0.0,
   "open_positions": [],
   "closed_trades": []
