@@ -1,0 +1,15 @@
+====================================================================
+           PANEL DE ACCESOS Y CUENTAS - SISTEMA DE OPCIONES
+====================================================================
+
+• PROYECTO: Sistema de Opciones sobre ETFs de Wall Street (0-DTE / 1-DTE)
+• REPOSITORIO GITHUB: https://github.com/sandonato798-afk/Opciones-wall-street.git
+
+--------------------------------------------------------------------
+DATOS DE ACCESO A RENDER.COM
+--------------------------------------------------------------------
+• URL de Ingreso: https://dashboard.render.com
+• Correo de Render: sandonato+opciones@gmail.com
+• Nombre del Servicio Web: opciones-wall-street
+
+====================================================================
