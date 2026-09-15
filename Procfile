@@ -1,1 +1,1 @@
-worker: python daemon_runner.py
+web: python app.py

@@ -4,14 +4,41 @@ import json
 import os
 import urllib.parse
 import webbrowser
+import threading
+import time
+from datetime import datetime
 from options_engine import OptionsTradingEngine
 from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
 
-PORT = 5050
+# Read PORT from environment variable (required by Koyeb / Railway) or default to 5050
+PORT = int(os.environ.get("PORT", 5050))
 DIRECTORY = os.path.dirname(__file__)
 
 engine = OptionsTradingEngine()
 daytrade_bot = DayTradeOptionsBot()
+
+def is_market_open():
+    now = datetime.now()
+    if now.weekday() >= 5:
+        return False
+    time_num = now.hour * 100 + now.minute
+    return 1030 <= time_num <= 1700
+
+def background_trading_loop():
+    """Ejecuta escaneos intradiarios en segundo plano mientras el servidor Web HTML está activo"""
+    print("⚡ Motor de Day Trading intradiario iniciado en segundo plano.")
+    while True:
+        try:
+            if is_market_open():
+                daytrade_bot.run_intraday_scan()
+            time.sleep(60)
+        except Exception as e:
+            print(f"⚠️ Error en bucle en segundo plano: {e}")
+            time.sleep(30)
+
+# Start background scanner thread
+scanner_thread = threading.Thread(target=background_trading_loop, daemon=True)
+scanner_thread.start()
 
 class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -30,6 +57,11 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
         query = urllib.parse.parse_qs(parsed_url.query)
+
+        # Serve index.html for root path
+        if path == "/" or path == "":
+            self.path = "/index.html"
+            return super().do_GET()
 
         # API Endpoints
         if path == "/api/etfs":
@@ -60,7 +92,7 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             }
             return self.send_json_response(state)
 
-        # Fallback to static file server (index.html, styles.css, app.js)
+        # Fallback to static file server (styles.css, app.js, etc.)
         return super().do_GET()
 
     def do_POST(self):
@@ -122,11 +154,9 @@ def run_server():
     with socketserver.TCPServer(("", PORT), OptionsAPIHandler) as httpd:
         print("=" * 75)
         print(f"🚀 SISTEMA DE OPCIONES & DAY TRADING 0-DTE (WALL STREET)")
-        print(f"🌐 Servidor Web Activo en: http://localhost:{PORT}")
+        print(f"🌐 Servidor Web Activo en Puerto: {PORT}")
         print(f"⚡ Modo de Ejecución Actual: {DAYTRADE_CONFIG['execution_mode']} (Broker: {DAYTRADE_CONFIG['broker_name']})")
         print("=" * 75)
-        
-        webbrowser.open(f"http://localhost:{PORT}")
         
         try:
             httpd.serve_forever()
