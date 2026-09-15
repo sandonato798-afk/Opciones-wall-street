@@ -36,9 +36,28 @@ def background_trading_loop():
             print(f"⚠️ Error en bucle en segundo plano: {e}")
             time.sleep(30)
 
-# Start background scanner thread
+def self_ping_loop():
+    """Realiza un auto-ping cada 10 minutos para evitar que Render suspenda la aplicación por inactividad"""
+    time.sleep(15)  # Wait for server to boot up
+    render_url = os.environ.get("RENDER_EXTERNAL_URL", "https://opciones-wall-street.onrender.com")
+    print(f"⏰ Hilo Keep-Alive activo. Auto-ping programado a: {render_url}")
+    
+    while True:
+        try:
+            time.sleep(600)  # Every 10 minutes
+            headers = {'User-Agent': 'Mozilla/5.0 (Keep-Alive Self-Ping)'}
+            req = urllib.request.Request(f"{render_url}/api/etfs", headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟢 Keep-Alive Self-Ping Exitoso (Status {resp.status})")
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Self-Ping Warning: {e}")
+
+# Start background threads
 scanner_thread = threading.Thread(target=background_trading_loop, daemon=True)
 scanner_thread.start()
+
+ping_thread = threading.Thread(target=self_ping_loop, daemon=True)
+ping_thread.start()
 
 class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
