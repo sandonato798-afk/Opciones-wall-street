@@ -1,3 +1,4 @@
+ï»¿# -*- coding: utf-8 -*-
 import os
 import json
 import base64
@@ -56,17 +57,15 @@ def _async_sync(file_name, data_dict):
         req_put = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT")
         with urllib.request.urlopen(req_put, timeout=8) as resp:
             if resp.status in (200, 201):
-                print(f"?? [CLOUD_PERSISTENCE] ? Estado '{file_name}' respaldado permanentemente en GitHub.")
+                print(f"[CLOUD_PERSISTENCE] Estado {file_name} respaldado en GitHub.")
     except Exception as e:
-        print(f"?? [CLOUD_PERSISTENCE] Warning al respaldar '{file_name}': {e}")
+        print(f"[CLOUD_PERSISTENCE] Warning al respaldar {file_name}: {e}")
 
 def sync_state_to_github_async(file_name, data_dict):
-    """Ejecuta la sincronización con GitHub en un hilo en segundo plano sin demorar el trading"""
     t = threading.Thread(target=_async_sync, args=(file_name, data_dict), daemon=True)
     t.start()
 
 def load_state_from_github(file_name):
-    """Descarga el estado guardado en GitHub si es necesario"""
     token = get_token()
     if not token:
         return None
