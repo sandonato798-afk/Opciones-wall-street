@@ -10,7 +10,6 @@ from datetime import datetime
 from options_engine import OptionsTradingEngine
 from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
 
-# Read PORT from environment variable (required by Koyeb / Railway) or default to 5050
 PORT = int(os.environ.get("PORT", 5050))
 DIRECTORY = os.path.dirname(__file__)
 
@@ -25,7 +24,6 @@ def is_market_open():
     return 1030 <= time_num <= 1700
 
 def background_trading_loop():
-    """Ejecuta escaneos intradiarios en segundo plano mientras el servidor Web HTML está activo"""
     print("⚡ Motor de Day Trading intradiario iniciado en segundo plano.")
     while True:
         try:
@@ -37,14 +35,13 @@ def background_trading_loop():
             time.sleep(30)
 
 def self_ping_loop():
-    """Realiza un auto-ping cada 10 minutos para evitar que Render suspenda la aplicación por inactividad"""
-    time.sleep(15)  # Wait for server to boot up
+    time.sleep(15)
     render_url = os.environ.get("RENDER_EXTERNAL_URL", "https://opciones-wall-street.onrender.com")
     print(f"⏰ Hilo Keep-Alive activo. Auto-ping programado a: {render_url}")
     
     while True:
         try:
-            time.sleep(600)  # Every 10 minutes
+            time.sleep(600)
             headers = {'User-Agent': 'Mozilla/5.0 (Keep-Alive Self-Ping)'}
             req = urllib.request.Request(f"{render_url}/api/etfs", headers=headers)
             with urllib.request.urlopen(req, timeout=10) as resp:
@@ -77,12 +74,10 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
         path = parsed_url.path
         query = urllib.parse.parse_qs(parsed_url.query)
 
-        # Serve index.html for root path
         if path == "/" or path == "":
             self.path = "/index.html"
             return super().do_GET()
 
-        # API Endpoints
         if path == "/api/etfs":
             etfs = engine.fetch_live_etf_prices()
             return self.send_json_response(etfs)
@@ -102,16 +97,28 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             return self.send_json_response(state)
 
         elif path == "/api/daytrade/status":
+            stats = daytrade_bot.get_win_rate_stats()
+            daily_pnl_pct = round((daytrade_bot.daily_pnl_usd / daytrade_bot.initial_capital) * 100.0, 2)
+            total_pnl_usd = round(daytrade_bot.capital - daytrade_bot.initial_capital, 2)
+            total_pnl_pct = round((total_pnl_usd / daytrade_bot.initial_capital) * 100.0, 2)
+
             state = {
                 "config": DAYTRADE_CONFIG,
+                "system_start_time": daytrade_bot.system_start_time,
+                "uptime_hours": daytrade_bot.get_uptime_hours(),
+                "initial_capital_usd": daytrade_bot.initial_capital,
                 "capital": daytrade_bot.capital,
-                "daily_pnl": daytrade_bot.daily_pnl,
+                "daily_pnl_usd": daytrade_bot.daily_pnl_usd,
+                "daily_pnl_pct": daily_pnl_pct,
+                "total_pnl_usd": total_pnl_usd,
+                "total_pnl_pct": total_pnl_pct,
+                "total_commissions_paid": round(daytrade_bot.total_commissions_paid, 2),
+                "stats": stats,
                 "open_positions": daytrade_bot.open_positions,
                 "closed_trades": daytrade_bot.closed_trades
             }
             return self.send_json_response(state)
 
-        # Fallback to static file server (styles.css, app.js, etc.)
         return super().do_GET()
 
     def do_POST(self):
@@ -148,7 +155,7 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
                 "status": "SUCCESS",
                 "message": "Escaneo intradiario completado.",
                 "open_positions": daytrade_bot.open_positions,
-                "daily_pnl": daytrade_bot.daily_pnl
+                "daily_pnl_usd": daytrade_bot.daily_pnl_usd
             })
 
         elif path == "/api/daytrade/mode":

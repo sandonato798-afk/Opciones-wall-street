@@ -11,16 +11,19 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "daytrade_bot.log")
 
 # Configuration
 CONFIG = {
-    "execution_mode": "PAPER_TRADING",  # "PAPER_TRADING" or "LIVE_BROKER"
-    "broker_name": "INTERACTIVE_BROKERS", # "INTERACTIVE_BROKERS", "ALPACA", "TRADIER"
+    "execution_mode": "PAPER_TRADING",      # "PAPER_TRADING" or "LIVE_BROKER"
+    "broker_name": "INTERACTIVE_BROKERS",    # "INTERACTIVE_BROKERS", "ALPACA", "TRADIER"
     "initial_capital_usd": 10000.0,
-    "max_capital_per_trade_pct": 5.0,   # Max 5% ($500 USD) per 0-DTE / 1-DTE trade
-    "max_daily_loss_usd": 300.0,        # Daily drawdown limit circuit breaker
-    "target_profit_pct": 35.0,          # TP: +35% option premium gain
-    "stop_loss_pct": 18.0,              # SL: -18% option premium loss
-    "hard_eod_exit_time": "15:45",      # Close all positions at 15:45 EST
+    "max_simultaneous_trades": 4,           # Max 4 open intraday option positions
+    "max_capital_per_trade_pct": 5.0,       # 5% ($500 USD) max allocation per trade
+    "broker_fee_per_contract": 0.65,        # $0.65 USD fee per option contract (IBKR / E*Trade standard)
+    "bid_ask_slippage_pct": 1.0,            # 1.0% bid-ask spread friction
+    "max_daily_loss_usd": 300.0,            # Daily drawdown limit circuit breaker (-3%)
+    "target_profit_pct": 35.0,              # TP: +35% option premium gain
+    "stop_loss_pct": 18.0,                  # SL: -18% option premium loss
+    "hard_eod_exit_time": "15:45",          # Close all positions at 15:45 EST
     "etf_watchlist": ["SPY", "QQQ"],
-    "dte_target": 0                     # 0-DTE (Same day expiration) or 1-DTE
+    "dte_target": 0                         # 0-DTE (Same day expiration)
 }
 
 def timestamp():
@@ -42,11 +45,10 @@ class BrokerAdapter:
     def connect(self):
         if self.mode == "PAPER_TRADING":
             self.connected = True
-            log_msg("BROKER", "Conectado a Motor de Paper Trading Intradiario (Simulación Alta Fidelidad).")
+            log_msg("BROKER", "Conectado a Motor de Paper Trading Intradiario (Fricción y Comisiones Reales $0.65/contrato).")
             return True
         else:
             log_msg("BROKER", f"Intentando conexión con {self.broker} API...")
-            # Placeholder for IB Gateway (127.0.0.1:7497) or Alpaca API
             log_msg("WARN", f"API de {self.broker} no configurada aún. Revisa credenciales en CONFIG.")
             return False
 
@@ -65,12 +67,14 @@ class BrokerAdapter:
 
 class DayTradeOptionsBot:
     def __init__(self):
+        self.system_start_time = timestamp()
         self.broker_adapter = BrokerAdapter(mode=CONFIG["execution_mode"], broker=CONFIG["broker_name"])
+        self.initial_capital = CONFIG["initial_capital_usd"]
         self.capital = CONFIG["initial_capital_usd"]
         self.open_positions = []
         self.closed_trades = []
-        self.daily_pnl = 0.0
-        self.trading_active = True
+        self.daily_pnl_usd = 0.0
+        self.total_commissions_paid = 0.0
         self.load_state()
         self.broker_adapter.connect()
 
@@ -79,10 +83,13 @@ class DayTradeOptionsBot:
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
+                    self.system_start_time = data.get("system_start_time", timestamp())
+                    self.initial_capital = data.get("initial_capital", CONFIG["initial_capital_usd"])
                     self.capital = data.get("capital", CONFIG["initial_capital_usd"])
                     self.open_positions = data.get("open_positions", [])
                     self.closed_trades = data.get("closed_trades", [])
-                    self.daily_pnl = data.get("daily_pnl", 0.0)
+                    self.daily_pnl_usd = data.get("daily_pnl_usd", 0.0)
+                    self.total_commissions_paid = data.get("total_commissions_paid", 0.0)
                     log_msg("STATE", "Estado de Day Trading cargado correctamente.")
                     return
             except Exception as e:
@@ -91,18 +98,41 @@ class DayTradeOptionsBot:
 
     def save_state(self):
         state = {
+            "system_start_time": self.system_start_time,
             "last_update": timestamp(),
             "execution_mode": CONFIG["execution_mode"],
+            "initial_capital": self.initial_capital,
             "capital": self.capital,
-            "daily_pnl": self.daily_pnl,
+            "daily_pnl_usd": self.daily_pnl_usd,
+            "daily_pnl_pct": round((self.daily_pnl_usd / self.initial_capital) * 100.0, 2),
+            "total_pnl_usd": round(self.capital - self.initial_capital, 2),
+            "total_pnl_pct": round(((self.capital - self.initial_capital) / self.initial_capital) * 100.0, 2),
+            "total_commissions_paid": round(self.total_commissions_paid, 2),
             "open_positions": self.open_positions,
             "closed_trades": self.closed_trades
         }
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
+    def get_uptime_hours(self):
+        try:
+            start_dt = datetime.strptime(self.system_start_time, "%Y-%m-%d %H:%M:%S")
+            diff = datetime.now() - start_dt
+            hours = diff.total_seconds() / 3600.0
+            return round(hours, 1)
+        except Exception:
+            return 0.0
+
+    def get_win_rate_stats(self):
+        total = len(self.closed_trades)
+        if total == 0:
+            return {"total": 0, "wins": 0, "losses": 0, "win_rate": 0.0}
+        wins = sum(1 for t in self.closed_trades if t.get("final_pnl_usd", 0) > 0)
+        losses = sum(1 for t in self.closed_trades if t.get("final_pnl_usd", 0) <= 0)
+        rate = (wins / total) * 100.0
+        return {"total": total, "wins": wins, "losses": losses, "win_rate": round(rate, 1)}
+
     def fetch_etf_intraday_data(self, symbol):
-        """Consulta cotización e indicadores intradiarios de ETF desde Yahoo Finance (intervalo 1m / 5m)"""
         headers = {'User-Agent': 'Mozilla/5.0'}
         try:
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
@@ -120,7 +150,6 @@ class DayTradeOptionsBot:
                 current_price = prices[-1]
                 prev_close = meta.get("chartPreviousClose", current_price)
                 
-                # Compute Intraday Indicators: EMA9, EMA21, VWAP
                 ema9 = self.calculate_ema(prices, 9)
                 ema21 = self.calculate_ema(prices, 21)
                 rsi = self.calculate_rsi(prices, 14)
@@ -162,16 +191,17 @@ class DayTradeOptionsBot:
         rs = (gains / period) / (losses / period)
         return 100.0 - (100.0 / (1.0 + rs))
 
-    def evaluate_daytrade_signals(self):
-        pass # Evaluated in main loop
-
     def run_intraday_scan(self):
         log_msg("SCAN", "--- ESCANEANDO SEÑALES DE DAY TRADING (0-DTE / 1-DTE ETFs) ---")
         
-        # Check Daily Drawdown Limit
-        if self.daily_pnl <= -CONFIG["max_daily_loss_usd"]:
-            log_msg("CIRCUIT_BREAKER", f"Límite de pérdida diaria alcanzado (-${abs(self.daily_pnl):.2f} USD). Pausando bot por hoy.")
+        # Check Daily Drawdown Circuit Breaker
+        if self.daily_pnl_usd <= -CONFIG["max_daily_loss_usd"]:
+            log_msg("CIRCUIT_BREAKER", f"Límite de pérdida diaria alcanzado (-${abs(self.daily_pnl_usd):.2f} USD). Pausando bot por hoy.")
             return
+
+        # Check Max Simultaneous Trades Limit (Max 4 positions)
+        if len(self.open_positions) >= CONFIG["max_simultaneous_trades"]:
+            log_msg("INFO", f"Límite máximo de {CONFIG['max_simultaneous_trades']} posiciones simultáneas alcanzado. Monitoreando abiertas...")
 
         for symbol in CONFIG["etf_watchlist"]:
             market_data = self.fetch_etf_intraday_data(symbol)
@@ -186,32 +216,38 @@ class DayTradeOptionsBot:
                 self.manage_open_position(existing[0], market_data)
                 continue
 
-            # Signal Trigger Entry Rules for Day Trading 0-DTE Calls/Puts
-            if market_data["signal"] == "BULLISH_CROSS" and market_data["rsi"] < 70:
-                self.open_intraday_option(symbol, "CALL", market_data)
-            elif market_data["signal"] == "BEARISH_CROSS" and market_data["rsi"] > 30:
-                self.open_intraday_option(symbol, "PUT", market_data)
+            # Open new trade if below max simultaneous trades limit
+            if len(self.open_positions) < CONFIG["max_simultaneous_trades"]:
+                if market_data["signal"] == "BULLISH_CROSS" and market_data["rsi"] < 70:
+                    self.open_intraday_option(symbol, "CALL", market_data)
+                elif market_data["signal"] == "BEARISH_CROSS" and market_data["rsi"] > 30:
+                    self.open_intraday_option(symbol, "PUT", market_data)
 
     def open_intraday_option(self, symbol, option_type, market_data):
         etf_price = market_data["price"]
         dte = CONFIG["dte_target"]
         
-        # Select Strike: Slightly OTM / Delta ~0.40 for high responsiveness & low cost
         strike_step = 1.0 if symbol != "SPY" and symbol != "QQQ" else 2.0
         if option_type == "CALL":
             strike = math.ceil(etf_price / strike_step) * strike_step
         else:
             strike = math.floor(etf_price / strike_step) * strike_step
 
-        # Calculate Black-Scholes Option Premium
         T = max(0.5, dte) / 365.0
         greeks = black_scholes(option_type, etf_price, strike, T, 0.0525, 0.20)
-        entry_premium = max(0.25, greeks["price"])
+        base_premium = max(0.25, greeks["price"])
+        
+        # Apply 1.0% Bid-Ask Slippage Friction
+        entry_premium = round(base_premium * (1.0 + CONFIG["bid_ask_slippage_pct"] / 100.0), 2)
 
-        # Determine Contract Quantity (Max 5% of capital)
+        # Allocate 5% of Total Capital
         alloc_usd = self.capital * (CONFIG["max_capital_per_trade_pct"] / 100.0)
         contracts = max(1, int(alloc_usd / (entry_premium * 100.0)))
-        total_cost = entry_premium * 100.0 * contracts
+        
+        # Calculate Broker Commission Fee ($0.65/contract)
+        open_fee = contracts * CONFIG["broker_fee_per_contract"]
+        total_cost = (entry_premium * 100.0 * contracts) + open_fee
+        self.total_commissions_paid += open_fee
 
         option_ticker = f"{symbol}_{option_type}_{strike:.0f}_{dte}DTE"
 
@@ -232,33 +268,35 @@ class DayTradeOptionsBot:
             "dte": dte,
             "contracts": contracts,
             "entry_premium": entry_premium,
+            "open_fee_usd": open_fee,
             "total_cost_usd": round(total_cost, 2),
             "entry_time": timestamp(),
             "target_profit_price": round(entry_premium * (1.0 + CONFIG["target_profit_pct"] / 100.0), 2),
             "stop_loss_price": round(entry_premium * (1.0 - CONFIG["stop_loss_pct"] / 100.0), 2),
             "status": "OPEN",
             "current_premium": entry_premium,
-            "pnl_usd": 0.0,
+            "pnl_usd": -open_fee, # Starts with commission deduction
             "pnl_pct": 0.0
         }
 
         self.open_positions.append(position)
         self.save_state()
-        log_msg("DAYTRADE_OPEN", f"🟢 NUEVA POSICIÓN {option_type}: {contracts}x {option_ticker} @ ${entry_premium} USD (Costo: ${total_cost:.2f} USD | TP: ${position['target_profit_price']} | SL: ${position['stop_loss_price']})")
+        log_msg("DAYTRADE_OPEN", f"🟢 NUEVA POSICIÓN {option_type}: {contracts}x {option_ticker} @ ${entry_premium} USD (Costo: ${total_cost:.2f} USD incl. ${open_fee:.2f} comisión | TP: ${position['target_profit_price']} | SL: ${position['stop_loss_price']})")
 
     def manage_open_position(self, pos, market_data):
         etf_price = market_data["price"]
         greeks = black_scholes(pos["option_type"], etf_price, pos["strike"], 0.5/365.0, 0.0525, 0.20)
         curr_premium = max(0.05, greeks["price"])
 
+        raw_pnl_usd = (curr_premium - pos["entry_premium"]) * 100.0 * pos["contracts"]
+        pnl_usd = raw_pnl_usd - pos["open_fee_usd"]
         pnl_pct = ((curr_premium - pos["entry_premium"]) / pos["entry_premium"]) * 100.0
-        pnl_usd = (curr_premium - pos["entry_premium"]) * 100.0 * pos["contracts"]
 
         pos["current_premium"] = curr_premium
         pos["pnl_pct"] = round(pnl_pct, 2)
         pos["pnl_usd"] = round(pnl_usd, 2)
 
-        log_msg("MONITOR", f"Posición [{pos['option_ticker']}]: Prima Actual: ${curr_premium} USD | PnL: {pnl_pct:+.2f}% (${pnl_usd:+.2f} USD)")
+        log_msg("MONITOR", f"Posición [{pos['option_ticker']}]: Prima Actual: ${curr_premium} USD | PnL Neto: {pnl_pct:+.2f}% (${pnl_usd:+.2f} USD)")
 
         # Check Take Profit
         if curr_premium >= pos["target_profit_price"]:
@@ -268,6 +306,9 @@ class DayTradeOptionsBot:
             self.close_position(pos, "STOP_LOSS", curr_premium)
 
     def close_position(self, pos, reason, exit_premium):
+        close_fee = pos["contracts"] * CONFIG["broker_fee_per_contract"]
+        self.total_commissions_paid += close_fee
+
         trade_res = self.broker_adapter.submit_order(
             symbol=pos["symbol"],
             option_symbol=pos["option_ticker"],
@@ -276,7 +317,8 @@ class DayTradeOptionsBot:
             limit_price=exit_premium
         )
 
-        pnl_usd = (exit_premium - pos["entry_premium"]) * 100.0 * pos["contracts"]
+        raw_pnl_usd = (exit_premium - pos["entry_premium"]) * 100.0 * pos["contracts"]
+        final_pnl_usd = raw_pnl_usd - pos["open_fee_usd"] - close_fee
         pnl_pct = ((exit_premium - pos["entry_premium"]) / pos["entry_premium"]) * 100.0
 
         closed_record = {
@@ -284,18 +326,20 @@ class DayTradeOptionsBot:
             "exit_time": timestamp(),
             "exit_premium": exit_premium,
             "exit_reason": reason,
-            "final_pnl_usd": round(pnl_usd, 2),
+            "close_fee_usd": close_fee,
+            "total_fees_usd": pos["open_fee_usd"] + close_fee,
+            "final_pnl_usd": round(final_pnl_usd, 2),
             "final_pnl_pct": round(pnl_pct, 2)
         }
 
         self.open_positions.remove(pos)
         self.closed_trades.append(closed_record)
-        self.daily_pnl += pnl_usd
-        self.capital += pnl_usd
+        self.daily_pnl_usd += final_pnl_usd
+        self.capital += final_pnl_usd
 
         self.save_state()
-        emoji = "🔴" if pnl_usd < 0 else "🟢"
-        log_msg("DAYTRADE_CLOSE", f"{emoji} POSICIÓN CERRADA ({reason}): [{pos['option_ticker']}] Exit Premium: ${exit_premium} USD | PnL: {pnl_pct:+.2f}% (${pnl_usd:+.2f} USD)")
+        emoji = "🔴" if final_pnl_usd < 0 else "🟢"
+        log_msg("DAYTRADE_CLOSE", f"{emoji} POSICIÓN CERRADA ({reason}): [{pos['option_ticker']}] Exit Premium: ${exit_premium} USD | PnL Neto: {pnl_pct:+.2f}% (${final_pnl_usd:+.2f} USD desdeduciendo ${closed_record['total_fees_usd']:.2f} comisiones)")
 
 if __name__ == "__main__":
     log_msg("BOOT", "=== BOT DE DAY TRADING DE OPCIONES SOBRE ETFs (0-DTE / 1-DTE) INICIADO ===")

@@ -68,17 +68,33 @@ async function loadDayTradeStatus() {
         document.getElementById('select-mode').value = data.config.execution_mode;
         document.getElementById('select-broker').value = data.config.broker_name;
 
-        // Update PnL
-        const pnlEl = document.getElementById('dt-daily-pnl');
-        pnlEl.innerText = (data.daily_pnl >= 0 ? '+' : '') + `$${data.daily_pnl.toFixed(2)} USD`;
-        pnlEl.className = data.daily_pnl >= 0 ? 'text-green' : 'text-red';
+        // Update Top PRO KPIs Bar
+        document.getElementById('kpi-initial-cap').innerText = `$${data.initial_capital_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        
+        const dailyPctEl = document.getElementById('kpi-daily-pct');
+        dailyPctEl.innerText = (data.daily_pnl_pct >= 0 ? '+' : '') + `${data.daily_pnl_pct.toFixed(2)}%`;
+        dailyPctEl.className = data.daily_pnl_pct >= 0 ? 'value text-green' : 'value text-red';
+        document.getElementById('kpi-daily-usd').innerText = (data.daily_pnl_usd >= 0 ? '+' : '') + `$${data.daily_pnl_usd.toFixed(2)} USD`;
+
+        const totalPctEl = document.getElementById('kpi-total-pct');
+        totalPctEl.innerText = (data.total_pnl_pct >= 0 ? '+' : '') + `${data.total_pnl_pct.toFixed(2)}%`;
+        totalPctEl.className = data.total_pnl_pct >= 0 ? 'value text-cyan' : 'value text-red';
+        document.getElementById('kpi-total-usd').innerText = (data.total_pnl_usd >= 0 ? '+' : '') + `$${data.total_pnl_usd.toFixed(2)} USD`;
+
+        document.getElementById('kpi-uptime').innerText = `${data.uptime_hours.toFixed(1)} hrs`;
+        
+        document.getElementById('kpi-winrate').innerText = `${data.stats.win_rate.toFixed(1)}%`;
+        document.getElementById('kpi-trades-count').innerText = `${data.stats.total} trade(s) (${data.stats.wins}W / ${data.stats.losses}L)`;
+
+        document.getElementById('kpi-commissions').innerText = `-$${data.total_commissions_paid.toFixed(2)} USD`;
+        document.getElementById('dt-current-capital').innerText = `$${data.capital.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
 
         // Active Positions List
         const posContainer = document.getElementById('dt-active-positions');
         posContainer.innerHTML = '';
 
         if (data.open_positions.length === 0) {
-            posContainer.innerHTML = '<p class="empty-msg">No hay posiciones intradiarias abiertas en este momento.</p>';
+            posContainer.innerHTML = '<p class="empty-msg">No hay posiciones intradiarias abiertas en este momento. Escaneando durante horario de mercado (10:30 a 17:00 AR)...</p>';
         } else {
             data.open_positions.forEach(pos => {
                 const isProfit = pos.pnl_usd >= 0;
@@ -89,7 +105,7 @@ async function loadDayTradeStatus() {
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <div>
                                 <strong style="font-size: 16px; color:#00F2FE">${pos.option_ticker}</strong>
-                                <div style="font-size: 12px; color:#9CA3AF">Entrada: $${pos.entry_premium.toFixed(2)} | Target TP: $${pos.target_profit_price.toFixed(2)} | Stop SL: $${pos.stop_loss_price.toFixed(2)}</div>
+                                <div style="font-size: 12px; color:#9CA3AF">Entrada: $${pos.entry_premium.toFixed(2)} | Target TP: $${pos.target_profit_price.toFixed(2)} | Stop SL: $${pos.stop_loss_price.toFixed(2)} | Comisión Apertura: $${pos.open_fee_usd.toFixed(2)}</div>
                             </div>
                             <div style="text-align:right">
                                 <div class="${pnlClass}" style="font-size: 18px; font-weight:700;">
@@ -115,6 +131,7 @@ async function loadDayTradeStatus() {
                         <td style="color:#00F2FE">${t.option_ticker}</td>
                         <td>$${t.entry_premium.toFixed(2)}</td>
                         <td>$${t.exit_premium.toFixed(2)}</td>
+                        <td style="color:#FF0844">-$${(t.total_fees_usd || 1.30).toFixed(2)}</td>
                         <td><span class="info-pill">${t.exit_reason}</span></td>
                         <td style="color:${isProf ? '#00FF87' : '#FF0844'}; font-weight:700">
                             ${isProf ? '+' : ''}$${t.final_pnl_usd.toFixed(2)} USD

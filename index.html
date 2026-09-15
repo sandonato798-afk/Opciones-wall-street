@@ -20,7 +20,7 @@
                 <div class="brand-logo">⚡</div>
                 <div>
                     <h1>Wall Street Options & Day Trading Lab</h1>
-                    <p class="subtitle">Day Trading 0-DTE / 1-DTE en ETFs de Wall Street (SPY, QQQ, IWM)</p>
+                    <p class="subtitle">Day Trading 0-DTE / 1-DTE en ETFs de Wall Street (SPY, QQQ)</p>
                 </div>
             </div>
 
@@ -57,6 +57,39 @@
             
             <!-- TAB DAY TRADING -->
             <section id="tab-daytrade" class="tab-content active">
+                
+                <!-- TOP PRO KPIs BAR -->
+                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(6, 1fr); margin-bottom: 20px;">
+                    <div class="metric-card card">
+                        <div class="label">Inversión Inicial</div>
+                        <div class="value" id="kpi-initial-cap">$10,000.00</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Rendimiento Diario (%)</div>
+                        <div class="value text-green" id="kpi-daily-pct">+0.00%</div>
+                        <div style="font-size: 11px; color:#9CA3AF" id="kpi-daily-usd">+$0.00 USD</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Rendimiento Acumulado</div>
+                        <div class="value text-cyan" id="kpi-total-pct">+0.00%</div>
+                        <div style="font-size: 11px; color:#9CA3AF" id="kpi-total-usd">+$0.00 USD</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Horas Activo (Uptime)</div>
+                        <div class="value text-gold" id="kpi-uptime">0.0 hrs</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Win Rate (%)</div>
+                        <div class="value" id="kpi-winrate">0.0%</div>
+                        <div style="font-size: 11px; color:#9CA3AF" id="kpi-trades-count">0 trades</div>
+                    </div>
+                    <div class="metric-card card">
+                        <div class="label">Comisiones Broker</div>
+                        <div class="value text-red" id="kpi-commissions">-$0.00</div>
+                        <div style="font-size: 11px; color:#9CA3AF">$0.65/contrato</div>
+                    </div>
+                </div>
+
                 <div class="builder-grid">
                     <!-- Control Panel & Mode Switcher -->
                     <div class="card">
@@ -87,13 +120,15 @@
 
                         <hr style="border-color: var(--card-border); margin: 20px 0;">
 
-                        <h4>Parámetros de Gestión de Riesgo (Day Trading):</h4>
+                        <h4>Parámetros de Riesgo y Distribución de Capital:</h4>
                         <ul class="risk-rules-list">
+                            <li>📊 <strong>Distribución Capital/Trade</strong>: 5% por operación ($500 USD)</li>
+                            <li>🔢 <strong>Máx Posiciones Simultáneas</strong>: 4 abiertas simultáneas</li>
+                            <li>💲 <strong>Comisión Broker Real</strong>: $0.65 USD por contrato + 1% spread</li>
                             <li>🎯 <strong>Take Profit (TP)</strong>: +35% de prima</li>
                             <li>🛑 <strong>Stop Loss (SL)</strong>: -18% de prima</li>
                             <li>⚠️ <strong>Límite Pérdida Diaria</strong>: -$300 USD (Circuit Breaker)</li>
                             <li>⏰ <strong>Cierre Hard EOD</strong>: 15:45 EST (Sin overnight)</li>
-                            <li>🛡️ <strong>Protección PDT</strong>: Cuenta Cash / Control Reg T</li>
                         </ul>
                     </div>
 
@@ -101,7 +136,7 @@
                     <div class="card">
                         <div class="chart-header">
                             <h3>Monitoreo de Operaciones Intradiarias 0-DTE / 1-DTE</h3>
-                            <div>PnL del Día: <strong id="dt-daily-pnl" class="text-green">+$0.00 USD</strong></div>
+                            <div>Capital Actual: <strong id="dt-current-capital" class="text-green">$10,000.00 USD</strong></div>
                         </div>
 
                         <div id="dt-active-positions" style="margin-top: 16px;">
@@ -117,12 +152,13 @@
                                         <th>Opción</th>
                                         <th>Entrada $</th>
                                         <th>Salida $</th>
+                                        <th>Comisión $</th>
                                         <th>Motivo</th>
                                         <th>PnL Net USD</th>
                                     </tr>
                                 </thead>
                                 <tbody id="dt-history-body">
-                                    <tr><td colspan="6" style="color:var(--text-muted)">Sin operaciones cerradas aún hoy.</td></tr>
+                                    <tr><td colspan="7" style="color:var(--text-muted)">Sin operaciones cerradas aún hoy.</td></tr>
                                 </tbody>
                             </table>
                         </div>
