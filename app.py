@@ -145,6 +145,17 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             projections = wheel_engine.calculate_compounding_projections(years=10)
             return self.send_json_response(projections)
 
+        elif path == "/api/backtest/1y":
+            bt_file = os.path.join(os.path.dirname(__file__), "backtest_results_1y.json")
+            if os.path.exists(bt_file):
+                with open(bt_file, "r", encoding="utf-8") as f:
+                    bt_data = json.load(f)
+                return self.send_json_response(bt_data)
+            else:
+                from backtest_historical_1y import run_1y_backtest
+                res = run_1y_backtest()
+                return self.send_json_response(res)
+
         return super().do_GET()
 
     def do_POST(self):
