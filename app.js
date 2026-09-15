@@ -7,13 +7,12 @@ let compoundingChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
+    initDistributionChart();
     loadWheelStatus();
-    loadWheelProjections();
     loadDayTradeStatus();
     loadETFCards();
     loadOptionChain('SPY', 30);
     initChart();
-    initCompoundingChart();
     loadPortfolio();
 
     // Event Listeners for Wheel & Compounding
@@ -64,52 +63,72 @@ function initTabs() {
     });
 }
 
+let distributionChart = null;
+
 // TAB WHEEL & COMPOUNDING
 async function loadWheelStatus() {
     try {
         const res = await fetch('/api/wheel/status');
         const data = await res.json();
 
-        document.getElementById('wheel-initial-cap').innerText = `$${data.initial_capital_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-        document.getElementById('wheel-shares').innerText = `${data.etf_shares.toFixed(2)} acciones`;
-        document.getElementById('wheel-total-reinvest').innerText = `+$${data.total_reinvested_usd.toFixed(2)} USD`;
-        document.getElementById('wheel-nav').innerText = `$${data.portfolio_nav_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        const initialCap = data.initial_capital_usd || 100000.0;
+        const shares = data.etf_shares || 0.0;
+        const etfPrice = data.etf_price || 560.50;
+        const sharesVal = shares * etfPrice;
+        const cashVal = data.cash_balance !== undefined ? data.cash_balance : (initialCap - sharesVal);
+        const navVal = data.portfolio_nav_usd || (sharesVal + cashVal);
+        const totalReinvest = data.total_reinvested_usd || 0.0;
+
+        const sharesPct = navVal > 0 ? ((sharesVal / navVal) * 100.0).toFixed(1) : "0.0";
+        const cashPct = navVal > 0 ? ((cashVal / navVal) * 100.0).toFixed(1) : "100.0";
+
+        // Update Top KPIs
+        document.getElementById('wheel-initial-cap').innerText = `$${initialCap.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        document.getElementById('wheel-shares').innerText = `${shares.toFixed(4)} acciones`;
+        document.getElementById('wheel-total-reinvest').innerText = `+$${totalReinvest.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        document.getElementById('wheel-nav').innerText = `$${navVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
         document.getElementById('wheel-cagr').innerText = `+${data.cagr_pct >= 0 ? data.cagr_pct : 28.5}% anual`;
+
+        // Update Distribution Summary Cards
+        document.getElementById('dist-shares-val').innerText = `$${sharesVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        document.getElementById('dist-shares-pct').innerText = `${sharesPct}%`;
+        document.getElementById('dist-cash-val').innerText = `$${cashVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        document.getElementById('dist-cash-pct').innerText = `${cashPct}%`;
+        document.getElementById('dist-reinvest-val').innerText = `+$${totalReinvest.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+        // Render Donut Chart
+        renderDistributionChart(sharesVal, cashVal, data.etf_symbol || 'SPY');
+
+        // Populate Holdings Table
+        const tbody = document.getElementById('wheel-holdings-body');
+        tbody.innerHTML = `
+            <tr>
+                <td><strong>${data.etf_symbol || 'SPY'}</strong></td>
+                <td><span class="badge" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE;">Acciones Físicas</span></td>
+                <td style="color:#00F2FE; font-weight: 700;">${shares.toFixed(4)}</td>
+                <td>$${etfPrice.toFixed(2)} USD</td>
+                <td style="color:#00F2FE; font-weight: 700;">$${sharesVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                <td><strong>${sharesPct}%</strong></td>
+                <td><span class="badge" style="background: rgba(0, 255, 135, 0.15); color: #00FF87;">${shares >= 10 ? 'Covered Call Activa' : 'Acumulando Acciones'}</span></td>
+            </tr>
+            <tr>
+                <td><strong>USD Cash</strong></td>
+                <td><span class="badge" style="background: rgba(0, 255, 135, 0.15); color: #00FF87;">Garantía Líquida</span></td>
+                <td>-</td>
+                <td>$1.00 USD</td>
+                <td style="color:#00FF87; font-weight: 700;">$${cashVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                <td><strong>${cashPct}%</strong></td>
+                <td><span class="badge" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE;">Respaldando Cash-Secured Put</span></td>
+            </tr>
+            <tr style="background: rgba(255, 255, 255, 0.04); font-weight: bold;">
+                <td colspan="4" style="text-align: right; color: #9CA3AF;">PATRIMONIO TOTAL (NAV):</td>
+                <td style="color:#FFB300; font-size: 15px;">$${navVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                <td style="color:#00FF87;">100.0%</td>
+                <td style="color:#FFB300;">Rueda Auto-Compounding</td>
+            </tr>
+        `;
     } catch (err) {
-        console.error("Error cargando estado de Rueda:", err);
-    }
-}
-
-async function loadWheelProjections() {
-    try {
-        const res = await fetch('/api/wheel/projections');
-        const projections = await res.json();
-
-        const tbody = document.getElementById('wheel-projection-body');
-        tbody.innerHTML = '';
-
-        const yearsLabels = [];
-        const navValues = [];
-
-        projections.forEach(p => {
-            yearsLabels.push(`Año ${p.year}`);
-            navValues.push(p.portfolio_nav_usd);
-
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>Año ${p.year}</strong></td>
-                    <td>$${p.etf_price.toFixed(2)} USD</td>
-                    <td style="color:#00F2FE">${p.total_shares} acciones</td>
-                    <td style="color:#00FF87">+$${p.accumulated_premiums_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
-                    <td style="color:#FFB300; font-weight:700">$${p.portfolio_nav_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
-                    <td style="color:#00FF87; font-weight:700">+${p.cagr_pct}% p.a.</td>
-                </tr>
-            `;
-        });
-
-        renderCompoundingChart(yearsLabels, navValues);
-    } catch (err) {
-        console.error("Error cargando proyecciones:", err);
+        console.error("Error cargando estado de Rueda y Distribución:", err);
     }
 }
 
@@ -119,53 +138,48 @@ async function triggerWheelCycle() {
         const result = await res.json();
         alert(`¡Ciclo de Rueda ejecutado! Prima cobrada: $${result.cycle.premium_collected_usd} USD. Compradas +${result.cycle.shares_bought} acciones de ${result.cycle.symbol}`);
         loadWheelStatus();
-        loadWheelProjections();
     } catch (err) {
         console.error("Error ejecutando ciclo de rueda:", err);
     }
 }
 
-function initCompoundingChart() {
-    const ctx = document.getElementById('compoundingChart').getContext('2d');
-    compoundingChart = new Chart(ctx, {
-        type: 'line',
+function initDistributionChart() {
+    const ctx = document.getElementById('distributionChart').getContext('2d');
+    distributionChart = new Chart(ctx, {
+        type: 'doughnut',
         data: {
-            labels: [],
+            labels: ['Acciones ETFs (SPY)', 'Efectivo / Garantía CSP'],
             datasets: [{
-                label: 'Crecimiento de Patrimonio NAV (USD)',
-                data: [],
-                borderColor: '#00FF87',
-                backgroundColor: 'rgba(0, 255, 135, 0.12)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.2
+                data: [0, 100],
+                backgroundColor: ['#00F2FE', '#00FF87'],
+                borderColor: '#111827',
+                borderWidth: 2,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                x: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#9CA3AF' }
-                },
-                y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#9CA3AF' }
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#9CA3AF',
+                        boxWidth: 12,
+                        font: { size: 11 }
+                    }
                 }
-            }
+            },
+            cutout: '70%'
         }
     });
 }
 
-function renderCompoundingChart(labels, values) {
-    if (!compoundingChart) return;
-    compoundingChart.data.labels = labels;
-    compoundingChart.data.datasets[0].data = values;
-    compoundingChart.update();
+function renderDistributionChart(sharesVal, cashVal, symbol) {
+    if (!distributionChart) return;
+    distributionChart.data.labels = [`Acciones ${symbol}`, 'Efectivo Garantía'];
+    distributionChart.data.datasets[0].data = [sharesVal, cashVal];
+    distributionChart.update();
 }
 
 // Day Trading Status & Mode Switcher

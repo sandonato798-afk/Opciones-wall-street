@@ -113,30 +113,57 @@
                         </ul>
                     </div>
 
-                    <!-- Compounding Chart & Projections -->
+                    <!-- Holdings & Asset Distribution in Wheel -->
                     <div class="card">
                         <div class="chart-header">
-                            <h3>Proyección Exponencial a 10 Años (Interés Compuesto)</h3>
+                            <h3>Distribución de Tenencia y Asignación de Activos</h3>
+                            <span class="badge" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE;">Portafolio en Vivo</span>
                         </div>
 
-                        <div class="chart-wrapper" style="height: 280px">
-                            <canvas id="compoundingChart"></canvas>
+                        <div style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center; margin-top: 10px;">
+                            <div class="chart-wrapper" style="height: 220px; position: relative;">
+                                <canvas id="distributionChart"></canvas>
+                            </div>
+                            <div id="holdings-summary-cards" style="display: flex; flex-direction: column; gap: 10px;">
+                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 11px; color: #9CA3AF;">Acciones en Tenencia (SPY)</div>
+                                        <div style="font-size: 16px; font-weight: 700; color: #00F2FE;" id="dist-shares-val">$0.00 USD</div>
+                                    </div>
+                                    <span class="badge" id="dist-shares-pct" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE;">0%</span>
+                                </div>
+                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 11px; color: #9CA3AF;">Efectivo / Garantía CSP</div>
+                                        <div style="font-size: 16px; font-weight: 700; color: #00FF87;" id="dist-cash-val">$100,000.00 USD</div>
+                                    </div>
+                                    <span class="badge" id="dist-cash-pct" style="background: rgba(0, 255, 135, 0.15); color: #00FF87;">100%</span>
+                                </div>
+                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-size: 11px; color: #9CA3AF;">Primas Reinvertidas Acumuladas</div>
+                                        <div style="font-size: 16px; font-weight: 700; color: #FFB300;" id="dist-reinvest-val">+$0.00 USD</div>
+                                    </div>
+                                    <span class="badge" style="background: rgba(255, 179, 0, 0.15); color: #FFB300;">Compuesto</span>
+                                </div>
+                            </div>
                         </div>
 
-                        <h4 style="margin-top: 20px;">Tabla de Proyección de Crecimiento del Capital ($10,000 USD):</h4>
+                        <h4 style="margin-top: 20px;">Detalle de Tenencia y Cobertura de Opciones:</h4>
                         <div class="table-responsive" style="margin-top: 10px">
                             <table class="chain-table">
                                 <thead>
                                     <tr>
-                                        <th>Año</th>
-                                        <th>Precio ETF (SPY)</th>
-                                        <th>Acciones Poseídas</th>
-                                        <th>Primas Generadas USD</th>
-                                        <th>Patrimonio Total NAV USD</th>
-                                        <th>Retorno Compuesto (CAGR)</th>
+                                        <th>Activo</th>
+                                        <th>Tipo Tenencia</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio Actual</th>
+                                        <th>Valor de Mercado</th>
+                                        <th>% Cartera</th>
+                                        <th>Estado Estrategia Rueda</th>
                                     </tr>
                                 </thead>
-                                <tbody id="wheel-projection-body">
+                                <tbody id="wheel-holdings-body">
                                     <!-- Populated dynamically -->
                                 </tbody>
                             </table>
