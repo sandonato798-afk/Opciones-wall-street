@@ -8,6 +8,8 @@ from options_engine import black_scholes
 STATE_FILE = os.path.join(os.path.dirname(__file__), "wheel_compounding_state.json")
 LOG_FILE = os.path.join(os.path.dirname(__file__), "wheel_compounding.log")
 
+from cloud_persistence import sync_state_to_github_async, load_state_from_github
+
 # Configuration for Wheel Strategy & Compounding
 CONFIG = {
     "initial_capital_usd": 100000.0,
@@ -40,6 +42,7 @@ class WheelCompoundingEngine:
         self.load_state()
 
     def load_state(self):
+        loaded = False
         if os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -52,10 +55,25 @@ class WheelCompoundingEngine:
                     self.wheel_positions = data.get("wheel_positions", [])
                     self.history = data.get("history", [])
                     log_msg("STATE", "Estado de Rueda & Interés Compuesto cargado exitosamente.")
-                    return
+                    loaded = True
             except Exception as e:
                 log_msg("WARN", f"Error cargando estado ({e}). Inicializando valores por defecto.")
-        self.save_state()
+        
+        if not loaded:
+            gh_data = load_state_from_github("wheel_compounding_state.json")
+            if gh_data:
+                self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
+                self.cash_balance = gh_data.get("cash_balance", self.initial_capital)
+                self.etf_shares = gh_data.get("etf_shares", 0.0)
+                self.accumulated_premiums_usd = gh_data.get("accumulated_premiums_usd", 0.0)
+                self.total_reinvested_usd = gh_data.get("total_reinvested_usd", 0.0)
+                self.wheel_positions = gh_data.get("wheel_positions", [])
+                self.history = gh_data.get("history", [])
+                log_msg("CLOUD_STATE", "Estado de Rueda recuperado exitosamente desde GitHub Cloud Backup.")
+                loaded = True
+
+        if not loaded:
+            self.save_state()
 
     def save_state(self):
         state = {
@@ -70,6 +88,7 @@ class WheelCompoundingEngine:
         }
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
+        sync_state_to_github_async("wheel_compounding_state.json", state)
 
     def fetch_etf_live_price(self, symbol="SPY"):
         headers = {'User-Agent': 'Mozilla/5.0'}

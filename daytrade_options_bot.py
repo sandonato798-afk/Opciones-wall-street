@@ -70,31 +70,50 @@ class DayTradeOptionsBot:
         self.system_start_time = timestamp()
         self.broker_adapter = BrokerAdapter(mode=CONFIG["execution_mode"], broker=CONFIG["broker_name"])
         self.initial_capital = CONFIG["initial_capital_usd"]
-        self.capital = CONFIG["initial_capital_usd"]
-        self.open_positions = []
-        self.closed_trades = []
+        self.capital = self.initial_capital
         self.daily_pnl_usd = 0.0
         self.total_commissions_paid = 0.0
-        self.load_state()
+        self.system_start_time = timestamp()
+        self.open_positions = []
+        self.closed_trades = []
+        self.broker_adapter = BrokerAdapter(mode=CONFIG["execution_mode"], broker=CONFIG["broker_name"])
         self.broker_adapter.connect()
+        self.load_state()
 
     def load_state(self):
+        loaded = False
         if os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    self.system_start_time = data.get("system_start_time", timestamp())
-                    self.initial_capital = data.get("initial_capital", CONFIG["initial_capital_usd"])
-                    self.capital = data.get("capital", CONFIG["initial_capital_usd"])
-                    self.open_positions = data.get("open_positions", [])
-                    self.closed_trades = data.get("closed_trades", [])
-                    self.daily_pnl_usd = data.get("daily_pnl_usd", 0.0)
-                    self.total_commissions_paid = data.get("total_commissions_paid", 0.0)
-                    log_msg("STATE", "Estado de Day Trading cargado correctamente.")
-                    return
+                    if data.get("closed_trades") or data.get("open_positions") or data.get("capital"):
+                        self.system_start_time = data.get("system_start_time", timestamp())
+                        self.initial_capital = data.get("initial_capital", CONFIG["initial_capital_usd"])
+                        self.capital = data.get("capital", CONFIG["initial_capital_usd"])
+                        self.open_positions = data.get("open_positions", [])
+                        self.closed_trades = data.get("closed_trades", [])
+                        self.daily_pnl_usd = data.get("daily_pnl_usd", 0.0)
+                        self.total_commissions_paid = data.get("total_commissions_paid", 0.0)
+                        log_msg("STATE", "Estado de Day Trading cargado correctamente desde archivo local.")
+                        loaded = True
             except Exception as e:
-                log_msg("WARN", f"Error cargando estado ({e}). Inicializando valores por defecto.")
-        self.save_state()
+                log_msg("WARN", f"Error cargando estado local ({e}).")
+
+        if not loaded:
+            gh_data = load_state_from_github("daytrade_paper_state.json")
+            if gh_data:
+                self.system_start_time = gh_data.get("system_start_time", timestamp())
+                self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
+                self.capital = gh_data.get("capital", CONFIG["initial_capital_usd"])
+                self.open_positions = gh_data.get("open_positions", [])
+                self.closed_trades = gh_data.get("closed_trades", [])
+                self.daily_pnl_usd = gh_data.get("daily_pnl_usd", 0.0)
+                self.total_commissions_paid = gh_data.get("total_commissions_paid", 0.0)
+                log_msg("CLOUD_STATE", "Estado recuperado exitosamente desde GitHub Cloud Backup.")
+                loaded = True
+
+        if not loaded:
+            self.save_state()
 
     def save_state(self):
         state = {
@@ -113,6 +132,7 @@ class DayTradeOptionsBot:
         }
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
+        sync_state_to_github_async("daytrade_paper_state.json", state)
 
     def get_uptime_hours(self):
         try:
