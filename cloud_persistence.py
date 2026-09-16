@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 import os
 import json
 import base64
@@ -66,23 +66,34 @@ def sync_state_to_github_async(file_name, data_dict):
     t.start()
 
 def load_state_from_github(file_name):
-    token = get_token()
-    if not token:
-        return None
-
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_name}"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "WallStreet-Options-Bot"
-    }
-
+    # 1. Intentar descargar directamente desde Raw GitHub (funciona siempre, con o sin token)
+    raw_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{file_name}?cache_bust={int(datetime.now().timestamp())}"
     try:
-        req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=8) as resp:
-            info = json.loads(resp.read().decode())
-            content_b64 = info.get("content", "")
-            raw_data = base64.b64decode(content_b64).decode("utf-8")
-            return json.loads(raw_data)
+        req = urllib.request.Request(raw_url, headers={"User-Agent": "WallStreet-Options-Bot"})
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            if data:
+                return data
     except Exception:
-        return None
+        pass
+
+    # 2. Fallback a GitHub API si hay token configurado
+    token = get_token()
+    if token:
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_name}"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "WallStreet-Options-Bot"
+        }
+        try:
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                info = json.loads(resp.read().decode())
+                content_b64 = info.get("content", "")
+                raw_data = base64.b64decode(content_b64).decode("utf-8")
+                return json.loads(raw_data)
+        except Exception:
+            pass
+
+    return None
