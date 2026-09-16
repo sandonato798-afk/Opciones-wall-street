@@ -5,6 +5,7 @@ import math
 import urllib.request
 from datetime import datetime, timedelta
 from options_engine import black_scholes
+from cloud_persistence import sync_state_to_github_async, load_state_from_github
 
 STATE_FILE = os.path.join(os.path.dirname(__file__), "daytrade_paper_state.json")
 LOG_FILE = os.path.join(os.path.dirname(__file__), "daytrade_bot.log")
