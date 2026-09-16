@@ -11,6 +11,7 @@ from options_engine import OptionsTradingEngine
 from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
 from wheel_compounding_engine import WheelCompoundingEngine, CONFIG as WHEEL_CONFIG
 from credit_spread_bot import CreditSpreadBot, CONFIG as SPREAD_CONFIG
+from cloud_persistence import load_state_from_github
 
 PORT = int(os.environ.get("PORT", 5050))
 DIRECTORY = os.path.dirname(__file__)
@@ -223,6 +224,24 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
                 "open_positions": daytrade_bot.open_positions,
                 "daily_pnl_usd": daytrade_bot.daily_pnl_usd
             })
+
+        elif path == "/api/daytrade/sync-force":
+            gh_data = load_state_from_github("daytrade_paper_state.json")
+            if gh_data:
+                daytrade_bot.system_start_time = gh_data.get("system_start_time", daytrade_bot.system_start_time)
+                daytrade_bot.capital = gh_data.get("capital", daytrade_bot.capital)
+                daytrade_bot.daily_pnl_usd = gh_data.get("daily_pnl_usd", daytrade_bot.daily_pnl_usd)
+                daytrade_bot.total_commissions_paid = gh_data.get("total_commissions_paid", daytrade_bot.total_commissions_paid)
+                daytrade_bot.open_positions = gh_data.get("open_positions", daytrade_bot.open_positions)
+                daytrade_bot.closed_trades = gh_data.get("closed_trades", daytrade_bot.closed_trades)
+                daytrade_bot.save_state()
+                return self.send_json_response({
+                    "status": "SUCCESS",
+                    "closed_trades_count": len(daytrade_bot.closed_trades),
+                    "capital": daytrade_bot.capital,
+                    "daily_pnl_usd": daytrade_bot.daily_pnl_usd
+                })
+            return self.send_json_response({"status": "ERROR", "message": "No se pudo obtener datos de GitHub"}, 500)
 
         elif path == "/api/spreads/scan":
             credit_bot.scan_and_execute_spreads()
