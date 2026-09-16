@@ -171,6 +171,23 @@ class WheelCompoundingEngine:
             log_msg("CASH_PUT", f"🟢 VENTA CASH-SECURED PUT [{etf_symbol} K=${strike}]: Prima Cobrada: +${income_usd} USD.")
             log_msg("AUTO_REINVEST", f"📈 REINVERSIÓN AUTOMÁTICA: Compradas +{shares_bought} acciones de {etf_symbol} @ ${etf_price} USD. Total Acciones: {self.etf_shares:.4f}")
 
+            exp_date = (datetime.now() + timedelta(days=CONFIG["target_dte"])).strftime("%Y-%m-%d")
+            active_pos = {
+                "id": f"WHEEL_CSP_{int(datetime.now().timestamp())}",
+                "ticker": f"{etf_symbol}_PUT_{strike:.1f}_{CONFIG['target_dte']}DTE",
+                "symbol": etf_symbol,
+                "strategy_type": "CASH_SECURED_PUT",
+                "underlying_price": etf_price,
+                "strike": strike,
+                "contracts": 1,
+                "premium_collected_usd": income_usd,
+                "issued_date": timestamp(),
+                "expiration_date": exp_date,
+                "target_dte": CONFIG["target_dte"],
+                "status": "ACTIVE"
+            }
+            self.wheel_positions = [active_pos]
+
             cycle_record = {
                 "timestamp": timestamp(),
                 "type": "CASH_SECURED_PUT",
@@ -200,6 +217,23 @@ class WheelCompoundingEngine:
 
             log_msg("COVERED_CALL", f"🟢 VENTA COVERED CALL [{etf_symbol} K=${strike}]: Prima Cobrada: +${income_usd} USD.")
             log_msg("AUTO_REINVEST", f"📈 REINVERSIÓN AUTOMÁTICA: Compradas +{shares_bought} acciones de {etf_symbol} @ ${etf_price} USD. Total Acciones: {self.etf_shares:.4f}")
+
+            exp_date = (datetime.now() + timedelta(days=CONFIG["target_dte"])).strftime("%Y-%m-%d")
+            active_pos = {
+                "id": f"WHEEL_CC_{int(datetime.now().timestamp())}",
+                "ticker": f"{etf_symbol}_CALL_{strike:.1f}_{CONFIG['target_dte']}DTE",
+                "symbol": etf_symbol,
+                "strategy_type": "COVERED_CALL",
+                "underlying_price": etf_price,
+                "strike": strike,
+                "contracts": 1,
+                "premium_collected_usd": income_usd,
+                "issued_date": timestamp(),
+                "expiration_date": exp_date,
+                "target_dte": CONFIG["target_dte"],
+                "status": "ACTIVE"
+            }
+            self.wheel_positions = [active_pos]
 
             cycle_record = {
                 "timestamp": timestamp(),
@@ -234,6 +268,17 @@ class WheelCompoundingEngine:
         except Exception as e:
             log_msg("WARN", f"Error en verificación automática de Rueda: {e}")
         return None
+
+    def transfer_profit_to_wheel(self, amount_usd):
+        """Permite transferir profit hacia la compra directa de acciones ETF en la Rueda"""
+        etf_symbol = CONFIG["etf_target"]
+        etf_price = self.fetch_etf_live_price(etf_symbol)
+        shares_bought = round(amount_usd / etf_price, 4)
+        self.etf_shares += shares_bought
+        self.total_reinvested_usd += amount_usd
+        log_msg("MANUAL_TRANSFER", f"💵 TRANSFERENCIA MANUAL: +${amount_usd} USD aplicados a comprar +{shares_bought} acciones de {etf_symbol} @ ${etf_price} USD.")
+        self.save_state()
+        return {"shares_bought": shares_bought, "total_shares": self.etf_shares}
 
 if __name__ == "__main__":
     wheel = WheelCompoundingEngine()

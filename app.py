@@ -141,6 +141,7 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
                 "accumulated_premiums_usd": wheel_engine.accumulated_premiums_usd,
                 "total_reinvested_usd": wheel_engine.total_reinvested_usd,
                 "cagr_pct": cagr,
+                "wheel_positions": wheel_engine.wheel_positions,
                 "history": wheel_engine.history
             }
             return self.send_json_response(state)
@@ -205,6 +206,13 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
                 "status": "SUCCESS",
                 "cycle": cycle_result
             })
+
+        elif path == "/api/wheel/transfer-profit":
+            amount = float(payload.get("amount_usd", 0.0))
+            if amount <= 0:
+                return self.send_json_response({"error": "Monto inválido"}, 400)
+            res = wheel_engine.transfer_profit_to_wheel(amount)
+            return self.send_json_response({"status": "SUCCESS", "result": res})
 
         return self.send_json_response({"error": "Endpoint no encontrado"}, 404)
 

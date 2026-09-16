@@ -13,103 +13,243 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="main-header">
+    <div class="app-layout">
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="sidebar">
             <div class="brand">
                 <div class="brand-logo">🎡</div>
                 <div>
-                    <h1>Wall Street Options & Compounding Machine</h1>
-                    <p class="subtitle">Estrategia "The Wheel" + Re-Inversión de Primas en ETFs de Wall Street</p>
+                    <h1>Wall Street Options</h1>
+                    <p class="subtitle">D+ARQ Intelligence</p>
                 </div>
             </div>
 
-            <div class="market-status-bar">
+            <nav class="nav-tabs">
+                <button class="tab-btn active" data-tab="tab-master">
+                    <span class="icon">💼</span> Resumen Consolidado
+                </button>
+                <button class="tab-btn" data-tab="tab-contracts">
+                    <span class="icon">📄</span> Contratos & Vencimientos DTE
+                </button>
+                <button class="tab-btn" data-tab="tab-wheel">
+                    <span class="icon">🎡</span> Rueda & Interés Compuesto
+                </button>
+                <button class="tab-btn" data-tab="tab-daytrade">
+                    <span class="icon">⚡</span> Day Trading 0-DTE
+                </button>
+                <button class="tab-btn" data-tab="tab-etfs">
+                    <span class="icon">📊</span> ETFs & Volatilidad IV
+                </button>
+                <button class="tab-btn" data-tab="tab-chain">
+                    <span class="icon">🔗</span> Cadena de Opciones
+                </button>
+                <button class="tab-btn" data-tab="tab-builder">
+                    <span class="icon">🎯</span> Arquitecto Payoff
+                </button>
+                <button class="tab-btn" data-tab="tab-strategy-rules">
+                    <span class="icon">📚</span> Estrategia & Reglas
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
                 <div class="status-indicator">
                     <span class="pulse-dot"></span>
-                    <span class="status-text" id="live-mode-text">MODO: PAPER TRADING (SIMULACIÓN)</span>
+                    <span class="status-text" id="live-mode-text">PAPER TRADING</span>
                 </div>
-                <div class="fed-rate-badge">BROKER CONECTOR: <strong id="broker-badge">IBKR READY</strong></div>
+                <div class="fed-rate-badge" id="broker-badge">IBKR READY</div>
             </div>
-        </header>
+        </aside>
 
-        <!-- MASTER PORTFOLIO SUMMARY HUB -->
-        <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(26, 32, 44, 0.95) 0%, rgba(17, 24, 39, 0.95) 100%); border: 1px solid rgba(0, 242, 254, 0.25); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 22px;">💼</span>
-                    <div>
-                        <h3 style="margin: 0; font-size: 17px; color: #FFFFFF;">Resumen Consolidado del Portafolio Maestro</h3>
-                        <p style="margin: 0; font-size: 11px; color: #9CA3AF;">Estado financiero en vivo: Efectivo disponible, tenencia en Rueda y PnL de Day Trading en tiempo real</p>
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+
+            <!-- TAB MASTER PORTFOLIO SUMMARY HUB -->
+            <section id="tab-master" class="tab-content active">
+                <div class="card master-header-card">
+                    <div class="master-header-top">
+                        <div class="brand-title-box">
+                            <span class="header-icon">💼</span>
+                            <div>
+                                <h2>Portafolio Maestro Consolidado</h2>
+                                <p class="subtitle-sm">Estado financiero global en vivo: Efectivo, Tenencia en Rueda y PnL de Day Trading</p>
+                            </div>
+                        </div>
+                        <span class="badge badge-live">● Sincronizado en Tiempo Real</span>
+                    </div>
+
+                    <div class="portfolio-metrics-grid">
+                        <div class="metric-card card metric-highlight">
+                            <div class="label">Patrimonio Total (NAV)</div>
+                            <div class="value text-gold" id="master-nav">$100,000.00 USD</div>
+                            <div class="subtext">Efectivo + Acciones ETF</div>
+                        </div>
+                        <div class="metric-card card">
+                            <div class="label">Efectivo Total (Cash)</div>
+                            <div class="value text-green" id="master-cash">$100,000.00 USD</div>
+                            <div class="subtext">Incluye PnL Realizado</div>
+                        </div>
+                        <div class="metric-card card">
+                            <div class="label">Efectivo Libre Disponible</div>
+                            <div class="value text-cyan" id="master-free-cash">$100,000.00 USD</div>
+                            <div class="subtext">Para nuevas órdenes</div>
+                        </div>
+                        <div class="metric-card card">
+                            <div class="label">En Opciones Abiertas</div>
+                            <div class="value text-purple" id="master-in-trades">$0.00 USD</div>
+                            <div class="subtext" id="master-open-trades-count">0 operaciones abiertas</div>
+                        </div>
+                        <div class="metric-card card">
+                            <div class="label">Acciones Poseídas (Rueda)</div>
+                            <div class="value text-cyan" id="master-shares-val">$0.00 USD</div>
+                            <div class="subtext" id="master-shares-count">0.0000 acciones SPY</div>
+                        </div>
+                        <div class="metric-card card">
+                            <div class="label">Rendimiento Day Trading</div>
+                            <div class="value text-green" id="master-dt-pnl">+$0.00 USD</div>
+                            <div class="subtext" id="master-dt-pct">+0.00% acumulado</div>
+                        </div>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <span class="badge" style="background: rgba(0, 255, 135, 0.15); color: #00FF87; font-weight: 600;">● Sincronizado en Tiempo Real</span>
-                </div>
-            </div>
 
-            <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 0;">
-                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 179, 0, 0.35);">
-                    <div class="label">Patrimonio Total (NAV)</div>
-                    <div class="value text-gold" id="master-nav">$100,000.00 USD</div>
-                    <div style="font-size: 11px; color:#9CA3AF;">Efectivo + Acciones</div>
-                </div>
-                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
-                    <div class="label">Efectivo Total (Cash)</div>
-                    <div class="value text-green" id="master-cash">$100,000.00 USD</div>
-                    <div style="font-size: 11px; color:#9CA3AF;">Incluye PnL Realizado</div>
-                </div>
-                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
-                    <div class="label">Efectivo Libre Disponible</div>
-                    <div class="value text-cyan" id="master-free-cash">$100,000.00 USD</div>
-                    <div style="font-size: 11px; color:#9CA3AF;">Para nuevas órdenes</div>
-                </div>
-                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
-                    <div class="label">En Opciones Abiertas</div>
-                    <div class="value" id="master-in-trades" style="color:#A78BFA">$0.00 USD</div>
-                    <div style="font-size: 11px; color:#9CA3AF;" id="master-open-trades-count">0 operaciones abiertas</div>
-                </div>
-                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
-                    <div class="label">Acciones Poseídas (Rueda)</div>
-                    <div class="value text-cyan" id="master-shares-val">$0.00 USD</div>
-                    <div style="font-size: 11px; color:#9CA3AF;" id="master-shares-count">0.0000 acciones SPY</div>
-                </div>
-                <div class="metric-card card" style="background: rgba(255, 255, 255, 0.03);">
-                    <div class="label">Rendimiento Day Trading</div>
-                    <div class="value text-green" id="master-dt-pnl">+$0.00 USD</div>
-                    <div style="font-size: 11px; color:#9CA3AF;" id="master-dt-pct">+0.00% acumulado</div>
-                </div>
-            </div>
-        </div>
+                <!-- PROFIT ALLOCATION CONTROL SWITCH CARD -->
+                <div class="card" style="margin-top: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--card-border); padding-bottom: 12px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 20px;">🎛️</span>
+                            <div>
+                                <h3 style="margin: 0; font-size: 16px;">Modo de Asignación y Re-Inversión de Beneficios</h3>
+                                <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Define cómo el sistema procesa los profits generados en Day Trading</p>
+                            </div>
+                        </div>
+                        <div class="toggle-switch-box">
+                            <span style="font-size: 13px; font-weight: 600;" id="toggle-label-text">🤖 Modo Autónomo</span>
+                            <label class="switch">
+                                <input type="checkbox" id="chk-profit-mode" onchange="toggleProfitMode()">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
 
-        <!-- Navigation Tabs -->
-        <nav class="nav-tabs">
-            <button class="tab-btn active" data-tab="tab-wheel">
-                <span class="icon">🎡</span> Rueda de Inversión & Interés Compuesto
-            </button>
-            <button class="tab-btn" data-tab="tab-daytrade">
-                <span class="icon">⚡</span> Day Trading 0-DTE & Conector Broker
-            </button>
-            <button class="tab-btn" data-tab="tab-etfs">
-                <span class="icon">📊</span> ETFs y Volatilidad (IV)
-            </button>
-            <button class="tab-btn" data-tab="tab-chain">
-                <span class="icon">🔗</span> Cadena de Opciones & Griegas
-            </button>
-            <button class="tab-btn" data-tab="tab-builder">
-                <span class="icon">🎯</span> Arquitecto de Estrategias (Payoff)
-            </button>
-            <button class="tab-btn" data-tab="tab-portfolio">
-                <span class="icon">💼</span> Portafolio Simulado
-            </button>
-        </nav>
+                    <div id="profit-mode-desc-auto" class="profit-mode-panel">
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <span style="font-size: 24px;">🚀</span>
+                            <div>
+                                <strong>Modo Autónomo Activo:</strong> El sistema re-invierte automáticamente el 100% de los beneficios de Day Trading para incrementar la base operativa (5% por trade) y acelerar el interés compuesto desatendido.
+                            </div>
+                        </div>
+                    </div>
 
-        <!-- Main Content Areas -->
-        <main class="content-area">
-            
+                    <div id="profit-mode-desc-manual" class="profit-mode-panel" style="display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>Ganancias de Day Trading Disponibles:</strong> <span class="text-green" id="manual-profit-avail-text" style="font-size: 18px; font-weight: 700;">+$0.00 USD</span>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Selecciona el destino deseado para aplicar estas ganancias:</div>
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-secondary btn-sm" onclick="executeManualProfitAction('TRANSFER_WHEEL')">🎡 Re-Invertir en Rueda (Comprar SPY)</button>
+                                <button class="btn btn-primary btn-sm" onclick="executeManualProfitAction('KEEP_DAYTRADE')">⚡ Dejar en Day Trading</button>
+                                <button class="btn btn-success btn-sm" onclick="executeManualProfitAction('HOLD_CASH')">💵 Dejar en Caja Líquida</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HOLDINGS & ASSET DISTRIBUTION -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="chart-header">
+                        <h3>Distribución de Tenencia y Asignación de Activos</h3>
+                        <span class="badge badge-cyan">Portafolio en Vivo</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: center; margin-top: 14px;">
+                        <div class="chart-wrapper" style="height: 220px; position: relative;">
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                        <div id="holdings-summary-cards" style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="summary-item">
+                                <div>
+                                    <div class="subtext">Acciones en Tenencia (SPY)</div>
+                                    <div class="value text-cyan" id="dist-shares-val">$0.00 USD</div>
+                                </div>
+                                <span class="badge badge-cyan" id="dist-shares-pct">0%</span>
+                            </div>
+                            <div class="summary-item">
+                                <div>
+                                    <div class="subtext">Efectivo / Garantía CSP</div>
+                                    <div class="value text-green" id="dist-cash-val">$100,000.00 USD</div>
+                                </div>
+                                <span class="badge badge-green" id="dist-cash-pct">100%</span>
+                            </div>
+                            <div class="summary-item">
+                                <div>
+                                    <div class="subtext">Primas Reinvertidas Acumuladas</div>
+                                    <div class="value text-gold" id="dist-reinvest-val">+$0.00 USD</div>
+                                </div>
+                                <span class="badge badge-gold">Compuesto</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top: 24px;">Detalle de Tenencia y Cobertura de Opciones:</h4>
+                    <div class="table-responsive" style="margin-top: 10px">
+                        <table class="chain-table">
+                            <thead>
+                                <tr>
+                                    <th>Activo</th>
+                                    <th>Tipo Tenencia</th>
+                                    <th>Cantidad</th>
+                                    <th>Precio Actual</th>
+                                    <th>Valor de Mercado</th>
+                                    <th>% Cartera</th>
+                                    <th>Estado Estrategia Rueda</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wheel-holdings-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB ISSUED CONTRACTS & DTE EXPIRATION MONITOR -->
+            <section id="tab-contracts" class="tab-content">
+                <div class="section-title">
+                    <h2>Contratos de Opciones Emitidos & Monitoreo de Vencimiento (DTE)</h2>
+                    <p>Supervisión centralizada de contratos de opciones vendidos (Covered Calls, Cash-Secured Puts) y operaciones intradiarias abiertas con su cuenta regresiva exacta a la expiración.</p>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3>Contratos Activos en Mercado</h3>
+                        <button class="btn btn-secondary btn-sm" onclick="loadIssuedContracts()">🔄 Actualizar Contratos</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="chain-table">
+                            <thead>
+                                <tr>
+                                    <th>Ticker Contrato</th>
+                                    <th>Estrategia</th>
+                                    <th>Subyacente / Strike K</th>
+                                    <th>Contratos</th>
+                                    <th>Prima Cobrada / Costo</th>
+                                    <th>Fecha Emisión</th>
+                                    <th>Fecha Expiración</th>
+                                    <th>Días Restantes (DTE)</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="issued-contracts-body">
+                                <tr><td colspan="9" style="color:var(--text-muted)">Cargando contratos activos...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
             <!-- TAB WHEEL & COMPOUNDING -->
-            <section id="tab-wheel" class="tab-content active">
-                <!-- TOP PRO KPIs BAR -->
+            <section id="tab-wheel" class="tab-content">
                 <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 20px;">
                     <div class="metric-card card">
                         <div class="label">Inversión Base ETFs</div>
@@ -117,7 +257,7 @@
                     </div>
                     <div class="metric-card card">
                         <div class="label">Acciones Acumuladas (SPY)</div>
-                        <div class="value text-cyan" id="wheel-shares">17.84 acciones</div>
+                        <div class="value text-cyan" id="wheel-shares">0.00 acciones</div>
                     </div>
                     <div class="metric-card card">
                         <div class="label">Primas Cobradas Re-Invertidas</div>
@@ -133,89 +273,20 @@
                     </div>
                 </div>
 
-                <div class="builder-grid">
-                    <!-- Machine Controls -->
-                    <div class="card">
-                        <h3>Máquina de Interés Compuesto ("The Wheel")</h3>
-                        <p class="subtitle-sm">Mantiene tu capital invertido en ETFs reales y re-invierte el 100% de las primas cobradas en comprar más acciones.</p>
+                <div class="card">
+                    <h3>Máquina de Interés Compuesto ("The Wheel")</h3>
+                    <p class="subtitle-sm">Mantiene tu capital invertido en ETFs reales y re-invierte el 100% de las primas cobradas en comprar más acciones.</p>
 
-                        <div class="mode-toggle-box" style="margin-top: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 16px;">
+                        <div class="mode-toggle-box">
                             <label>ETF Base de Inversión:</label>
                             <select id="wheel-select-etf" class="custom-select w-100">
                                 <option value="SPY" selected>SPY - S&P 500 Index ETF (Baja Volatilidad / Máxima Liquidez)</option>
-                                <option value="QQQ">QQQ - Nasdaq 100 Index ETF (Alta Crecimiento Tecnológico)</option>
+                                <option value="QQQ">QQQ - Nasdaq 100 Index ETF (Alto Crecimiento Tecnológico)</option>
                             </select>
                         </div>
-
-                        <div style="margin-top: 20px;">
-                            <button id="btn-run-wheel-cycle" class="btn btn-success w-100">🎡 Ejecutar Ciclo de Cobro de Prima y Re-Inversión en Acciones</button>
-                        </div>
-
-                        <hr style="border-color: var(--card-border); margin: 20px 0;">
-
-                        <h4>Mecanismo de Interés Compuesto:</h4>
-                        <ul class="risk-rules-list">
-                            <li>📈 <strong>Valorización ETF</strong>: ~9.0% anual histórico del S&P 500</li>
-                            <li>💵 <strong>Flujo Primas Opciones</strong>: ~2.0% mensual (~24% anual de cash flow)</li>
-                            <li>🔄 <strong>Regla de Compuesto</strong>: 100% de primas convertidas en acciones inmediatamente</li>
-                            <li>🛡️ <strong>Estrategia Rueda</strong>: Cash-Secured Puts ➔ Covered Calls continuas</li>
-                        </ul>
-                    </div>
-
-                    <!-- Holdings & Asset Distribution in Wheel -->
-                    <div class="card">
-                        <div class="chart-header">
-                            <h3>Distribución de Tenencia y Asignación de Activos</h3>
-                            <span class="badge" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE;">Portafolio en Vivo</span>
-                        </div>
-
-                        <div style="display: grid; grid-template-columns: 240px 1fr; gap: 20px; align-items: center; margin-top: 10px;">
-                            <div class="chart-wrapper" style="height: 220px; position: relative;">
-                                <canvas id="distributionChart"></canvas>
-                            </div>
-                            <div id="holdings-summary-cards" style="display: flex; flex-direction: column; gap: 10px;">
-                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-size: 11px; color: #9CA3AF;">Acciones en Tenencia (SPY)</div>
-                                        <div style="font-size: 16px; font-weight: 700; color: #00F2FE;" id="dist-shares-val">$0.00 USD</div>
-                                    </div>
-                                    <span class="badge" id="dist-shares-pct" style="background: rgba(0, 242, 254, 0.15); color: #00F2FE;">0%</span>
-                                </div>
-                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-size: 11px; color: #9CA3AF;">Efectivo / Garantía CSP</div>
-                                        <div style="font-size: 16px; font-weight: 700; color: #00FF87;" id="dist-cash-val">$100,000.00 USD</div>
-                                    </div>
-                                    <span class="badge" id="dist-cash-pct" style="background: rgba(0, 255, 135, 0.15); color: #00FF87;">100%</span>
-                                </div>
-                                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border); padding: 10px 14px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <div style="font-size: 11px; color: #9CA3AF;">Primas Reinvertidas Acumuladas</div>
-                                        <div style="font-size: 16px; font-weight: 700; color: #FFB300;" id="dist-reinvest-val">+$0.00 USD</div>
-                                    </div>
-                                    <span class="badge" style="background: rgba(255, 179, 0, 0.15); color: #FFB300;">Compuesto</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h4 style="margin-top: 20px;">Detalle de Tenencia y Cobertura de Opciones:</h4>
-                        <div class="table-responsive" style="margin-top: 10px">
-                            <table class="chain-table">
-                                <thead>
-                                    <tr>
-                                        <th>Activo</th>
-                                        <th>Tipo Tenencia</th>
-                                        <th>Cantidad</th>
-                                        <th>Precio Actual</th>
-                                        <th>Valor de Mercado</th>
-                                        <th>% Cartera</th>
-                                        <th>Estado Estrategia Rueda</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="wheel-holdings-body">
-                                    <!-- Populated dynamically -->
-                                </tbody>
-                            </table>
+                        <div style="display:flex; align-items:flex-end;">
+                            <button id="btn-run-wheel-cycle" class="btn btn-success w-100" style="height: 42px;">🎡 Ejecutar Ciclo de Cobro de Prima y Re-Inversión</button>
                         </div>
                     </div>
                 </div>
@@ -231,12 +302,12 @@
                     <div class="metric-card card">
                         <div class="label">Rendimiento Diario (%)</div>
                         <div class="value text-green" id="kpi-daily-pct">+0.00%</div>
-                        <div style="font-size: 11px; color:#9CA3AF" id="kpi-daily-usd">+$0.00 USD</div>
+                        <div class="subtext" id="kpi-daily-usd">+$0.00 USD</div>
                     </div>
                     <div class="metric-card card">
                         <div class="label">Rendimiento Acumulado</div>
                         <div class="value text-cyan" id="kpi-total-pct">+0.00%</div>
-                        <div style="font-size: 11px; color:#9CA3AF" id="kpi-total-usd">+$0.00 USD</div>
+                        <div class="subtext" id="kpi-total-usd">+$0.00 USD</div>
                     </div>
                     <div class="metric-card card">
                         <div class="label">Horas Activo (Uptime)</div>
@@ -245,12 +316,12 @@
                     <div class="metric-card card">
                         <div class="label">Win Rate (%)</div>
                         <div class="value" id="kpi-winrate">0.0%</div>
-                        <div style="font-size: 11px; color:#9CA3AF" id="kpi-trades-count">0 trades</div>
+                        <div class="subtext" id="kpi-trades-count">0 trades</div>
                     </div>
                     <div class="metric-card card">
                         <div class="label">Comisiones Broker</div>
                         <div class="value text-red" id="kpi-commissions">-$0.00</div>
-                        <div style="font-size: 11px; color:#9CA3AF">$0.65/contrato</div>
+                        <div class="subtext">$0.65/contrato</div>
                     </div>
                 </div>
 
@@ -280,19 +351,6 @@
                             <button id="btn-save-mode" class="btn btn-secondary w-100">💾 Guardar Configuración de Broker</button>
                             <button id="btn-run-scan" class="btn btn-primary w-100" style="margin-top: 10px">⚡ Ejecutar Escaneo Intradiario Ahora</button>
                         </div>
-
-                        <hr style="border-color: var(--card-border); margin: 20px 0;">
-
-                        <h4>Parámetros de Riesgo y Distribución de Capital:</h4>
-                        <ul class="risk-rules-list">
-                            <li>📊 <strong>Distribución Capital/Trade</strong>: 5% por operación ($500 USD)</li>
-                            <li>🔢 <strong>Máx Posiciones Simultáneas</strong>: 4 abiertas simultáneas</li>
-                            <li>💲 <strong>Comisión Broker Real</strong>: $0.65 USD por contrato + 1% spread</li>
-                            <li>🎯 <strong>Take Profit (TP)</strong>: +35% de prima</li>
-                            <li>🛑 <strong>Stop Loss (SL)</strong>: -18% de prima</li>
-                            <li>⚠️ <strong>Límite Pérdida Diaria</strong>: -$300 USD (Circuit Breaker)</li>
-                            <li>⏰ <strong>Cierre Hard EOD</strong>: 15:45 EST (Sin overnight)</li>
-                        </ul>
                     </div>
 
                     <div class="card">
@@ -328,7 +386,7 @@
                 </div>
             </section>
 
-            <!-- TAB 1: ETFs & IV Rank -->
+            <!-- TAB ETFS -->
             <section id="tab-etfs" class="tab-content">
                 <div class="section-title">
                     <h2>ETFs de Wall Street & Rango de Volatilidad Implícita (IV Rank)</h2>
@@ -340,7 +398,7 @@
                 </div>
             </section>
 
-            <!-- TAB 2: Option Chain -->
+            <!-- TAB OPTION CHAIN -->
             <section id="tab-chain" class="tab-content">
                 <div class="chain-controls card">
                     <div class="control-group">
@@ -403,7 +461,7 @@
                 </div>
             </section>
 
-            <!-- TAB 3: Strategy Builder & Payoff Chart -->
+            <!-- TAB BUILDER & PAYOFF -->
             <section id="tab-builder" class="tab-content">
                 <div class="builder-grid">
                     <div class="builder-controls card">
@@ -448,32 +506,53 @@
                 </div>
             </section>
 
-            <!-- TAB 4: Simulated Portfolio -->
-            <section id="tab-portfolio" class="tab-content">
-                <div class="portfolio-metrics-grid">
-                    <div class="metric-card card">
-                        <div class="label">Capital de Cartera</div>
-                        <div class="value" id="port-capital">$50,000.00 USD</div>
+            <!-- TAB STRATEGY & RULES DOCUMENTATION -->
+            <section id="tab-strategy-rules" class="tab-content">
+                <div class="section-title">
+                    <h2>📚 Documentación Didáctica, Estrategias & Reglas del Sistema</h2>
+                    <p>Guía de operación de la Máquina de Interés Compuesto y Parámetros de Riesgo del Bot Intradiario 0-DTE.</p>
+                </div>
+
+                <div class="builder-grid">
+                    <div class="card">
+                        <h3>🎡 Estrategia "The Wheel" (La Rueda)</h3>
+                        <p class="subtitle-sm">Mecanismo de generación de flujo constante y re-inversión compounding desatendida.</p>
+
+                        <h4 style="margin-top: 16px;">Mecanismo de Interés Compuesto:</h4>
+                        <ul class="risk-rules-list">
+                            <li>📈 <strong>Valorización ETF</strong>: ~9.0% anual histórico del S&P 500</li>
+                            <li>💵 <strong>Flujo Primas Opciones</strong>: ~2.0% mensual (~24% anual de cash flow)</li>
+                            <li>🔄 <strong>Regla de Compuesto</strong>: 100% de primas convertidas en acciones inmediatamente</li>
+                            <li>🛡️ <strong>Ciclo Continuo</strong>: Cash-Secured Puts ➔ Covered Calls continuas</li>
+                        </ul>
                     </div>
-                    <div class="metric-card card">
-                        <div class="label">Net Delta Exposure</div>
-                        <div class="value text-cyan" id="port-delta">+0.00</div>
-                    </div>
-                    <div class="metric-card card">
-                        <div class="label">Net Theta Decay / Día</div>
-                        <div class="value text-green" id="port-theta">+$0.00 / día</div>
-                    </div>
-                    <div class="metric-card card">
-                        <div class="label">Posiciones Activas</div>
-                        <div class="value" id="port-active-count">0</div>
+
+                    <div class="card">
+                        <h3>⚡ Parámetros de Riesgo Day Trading 0-DTE</h3>
+                        <p class="subtitle-sm">Reglas estrictas de gestión monetaria y control de riesgo algorítmico.</p>
+
+                        <h4 style="margin-top: 16px;">Parámetros y Límites Operativos:</h4>
+                        <ul class="risk-rules-list">
+                            <li>📊 <strong>Distribución Capital/Trade</strong>: 5% por operación ($5,000 USD base $100k)</li>
+                            <li>🔢 <strong>Máx Posiciones Simultáneas</strong>: 4 abiertas simultáneas</li>
+                            <li>💲 <strong>Comisión Broker Real</strong>: $0.65 USD por contrato + 1% spread friction</li>
+                            <li>🎯 <strong>Take Profit (TP)</strong>: +35% de beneficio sobre la prima</li>
+                            <li>🛑 <strong>Stop Loss (SL)</strong>: -18% de límite de pérdida en prima</li>
+                            <li>⚠️ <strong>Límite Pérdida Diaria</strong>: -$3,000 USD (Circuit Breaker automático)</li>
+                            <li>⏰ <strong>Cierre Hard EOD</strong>: 15:45 EST (Sin riesgo overnight)</li>
+                        </ul>
                     </div>
                 </div>
 
-                <div class="positions-container card">
-                    <h3>Posiciones de Opciones en Cartera</h3>
-                    <div id="portfolio-positions-list">
-                        <p class="empty-msg">No hay posiciones de opciones abiertas. Crea una desde la pestaña 'Arquitecto de Estrategias'.</p>
-                    </div>
+                <div class="card" style="margin-top: 20px;">
+                    <h3>💡 Flujo de Beneficios y Modos de Re-Inversión</h3>
+                    <p style="margin-top: 8px; font-size: 14px; color: var(--text-muted);">
+                        El sistema permite decidir cómo procesar cada dólar de beneficio generado por el bot intradiario a través del <strong>Switch Toggle</strong> en el Resumen Maestro:
+                    </p>
+                    <ul class="risk-rules-list" style="margin-top: 12px;">
+                        <li><strong>🤖 Modo 100% Autónomo</strong>: El profit se suma al capital activo inmediatamente. El bot asigna automáticamente el 5% sobre el nuevo total incrementando el tamaño del trade y haciendo crecer el portafolio.</li>
+                        <li><strong>🎛️ Modo Asignación Manual</strong>: Muestra tus ganancias disponibles y te permite elegir si deseas re-invertirlas en comprar acciones ETF de la Rueda, mantenerlas en Day Trading o dejarlas líquidas en Caja.</li>
+                    </ul>
                 </div>
             </section>
 
