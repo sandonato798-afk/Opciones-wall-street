@@ -53,7 +53,20 @@ class CreditSpreadBot:
 
     def load_state(self):
         loaded = False
-        if os.path.exists(STATE_FILE):
+        # 1. Prioridad: Intentar cargar siempre desde GitHub Cloud
+        gh_data = load_state_from_github("credit_spread_state.json")
+        if gh_data and (gh_data.get("closed_spreads") or gh_data.get("open_spreads") or (gh_data.get("capital") and gh_data.get("capital") != CONFIG["initial_capital_usd"])):
+            self.system_start_time = gh_data.get("system_start_time", timestamp())
+            self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
+            self.capital = gh_data.get("capital", CONFIG["initial_capital_usd"])
+            self.total_premiums_collected = gh_data.get("total_premiums_collected", 0.0)
+            self.open_spreads = gh_data.get("open_spreads", [])
+            self.closed_spreads = gh_data.get("closed_spreads", [])
+            log_msg("CLOUD_STATE", "Estado de Spreads recuperado de GitHub Cloud Backup.")
+            loaded = True
+
+        # 2. Si no hay estado en GitHub, intentar archivo local
+        if not loaded and os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -63,22 +76,10 @@ class CreditSpreadBot:
                     self.total_premiums_collected = data.get("total_premiums_collected", 0.0)
                     self.open_spreads = data.get("open_spreads", [])
                     self.closed_spreads = data.get("closed_spreads", [])
-                    log_msg("STATE", "Estado de Credit Spread Bot cargado correctamente.")
+                    log_msg("STATE", "Estado de Credit Spread Bot cargado correctamente desde archivo local.")
                     loaded = True
             except Exception as e:
                 log_msg("WARN", f"Error cargando estado local de Spreads: {e}")
-
-        if not loaded:
-            gh_data = load_state_from_github("credit_spread_state.json")
-            if gh_data:
-                self.system_start_time = gh_data.get("system_start_time", timestamp())
-                self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
-                self.capital = gh_data.get("capital", CONFIG["initial_capital_usd"])
-                self.total_premiums_collected = gh_data.get("total_premiums_collected", 0.0)
-                self.open_spreads = gh_data.get("open_spreads", [])
-                self.closed_spreads = gh_data.get("closed_spreads", [])
-                log_msg("CLOUD_STATE", "Estado de Spreads recuperado de GitHub.")
-                loaded = True
 
         if not loaded:
             self.save_state()

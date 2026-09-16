@@ -81,35 +81,35 @@ class DayTradeOptionsBot:
 
     def load_state(self):
         loaded = False
-        if os.path.exists(STATE_FILE):
+        # 1. Prioridad: Intentar cargar siempre desde GitHub Cloud
+        gh_data = load_state_from_github("daytrade_paper_state.json")
+        if gh_data and (gh_data.get("closed_trades") or gh_data.get("open_positions") or (gh_data.get("capital") and gh_data.get("capital") != CONFIG["initial_capital_usd"])):
+            self.system_start_time = gh_data.get("system_start_time", timestamp())
+            self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
+            self.capital = gh_data.get("capital", CONFIG["initial_capital_usd"])
+            self.open_positions = gh_data.get("open_positions", [])
+            self.closed_trades = gh_data.get("closed_trades", [])
+            self.daily_pnl_usd = gh_data.get("daily_pnl_usd", 0.0)
+            self.total_commissions_paid = gh_data.get("total_commissions_paid", 0.0)
+            log_msg("CLOUD_STATE", "Estado recuperado exitosamente desde GitHub Cloud Backup.")
+            loaded = True
+
+        # 2. Si no hay estado en GitHub, intentar archivo local
+        if not loaded and os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    if data.get("closed_trades") or data.get("open_positions") or data.get("capital"):
-                        self.system_start_time = data.get("system_start_time", timestamp())
-                        self.initial_capital = data.get("initial_capital", CONFIG["initial_capital_usd"])
-                        self.capital = data.get("capital", CONFIG["initial_capital_usd"])
-                        self.open_positions = data.get("open_positions", [])
-                        self.closed_trades = data.get("closed_trades", [])
-                        self.daily_pnl_usd = data.get("daily_pnl_usd", 0.0)
-                        self.total_commissions_paid = data.get("total_commissions_paid", 0.0)
-                        log_msg("STATE", "Estado de Day Trading cargado correctamente desde archivo local.")
-                        loaded = True
+                    self.system_start_time = data.get("system_start_time", timestamp())
+                    self.initial_capital = data.get("initial_capital", CONFIG["initial_capital_usd"])
+                    self.capital = data.get("capital", CONFIG["initial_capital_usd"])
+                    self.open_positions = data.get("open_positions", [])
+                    self.closed_trades = data.get("closed_trades", [])
+                    self.daily_pnl_usd = data.get("daily_pnl_usd", 0.0)
+                    self.total_commissions_paid = data.get("total_commissions_paid", 0.0)
+                    log_msg("STATE", "Estado de Day Trading cargado correctamente desde archivo local.")
+                    loaded = True
             except Exception as e:
                 log_msg("WARN", f"Error cargando estado local ({e}).")
-
-        if not loaded:
-            gh_data = load_state_from_github("daytrade_paper_state.json")
-            if gh_data:
-                self.system_start_time = gh_data.get("system_start_time", timestamp())
-                self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
-                self.capital = gh_data.get("capital", CONFIG["initial_capital_usd"])
-                self.open_positions = gh_data.get("open_positions", [])
-                self.closed_trades = gh_data.get("closed_trades", [])
-                self.daily_pnl_usd = gh_data.get("daily_pnl_usd", 0.0)
-                self.total_commissions_paid = gh_data.get("total_commissions_paid", 0.0)
-                log_msg("CLOUD_STATE", "Estado recuperado exitosamente desde GitHub Cloud Backup.")
-                loaded = True
 
         if not loaded:
             self.save_state()

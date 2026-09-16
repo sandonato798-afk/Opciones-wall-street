@@ -43,7 +43,21 @@ class WheelCompoundingEngine:
 
     def load_state(self):
         loaded = False
-        if os.path.exists(STATE_FILE):
+        # 1. Prioridad: Intentar cargar siempre desde GitHub Cloud
+        gh_data = load_state_from_github("wheel_compounding_state.json")
+        if gh_data and (gh_data.get("history") or gh_data.get("wheel_positions") or (gh_data.get("etf_shares") and gh_data.get("etf_shares") > 0)):
+            self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
+            self.cash_balance = gh_data.get("cash_balance", self.initial_capital)
+            self.etf_shares = gh_data.get("etf_shares", 0.0)
+            self.accumulated_premiums_usd = gh_data.get("accumulated_premiums_usd", 0.0)
+            self.total_reinvested_usd = gh_data.get("total_reinvested_usd", 0.0)
+            self.wheel_positions = gh_data.get("wheel_positions", [])
+            self.history = gh_data.get("history", [])
+            log_msg("CLOUD_STATE", "Estado de Rueda recuperado exitosamente desde GitHub Cloud Backup.")
+            loaded = True
+
+        # 2. Si no hay estado en GitHub, intentar archivo local
+        if not loaded and os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -54,24 +68,11 @@ class WheelCompoundingEngine:
                     self.total_reinvested_usd = data.get("total_reinvested_usd", 0.0)
                     self.wheel_positions = data.get("wheel_positions", [])
                     self.history = data.get("history", [])
-                    log_msg("STATE", "Estado de Rueda & Interés Compuesto cargado exitosamente.")
+                    log_msg("STATE", "Estado de Rueda & Interés Compuesto cargado exitosamente desde archivo local.")
                     loaded = True
             except Exception as e:
                 log_msg("WARN", f"Error cargando estado ({e}). Inicializando valores por defecto.")
         
-        if not loaded:
-            gh_data = load_state_from_github("wheel_compounding_state.json")
-            if gh_data:
-                self.initial_capital = gh_data.get("initial_capital", CONFIG["initial_capital_usd"])
-                self.cash_balance = gh_data.get("cash_balance", self.initial_capital)
-                self.etf_shares = gh_data.get("etf_shares", 0.0)
-                self.accumulated_premiums_usd = gh_data.get("accumulated_premiums_usd", 0.0)
-                self.total_reinvested_usd = gh_data.get("total_reinvested_usd", 0.0)
-                self.wheel_positions = gh_data.get("wheel_positions", [])
-                self.history = gh_data.get("history", [])
-                log_msg("CLOUD_STATE", "Estado de Rueda recuperado exitosamente desde GitHub Cloud Backup.")
-                loaded = True
-
         if not loaded:
             self.save_state()
 
