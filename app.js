@@ -81,12 +81,12 @@ function toggleProfitMode() {
 
     if (chk.checked) {
         profitMode = "MANUAL";
-        if (labelText) labelText.innerText = "🎛️ Modo Manual";
+        if (labelText) labelText.innerText = "Modo Manual";
         if (descAuto) descAuto.style.display = 'none';
         if (descManual) descManual.style.display = 'block';
     } else {
         profitMode = "AUTONOMOUS";
-        if (labelText) labelText.innerText = "🤖 Modo Autónomo";
+        if (labelText) labelText.innerText = "Modo Autónomo";
         if (descAuto) descAuto.style.display = 'block';
         if (descManual) descManual.style.display = 'none';
     }
@@ -234,15 +234,15 @@ async function loadIssuedContracts() {
         contractsList.forEach(c => {
             let dteBadge = '';
             if (c.source === 'DAYTRADE' || c.expiration_date.includes('Intradiario')) {
-                dteBadge = `<span class="badge badge-dte-today">⚡ 0 DTE - Vence Hoy</span>`;
+                dteBadge = `<span class="badge badge-dte-today">0 DTE - Vence Hoy</span>`;
             } else {
                 const expDate = new Date(c.expiration_date);
                 const diffTime = expDate - today;
                 const diffDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
                 if (diffDays === 0) {
-                    dteBadge = `<span class="badge badge-dte-today">⏰ Vence Hoy</span>`;
+                    dteBadge = `<span class="badge badge-dte-today">Vence Hoy</span>`;
                 } else {
-                    dteBadge = `<span class="badge badge-dte">📅 ${diffDays} días restantes</span>`;
+                    dteBadge = `<span class="badge badge-dte">${diffDays} días restantes</span>`;
                 }
             }
 
@@ -371,8 +371,8 @@ async function loadWheelStatus() {
                             <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Fecha emisión: ${lastCycle.timestamp.split(' ')[0]}</div>
                         </div>
                     </div>
-                    <div style="background: rgba(0, 242, 254, 0.04); border: 1px solid rgba(0, 242, 254, 0.2); padding: 12px 14px; border-radius: 10px; margin-top: 12px; font-size: 12px; line-height: 1.5;">
-                        💡 <strong>¿De dónde salió esta prima?</strong> Al emitir/vender la opción ${lastCycle.symbol} Strike $${lastCycle.strike.toFixed(2)}, el comprador del contrato te pagó $${perSharePrem} USD por acción ($${lastCycle.premium_collected_usd.toFixed(2)} USD en total). El sistema tomó el 100% de ese dinero en efectivo y lo convirtió inmediatamente en +${lastCycle.shares_bought} acciones del ETF ${lastCycle.symbol}. Al llegar al vencimiento (${expDateStr}), si el precio se mantiene fuera del strike, la opción expira sin valor y tú conservas las acciones acumuladas.
+                    <div style="background: rgba(56, 189, 248, 0.04); border: 1px solid rgba(56, 189, 248, 0.2); padding: 8px 12px; border-radius: 6px; margin-top: 10px; font-size: 11px; line-height: 1.4;">
+                        <strong>Origen de la prima:</strong> Al emitir/vender la opción ${lastCycle.symbol} Strike $${lastCycle.strike.toFixed(2)}, el comprador del contrato te pagó $${perSharePrem} USD por acción ($${lastCycle.premium_collected_usd.toFixed(2)} USD en total). El sistema tomó el 100% de ese dinero en efectivo y lo convirtió inmediatamente en +${lastCycle.shares_bought} acciones del ETF ${lastCycle.symbol}. Al llegar al vencimiento (${expDateStr}), si el precio se mantiene fuera del strike, la opción expira sin valor y tú conservas las acciones acumuladas.
                     </div>
                 `;
             } else {
