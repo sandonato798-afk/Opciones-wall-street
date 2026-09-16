@@ -106,6 +106,7 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             return self.send_json_response(state)
 
         elif path == "/api/daytrade/status":
+            daytrade_bot.load_state()
             stats = daytrade_bot.get_win_rate_stats()
             daily_pnl_pct = round((daytrade_bot.daily_pnl_usd / daytrade_bot.initial_capital) * 100.0, 2)
             total_pnl_usd = round(daytrade_bot.capital - daytrade_bot.initial_capital, 2)
@@ -129,6 +130,7 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             return self.send_json_response(state)
 
         elif path == "/api/spreads/status":
+            credit_bot.load_state()
             stats = credit_bot.get_stats()
             total_pnl_usd = round(credit_bot.capital - credit_bot.initial_capital, 2)
             total_pnl_pct = round((total_pnl_usd / credit_bot.initial_capital) * 100.0, 2)
