@@ -345,6 +345,41 @@ async function loadWheelStatus() {
             `;
         }
 
+        const cycleDetailEl = document.getElementById('wheel-active-cycle-detail');
+        if (cycleDetailEl) {
+            if (data.history && data.history.length > 0) {
+                const lastCycle = data.history[data.history.length - 1];
+                const activePos = (data.wheel_positions && data.wheel_positions.length > 0) ? data.wheel_positions[0] : null;
+                const expDateStr = activePos ? activePos.expiration_date : '30 días desde emisión';
+                const perSharePrem = (lastCycle.premium_collected_usd / 100.0).toFixed(2);
+
+                cycleDetailEl.innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
+                        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; border: 1px solid var(--card-border);">
+                            <div style="font-size: 11px; color: var(--text-muted);">Opción Emitida (Origen Prima)</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #00F2FE; margin-top: 4px;">${lastCycle.symbol} ${lastCycle.type === 'CASH_SECURED_PUT' ? 'PUT' : 'CALL'} $${lastCycle.strike.toFixed(2)}</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Prima unitaria: <strong>$${perSharePrem}/acción</strong></div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; border: 1px solid var(--card-border);">
+                            <div style="font-size: 11px; color: var(--text-muted);">Prima Ingresada & Re-Invertida</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #00FF87; margin-top: 4px;">+$${lastCycle.premium_collected_usd.toFixed(2)} USD</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Compradas: <strong>+${lastCycle.shares_bought} acciones ${lastCycle.symbol}</strong></div>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; border: 1px solid var(--card-border);">
+                            <div style="font-size: 11px; color: var(--text-muted);">Vencimiento del Ciclo (30 DTE)</div>
+                            <div style="font-size: 15px; font-weight: 700; color: #FFB300; margin-top: 4px;">${expDateStr}</div>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Fecha emisión: ${lastCycle.timestamp.split(' ')[0]}</div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(0, 242, 254, 0.04); border: 1px solid rgba(0, 242, 254, 0.2); padding: 12px 14px; border-radius: 10px; margin-top: 12px; font-size: 12px; line-height: 1.5;">
+                        💡 <strong>¿De dónde salió esta prima?</strong> Al emitir/vender la opción ${lastCycle.symbol} Strike $${lastCycle.strike.toFixed(2)}, el comprador del contrato te pagó $${perSharePrem} USD por acción ($${lastCycle.premium_collected_usd.toFixed(2)} USD en total). El sistema tomó el 100% de ese dinero en efectivo y lo convirtió inmediatamente en +${lastCycle.shares_bought} acciones del ETF ${lastCycle.symbol}. Al llegar al vencimiento (${expDateStr}), si el precio se mantiene fuera del strike, la opción expira sin valor y tú conservas las acciones acumuladas.
+                    </div>
+                `;
+            } else {
+                cycleDetailEl.innerHTML = `<div style="color:var(--text-muted)">Sin ciclos de rueda ejecutados aún. Presiona 'Ejecutar Ciclo' arriba.</div>`;
+            }
+        }
+
         syncMasterPortfolio();
     } catch (err) {
         console.error("Error cargando estado Rueda:", err);
