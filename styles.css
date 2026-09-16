@@ -1,37 +1,37 @@
 :root {
-    /* DARK FOREST THEME PALETTE */
-    --bg-page: #0A1210;            /* Deep Midnight Forest Obsidian */
-    --card-bg: #121E1B;            /* Rich Dark Pine Card */
-    --card-border: #1E332D;        /* Subtle Pine Border */
-    --card-hover: #182B27;         /* Deep Forest Hover */
+    /* DARK FOREST VIBRANT PALETTE */
+    --bg-page: #080E0C;            /* Deep Obsidian Midnight Canvas */
+    --card-bg: #111E1B;            /* Dark Pine Obsidian Card */
+    --card-border: #233D35;        /* Crisp High-Contrast Pine Border */
+    --card-hover: #162B26;         /* Vibrant Dark Forest Hover */
     
-    --primary-teal: #34D399;       /* Vibrant Mint / Pine Emerald */
-    --primary-teal-light: rgba(52, 211, 153, 0.12);
+    --primary-teal: #34D399;       /* Vibrant Mint Emerald */
+    --primary-teal-light: rgba(52, 211, 153, 0.16);
     --primary-blue: #38BDF8;
     
     --accent-green: #10B981;       /* Emerald Green */
-    --accent-green-light: rgba(16, 185, 129, 0.15);
+    --accent-green-light: rgba(16, 185, 129, 0.18);
     
-    --accent-red: #FB7185;         /* Soft Rose Red */
-    --accent-red-light: rgba(244, 63, 94, 0.15);
+    --accent-red: #FB7185;         /* Crisp Soft Rose Red */
+    --accent-red-light: rgba(251, 113, 133, 0.18);
     
-    --accent-amber: #FBBF24;       /* Warm Gold */
-    --accent-amber-light: rgba(245, 158, 11, 0.15);
+    --accent-amber: #FBBF24;       /* Warm Vivid Gold */
+    --accent-amber-light: rgba(251, 191, 36, 0.18);
     
-    --accent-purple: #C084FC;      /* Soft Lavender */
-    --accent-purple-light: rgba(168, 85, 247, 0.15);
+    --accent-purple: #C084FC;      /* Crisp Lavender */
+    --accent-purple-light: rgba(192, 132, 252, 0.18);
 
-    --text-heading: #F0FDF4;       /* Mint White */
-    --text-body: #E2E8F0;          /* Crisp Slate White */
-    --text-muted: #84A99C;         /* Soft Sage Gray */
-    --text-light: #5A7E72;         /* Dark Sage Muted */
+    --text-heading: #FFFFFF;       /* Pure Crisp White */
+    --text-body: #F1F5F9;          /* High-Contrast Bright Slate */
+    --text-muted: #A3C4B8;         /* Crisp Sage Gray */
+    --text-light: #6EE7B7;         /* Mint Accent Gray */
 
     --font-main: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6);
 }
 
 * {
