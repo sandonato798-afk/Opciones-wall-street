@@ -173,10 +173,16 @@ function syncMasterPortfolio() {
     }
 
     const masterDtPctEl = document.getElementById('master-dt-pct');
-    if (masterDtPctEl) masterDtPctEl.innerText = (dtTotalPnlPct >= 0 ? '+' : '') + `${dtTotalPnlPct.toFixed(2)}% realizado`;
+    if (masterDtPctEl) {
+        masterDtPctEl.innerText = (dtTotalPnlPct >= 0 ? '+' : '') + `${dtTotalPnlPct.toFixed(2)}% realizado`;
+        masterDtPctEl.className = dtTotalPnlPct >= 0 ? 'subtext text-green' : 'subtext text-red';
+    }
 
     const manualPnlText = document.getElementById('manual-profit-avail-text');
-    if (manualPnlText) manualPnlText.innerText = (dtTotalPnlUsd >= 0 ? '+' : '') + `$${dtTotalPnlUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+    if (manualPnlText) {
+        manualPnlText.innerText = (dtTotalPnlUsd >= 0 ? '+' : '') + `$${dtTotalPnlUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+        manualPnlText.className = dtTotalPnlUsd >= 0 ? 'text-green' : 'text-red';
+    }
 }
 
 // Load Active Issued Option Contracts & DTE Expiration Monitor
@@ -465,16 +471,22 @@ async function loadDayTradeStatus() {
         }
 
         const dailyUsdEl = document.getElementById('kpi-daily-usd');
-        if (dailyUsdEl) dailyUsdEl.innerText = (data.daily_pnl_usd >= 0 ? '+' : '') + `$${data.daily_pnl_usd.toFixed(2)} USD`;
+        if (dailyUsdEl) {
+            dailyUsdEl.innerText = (data.daily_pnl_usd >= 0 ? '+' : '') + `$${data.daily_pnl_usd.toFixed(2)} USD`;
+            dailyUsdEl.className = data.daily_pnl_usd >= 0 ? 'subtext text-green' : 'subtext text-red';
+        }
 
         const totalPctEl = document.getElementById('kpi-total-pct');
         if (totalPctEl) {
             totalPctEl.innerText = (data.total_pnl_pct >= 0 ? '+' : '') + `${data.total_pnl_pct.toFixed(2)}%`;
-            totalPctEl.className = data.total_pnl_pct >= 0 ? 'value text-cyan' : 'value text-red';
+            totalPctEl.className = data.total_pnl_pct >= 0 ? 'value text-green' : 'value text-red';
         }
 
         const totalUsdEl = document.getElementById('kpi-total-usd');
-        if (totalUsdEl) totalUsdEl.innerText = (data.total_pnl_usd >= 0 ? '+' : '') + `$${data.total_pnl_usd.toFixed(2)} USD`;
+        if (totalUsdEl) {
+            totalUsdEl.innerText = (data.total_pnl_usd >= 0 ? '+' : '') + `$${data.total_pnl_usd.toFixed(2)} USD`;
+            totalUsdEl.className = data.total_pnl_usd >= 0 ? 'subtext text-green' : 'subtext text-red';
+        }
 
         const uptimeEl = document.getElementById('kpi-uptime');
         if (uptimeEl) uptimeEl.innerText = `${data.uptime_hours.toFixed(1)} hrs`;
