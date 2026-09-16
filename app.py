@@ -10,6 +10,7 @@ from datetime import datetime
 from options_engine import OptionsTradingEngine
 from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
 from wheel_compounding_engine import WheelCompoundingEngine, CONFIG as WHEEL_CONFIG
+from credit_spread_bot import CreditSpreadBot, CONFIG as SPREAD_CONFIG
 
 PORT = int(os.environ.get("PORT", 5050))
 DIRECTORY = os.path.dirname(__file__)
@@ -17,6 +18,7 @@ DIRECTORY = os.path.dirname(__file__)
 engine = OptionsTradingEngine()
 daytrade_bot = DayTradeOptionsBot()
 wheel_engine = WheelCompoundingEngine()
+credit_bot = CreditSpreadBot()
 
 def is_market_open():
     now = datetime.now()
@@ -26,15 +28,16 @@ def is_market_open():
     return 1030 <= time_num <= 1700
 
 def background_trading_loop():
-    print("⚡ Motores de Opciones (Day Trading 0-DTE & Rueda Automática) iniciados en segundo plano.")
+    print("⚡ Motores de Opciones (Day Trading 0-DTE, Rueda Automática & Credit Spreads) iniciados en segundo plano.")
     while True:
         try:
             # 1. Chequeo automático de Rueda & Compounding (mensual/30 DTE)
             wheel_engine.auto_check_and_run_cycle()
 
-            # 2. Escaneo intradiario 0-DTE si el mercado está abierto
+            # 2. Escaneo intradiario 0-DTE y Credit Spreads (Venta de Tiempo) si el mercado está abierto
             if is_market_open():
                 daytrade_bot.run_intraday_scan()
+                credit_bot.scan_and_execute_spreads()
             time.sleep(60)
         except Exception as e:
             print(f"⚠️ Error en bucle en segundo plano: {e}")
@@ -125,6 +128,25 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             }
             return self.send_json_response(state)
 
+        elif path == "/api/spreads/status":
+            stats = credit_bot.get_stats()
+            total_pnl_usd = round(credit_bot.capital - credit_bot.initial_capital, 2)
+            total_pnl_pct = round((total_pnl_usd / credit_bot.initial_capital) * 100.0, 2)
+
+            state = {
+                "config": SPREAD_CONFIG,
+                "system_start_time": credit_bot.system_start_time,
+                "initial_capital_usd": credit_bot.initial_capital,
+                "capital": round(credit_bot.capital, 2),
+                "total_premiums_collected": round(credit_bot.total_premiums_collected, 2),
+                "total_pnl_usd": total_pnl_usd,
+                "total_pnl_pct": total_pnl_pct,
+                "stats": stats,
+                "open_spreads": credit_bot.open_spreads,
+                "closed_spreads": credit_bot.closed_spreads
+            }
+            return self.send_json_response(state)
+
         elif path == "/api/wheel/status":
             etf_price = wheel_engine.fetch_etf_live_price(WHEEL_CONFIG["etf_target"])
             nav_usd = round(wheel_engine.cash_balance + (wheel_engine.etf_shares * etf_price), 2)
@@ -199,6 +221,24 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
                 "open_positions": daytrade_bot.open_positions,
                 "daily_pnl_usd": daytrade_bot.daily_pnl_usd
             })
+
+        elif path == "/api/spreads/scan":
+            credit_bot.scan_and_execute_spreads()
+            return self.send_json_response({
+                "status": "SUCCESS",
+                "message": "Escaneo de venta de tiempo / credit spreads completado.",
+                "open_spreads": credit_bot.open_spreads,
+                "capital": credit_bot.capital
+            })
+
+        elif path == "/api/daytrade/mode":
+            mode = payload.get("mode", "PAPER_TRADING")
+            broker = payload.get("broker", "INTERACTIVE_BROKERS")
+            DAYTRADE_CONFIG["execution_mode"] = mode
+            DAYTRADE_CONFIG["broker_name"] = broker
+            SPREAD_CONFIG["execution_mode"] = mode
+            SPREAD_CONFIG["broker_name"] = broker
+            return self.send_json_response({"status": "SUCCESS", "mode": mode, "broker": broker})
 
         elif path == "/api/wheel/run-cycle":
             cycle_result = wheel_engine.run_wheel_cycle()

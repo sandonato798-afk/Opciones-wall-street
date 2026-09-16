@@ -67,8 +67,6 @@ class BrokerAdapter:
 
 class DayTradeOptionsBot:
     def __init__(self):
-        self.system_start_time = timestamp()
-        self.broker_adapter = BrokerAdapter(mode=CONFIG["execution_mode"], broker=CONFIG["broker_name"])
         self.initial_capital = CONFIG["initial_capital_usd"]
         self.capital = self.initial_capital
         self.daily_pnl_usd = 0.0
@@ -76,6 +74,7 @@ class DayTradeOptionsBot:
         self.system_start_time = timestamp()
         self.open_positions = []
         self.closed_trades = []
+        self.symbol_cooldowns = {} # Symbol -> datetime until which trading is paused
         self.broker_adapter = BrokerAdapter(mode=CONFIG["execution_mode"], broker=CONFIG["broker_name"])
         self.broker_adapter.connect()
         self.load_state()
@@ -173,6 +172,19 @@ class DayTradeOptionsBot:
                 ema9 = self.calculate_ema(prices, 9)
                 ema21 = self.calculate_ema(prices, 21)
                 rsi = self.calculate_rsi(prices, 14)
+                
+                # VWAP Calculation (Session Average Benchmark)
+                vwap = sum(prices) / float(len(prices)) if prices else current_price
+                ema_diff_pct = ((ema9 - ema21) / ema21) * 100.0 if ema21 > 0 else 0.0
+
+                # High Probability Signal Filters:
+                # 1. Bulls: EMA9 > EMA21 with clear separation (>0.03%), RSI > 56, Price ABOVE VWAP
+                # 2. Bears: EMA9 < EMA21 with clear separation (<-0.03%), RSI < 44, Price BELOW VWAP
+                signal = "NEUTRAL"
+                if ema_diff_pct > 0.03 and rsi > 56.0 and current_price >= vwap:
+                    signal = "BULLISH_CROSS"
+                elif ema_diff_pct < -0.03 and rsi < 44.0 and current_price <= vwap:
+                    signal = "BEARISH_CROSS"
 
                 return {
                     "symbol": symbol,
@@ -180,8 +192,9 @@ class DayTradeOptionsBot:
                     "change_pct": round(((current_price - prev_close) / prev_close) * 100, 2),
                     "ema9": round(ema9, 2),
                     "ema21": round(ema21, 2),
+                    "vwap": round(vwap, 2),
                     "rsi": round(rsi, 1),
-                    "signal": "BULLISH_CROSS" if (ema9 > ema21 and rsi > 52) else ("BEARISH_CROSS" if (ema9 < ema21 and rsi < 48) else "NEUTRAL")
+                    "signal": signal
                 }
         except Exception as e:
             log_msg("WARN", f"Fallo fetch intradiario para {symbol}: {e}")
@@ -219,16 +232,21 @@ class DayTradeOptionsBot:
             log_msg("CIRCUIT_BREAKER", f"Límite de pérdida diaria alcanzado (-${abs(self.daily_pnl_usd):.2f} USD). Pausando bot por hoy.")
             return
 
-        # Check Max Simultaneous Trades Limit (Max 4 positions)
-        if len(self.open_positions) >= CONFIG["max_simultaneous_trades"]:
-            log_msg("INFO", f"Límite máximo de {CONFIG['max_simultaneous_trades']} posiciones simultáneas alcanzado. Monitoreando abiertas...")
+        now_dt = datetime.now()
 
         for symbol in CONFIG["etf_watchlist"]:
+            # Check Cooldown Filter (10 min after a Stop Loss)
+            cooldown_until = self.symbol_cooldowns.get(symbol)
+            if cooldown_until and now_dt < cooldown_until:
+                remaining_secs = int((cooldown_until - now_dt).total_seconds())
+                log_msg("COOLDOWN", f"⏳ {symbol} en tiempo de enfriamiento post-StopLoss ({remaining_secs}s restantes). Evitando sobre-operativa.")
+                continue
+
             market_data = self.fetch_etf_intraday_data(symbol)
             if not market_data:
                 continue
 
-            log_msg("DATA", f"{symbol}: ${market_data['price']} | EMA9: ${market_data['ema9']} | EMA21: ${market_data['ema21']} | RSI: {market_data['rsi']} | Señal: {market_data['signal']}")
+            log_msg("DATA", f"{symbol}: ${market_data['price']} | VWAP: ${market_data['vwap']} | EMA9: ${market_data['ema9']} | EMA21: ${market_data['ema21']} | RSI: {market_data['rsi']} | Señal: {market_data['signal']}")
 
             # Check if position already open for this ETF
             existing = [p for p in self.open_positions if p["symbol"] == symbol]
@@ -295,8 +313,9 @@ class DayTradeOptionsBot:
             "stop_loss_price": round(entry_premium * (1.0 - CONFIG["stop_loss_pct"] / 100.0), 2),
             "status": "OPEN",
             "current_premium": entry_premium,
-            "pnl_usd": -open_fee, # Starts with commission deduction
-            "pnl_pct": 0.0
+            "pnl_usd": -open_fee,
+            "pnl_pct": 0.0,
+            "trailing_stop_active": False
         }
 
         self.open_positions.append(position)
@@ -316,14 +335,22 @@ class DayTradeOptionsBot:
         pos["pnl_pct"] = round(pnl_pct, 2)
         pos["pnl_usd"] = round(pnl_usd, 2)
 
-        log_msg("MONITOR", f"Posición [{pos['option_ticker']}]: Prima Actual: ${curr_premium} USD | PnL Neto: {pnl_pct:+.2f}% (${pnl_usd:+.2f} USD)")
+        # TRAILING STOP A BREAK-EVEN: Si la opción sube al +15%, mover SL al precio de entrada (+1%) para asegurar capital
+        if pnl_pct >= 15.0 and not pos.get("trailing_stop_active", False):
+            break_even_price = round(pos["entry_premium"] * 1.01, 2)
+            pos["stop_loss_price"] = break_even_price
+            pos["trailing_stop_active"] = True
+            log_msg("TRAILING_STOP", f"🛡️ Ganancia de +{pnl_pct:.1f}% alcanzada en [{pos['option_ticker']}]. Stop Loss subido a Break-Even (${break_even_price} USD) para blindar el capital.")
+
+        log_msg("MONITOR", f"Posición [{pos['option_ticker']}]: Prima: ${curr_premium} USD | PnL Neto: {pnl_pct:+.2f}% (${pnl_usd:+.2f} USD) | SL: ${pos['stop_loss_price']}")
 
         # Check Take Profit
         if curr_premium >= pos["target_profit_price"]:
             self.close_position(pos, "TAKE_PROFIT", curr_premium)
         # Check Stop Loss
         elif curr_premium <= pos["stop_loss_price"]:
-            self.close_position(pos, "STOP_LOSS", curr_premium)
+            exit_reason = "TRAILING_BREAK_EVEN" if pos.get("trailing_stop_active") else "STOP_LOSS"
+            self.close_position(pos, exit_reason, curr_premium)
 
     def close_position(self, pos, reason, exit_premium):
         close_fee = pos["contracts"] * CONFIG["broker_fee_per_contract"]
@@ -356,6 +383,11 @@ class DayTradeOptionsBot:
         self.closed_trades.append(closed_record)
         self.daily_pnl_usd += final_pnl_usd
         self.capital += final_pnl_usd
+
+        # Activar Cooldown de 10 minutos si fue Stop Loss para no sobre-operar
+        if reason == "STOP_LOSS":
+            self.symbol_cooldowns[pos["symbol"]] = datetime.now() + timedelta(minutes=10)
+            log_msg("COOLDOWN", f"🛑 Stop Loss registrado en {pos['symbol']}. Cooldown activado por 10 minutos.")
 
         self.save_state()
         emoji = "🔴" if final_pnl_usd < 0 else "🟢"

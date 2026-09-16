@@ -6,6 +6,7 @@ let payoffChart = null;
 let distributionChart = null;
 let latestWheelData = null;
 let latestDayTradeData = null;
+let latestSpreadData = null;
 let profitMode = "AUTONOMOUS"; // "AUTONOMOUS" or "MANUAL"
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDistributionChart();
     loadWheelStatus();
     loadDayTradeStatus();
+    loadSpreadStatus();
     loadIssuedContracts();
     loadETFCards();
     loadOptionChain('SPY', 30);
@@ -28,6 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnScan = document.getElementById('btn-run-scan');
     if (btnScan) btnScan.addEventListener('click', triggerDayTradeScan);
+
+    // Event Listeners for Credit Spreads (Venta de Tiempo)
+    const btnSpreadScan = document.getElementById('btn-run-spread-scan');
+    if (btnSpreadScan) btnSpreadScan.addEventListener('click', triggerSpreadScan);
 
     // Event Listeners for Option Chain & Builder
     const btnFetchChain = document.getElementById('btn-fetch-chain');
@@ -52,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(() => {
         loadDayTradeStatus();
         loadWheelStatus();
+        loadSpreadStatus();
         loadIssuedContracts();
     }, 10000);
 });
@@ -143,7 +150,10 @@ function syncMasterPortfolio() {
     const shares = latestWheelData.etf_shares || 0.0;
     const etfPrice = latestWheelData.etf_price || 560.50;
     const sharesVal = shares * etfPrice;
-    const totalNav = dtCapital + sharesVal;
+    
+    // Total NAV Consolidating Wheels + Day Trade + Spreads
+    const spreadPnl = latestSpreadData ? (latestSpreadData.total_pnl_usd || 0.0) : 0.0;
+    const totalNav = dtCapital + sharesVal + spreadPnl;
 
     const masterNavEl = document.getElementById('master-nav');
     if (masterNavEl) masterNavEl.innerText = `$${totalNav.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
@@ -157,8 +167,10 @@ function syncMasterPortfolio() {
     const masterInTradesEl = document.getElementById('master-in-trades');
     if (masterInTradesEl) masterInTradesEl.innerText = `$${cashInTrades.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
 
+    const openDtCount = latestDayTradeData.open_positions ? latestDayTradeData.open_positions.length : 0;
+    const openSpreadCount = (latestSpreadData && latestSpreadData.open_spreads) ? latestSpreadData.open_spreads.length : 0;
     const masterOpenCountEl = document.getElementById('master-open-trades-count');
-    if (masterOpenCountEl) masterOpenCountEl.innerText = `${latestDayTradeData.open_positions ? latestDayTradeData.open_positions.length : 0} operaciones abiertas`;
+    if (masterOpenCountEl) masterOpenCountEl.innerText = `${openDtCount + openSpreadCount} operaciones activas`;
 
     const masterSharesValEl = document.getElementById('master-shares-val');
     if (masterSharesValEl) masterSharesValEl.innerText = `$${sharesVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
@@ -229,6 +241,24 @@ async function loadIssuedContracts() {
             });
         }
 
+        // 3. Fetch Open Credit Spreads
+        if (latestSpreadData && latestSpreadData.open_spreads) {
+            latestSpreadData.open_spreads.forEach(sp => {
+                contractsList.push({
+                    ticker: `${sp.symbol} Bull Put K${sp.short_strike}/K${sp.long_strike}`,
+                    strategy: `👑 Credit Spread (${sp.type})`,
+                    symbol: sp.symbol,
+                    strike: sp.short_strike,
+                    contracts: sp.contracts || 1,
+                    premium: sp.total_credit_collected_usd,
+                    issued_date: sp.entry_date,
+                    expiration_date: `${sp.dte} días DTE`,
+                    status: 'OPEN (Theta +)',
+                    source: 'SPREADS'
+                });
+            });
+        }
+
         if (contractsList.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" style="color:var(--text-muted)">No hay contratos de opciones activos emitidos en este momento.</td></tr>`;
             return;
@@ -241,6 +271,8 @@ async function loadIssuedContracts() {
             let dteBadge = '';
             if (c.source === 'DAYTRADE' || c.expiration_date.includes('Intradiario')) {
                 dteBadge = `<span class="badge badge-dte-today">0 DTE - Vence Hoy</span>`;
+            } else if (c.source === 'SPREADS') {
+                dteBadge = `<span class="badge badge-green">${c.expiration_date} (Decaimiento $\\Theta$)</span>`;
             } else {
                 const expDate = new Date(c.expiration_date);
                 const diffTime = expDate - today;
@@ -616,6 +648,140 @@ async function triggerDayTradeScan() {
         loadIssuedContracts();
     } catch (err) {
         console.error("Error ejecutando escaneo:", err);
+    }
+}
+
+// TAB SPREADS STATUS & THETA MANAGEMENT
+async function loadSpreadStatus() {
+    try {
+        const res = await fetch('/api/spreads/status');
+        const data = await res.json();
+        latestSpreadData = data;
+
+        const kpiCap = document.getElementById('kpi-spread-capital');
+        if (kpiCap) kpiCap.innerText = `$${data.capital.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+        const kpiPrems = document.getElementById('kpi-spread-premiums');
+        if (kpiPrems) kpiPrems.innerText = `+$${data.total_premiums_collected.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+        const kpiPnlPct = document.getElementById('kpi-spread-pnl-pct');
+        if (kpiPnlPct) {
+            kpiPnlPct.innerText = (data.total_pnl_pct >= 0 ? '+' : '') + `${data.total_pnl_pct.toFixed(2)}%`;
+            kpiPnlPct.className = data.total_pnl_pct >= 0 ? 'value text-cyan' : 'value text-red';
+        }
+
+        const kpiPnlUsd = document.getElementById('kpi-spread-pnl-usd');
+        if (kpiPnlUsd) {
+            kpiPnlUsd.innerText = (data.total_pnl_usd >= 0 ? '+' : '') + `$${data.total_pnl_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+            kpiPnlUsd.className = data.total_pnl_usd >= 0 ? 'subtext text-cyan' : 'subtext text-red';
+        }
+
+        let totalTheta = 0.0;
+        if (data.open_spreads && data.open_spreads.length > 0) {
+            data.open_spreads.forEach(s => {
+                totalTheta += (s.theta_daily_decay_usd || 0.0);
+            });
+        }
+
+        const kpiTheta = document.getElementById('kpi-spread-theta');
+        if (kpiTheta) kpiTheta.innerText = `+$${totalTheta.toFixed(2)}/día`;
+
+        const kpiWinrate = document.getElementById('kpi-spread-winrate');
+        if (kpiWinrate) kpiWinrate.innerText = data.stats.total > 0 ? `${data.stats.win_rate.toFixed(1)}%` : `82.5% (Teórico)`;
+
+        const kpiTradesCount = document.getElementById('kpi-spread-trades-count');
+        if (kpiTradesCount) kpiTradesCount.innerText = `${data.stats.total} trade(s) (${data.stats.wins}W / ${data.stats.losses}L)`;
+
+        const capEl = document.getElementById('spreads-open-capacity');
+        if (capEl) capEl.innerText = `${data.open_spreads.length} / ${data.config.max_simultaneous_spreads} Spreads Activos`;
+
+        const activeContainer = document.getElementById('spreads-active-container');
+        if (activeContainer) {
+            activeContainer.innerHTML = '';
+            if (data.open_spreads.length === 0) {
+                activeContainer.innerHTML = '<p class="empty-msg" style="color:var(--text-muted)">No hay spreads abiertos actualmente. Haz clic en "Escanear & Abrir Spreads".</p>';
+            } else {
+                data.open_spreads.forEach(sp => {
+                    const isProfit = sp.pnl_usd >= 0;
+                    const pnlClass = isProfit ? 'text-green' : 'text-red';
+                    
+                    activeContainer.innerHTML += `
+                        <div class="card" style="margin-bottom: 12px; border-left: 4px solid #00FF87; background: rgba(0, 255, 135, 0.02);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <strong style="font-size: 16px; color:#00F2FE">${sp.symbol} Bull Put Spread</strong>
+                                        <span class="badge badge-cyan">${sp.contracts} Contrato(s)</span>
+                                        <span class="badge badge-dte">${sp.dte} DTE</span>
+                                        <span class="badge badge-green">Prob: ${sp.win_probability_pct}%</span>
+                                    </div>
+                                    <div style="font-size: 12px; color:#9CA3AF; margin-top: 6px;">
+                                        Estructura: <strong style="color: #FFF;">Vende Put K$${sp.short_strike} / Compra Put K$${sp.long_strike}</strong> | 
+                                        Subyacente: <strong>$${sp.etf_price_at_entry.toFixed(2)} USD</strong>
+                                    </div>
+                                    <div style="font-size: 12px; color:#9CA3AF; margin-top: 4px;">
+                                        Prima Cobrada: <strong class="text-green">+$${sp.total_credit_collected_usd.toFixed(2)} USD</strong> ($${sp.net_credit_per_share.toFixed(2)}/acción) | 
+                                        Riesgo Máx: <strong class="text-red">$${sp.total_max_risk_usd.toFixed(2)} USD</strong> | 
+                                        Theta: <strong class="text-gold">+$${sp.theta_daily_decay_usd.toFixed(2)} USD/día</strong>
+                                    </div>
+                                </div>
+                                <div style="text-align:right">
+                                    <div class="${pnlClass}" style="font-size: 18px; font-weight:700;">
+                                        ${sp.pnl_pct >= 0 ? '+' : ''}${sp.pnl_pct.toFixed(1)}% Capturado
+                                    </div>
+                                    <div style="font-size: 13px; font-weight: 600; color: ${isProfit ? '#00FF87' : '#FF0844'}; margin-top: 2px;">
+                                        ${sp.pnl_usd >= 0 ? '+' : ''}$${sp.pnl_usd.toFixed(2)} USD PnL
+                                    </div>
+                                    <div style="font-size: 11px; color:#9CA3AF">Valor actual: $${sp.current_spread_value.toFixed(2)} (Meta TP: 70%)</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        const historyBody = document.getElementById('spreads-history-body');
+        if (historyBody && data.closed_spreads && data.closed_spreads.length > 0) {
+            historyBody.innerHTML = '';
+            data.closed_spreads.forEach(sp => {
+                const isProf = sp.final_pnl_usd >= 0;
+                const reasonColor = sp.exit_reason === 'PROFIT_TARGET_70_PCT' ? '#00FF87' : '#FF0844';
+                const reasonLabel = sp.exit_reason === 'PROFIT_TARGET_70_PCT' ? '🎯 TP 70% Capturado' : '🛑 Stop Loss 1.5x';
+
+                historyBody.innerHTML += `
+                    <tr>
+                        <td style="font-size:11px; color:#9CA3AF;">${sp.exit_date || '-'}</td>
+                        <td style="color:#00F2FE; font-weight:700;">${sp.symbol} Bull Put</td>
+                        <td style="font-weight:600;">K$${sp.short_strike} / K$${sp.long_strike}</td>
+                        <td><strong>${sp.contracts}</strong></td>
+                        <td style="color:#00FF87; font-weight:700;">+$${sp.total_credit_collected_usd.toFixed(2)} USD</td>
+                        <td style="color:#FF0844;">-$${sp.total_fees_usd.toFixed(2)} USD</td>
+                        <td><span class="badge" style="background: rgba(255,255,255,0.06); color:${reasonColor}; border: 1px solid ${reasonColor}33;">${reasonLabel}</span></td>
+                        <td style="color:${isProf ? '#00FF87' : '#FF0844'}; font-weight:700; font-size: 14px;">
+                            ${isProf ? '+' : ''}$${sp.final_pnl_usd.toFixed(2)} USD
+                            <div style="font-size: 11px;">(${isProf ? '+' : ''}${sp.final_pnl_pct.toFixed(1)}%)</div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        syncMasterPortfolio();
+    } catch (err) {
+        console.error("Error cargando estado Credit Spreads:", err);
+    }
+}
+
+async function triggerSpreadScan() {
+    try {
+        const res = await fetch('/api/spreads/scan', { method: 'POST' });
+        const result = await res.json();
+        alert("Escaneo de venta de tiempo / credit spreads completado exitosamente.");
+        loadSpreadStatus();
+        loadIssuedContracts();
+    } catch (err) {
+        console.error("Error ejecutando escaneo de spreads:", err);
     }
 }
 

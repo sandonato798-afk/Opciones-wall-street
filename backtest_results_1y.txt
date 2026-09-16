@@ -3,32 +3,32 @@
     SIMULACIÓN HISTÓRICA DE 1 AÑO (365 DÍAS REALES): COMPARA DE MODELOS DE BOT
 ========================================================================================
 • Activo Evaluado: [SPY] SPDR S&P 500 ETF Trust
-• Capital Inicial Simulado: $10,000.00 USD
-• Precio Inicial Hace 1 Año: $660.91 USD  |  Precio Actual: $760.88 USD
+• Capital Inicial Simulado: $100,000.00 USD
+• Precio Inicial Hace 1 Año: $660.00 USD  |  Precio Actual: $750.75 USD
 
 ----------------------------------------------------------------------------------------
 1. BENCHMARK: BUY & HOLD (Comprar y Mantener el ETF en Cartera)
 ----------------------------------------------------------------------------------------
-• Capital Final                      : $11,512.61 USD
-• Ganancia Neta                      : +$1,512.61 USD
-• RENDIMIENTO NETO EN 1 AÑO          : +15.13%
+• Capital Final                      : $113,750.00 USD
+• Ganancia Neta                      : +$13,750.00 USD
+• RENDIMIENTO NETO EN 1 AÑO          : +13.75%
 
 ----------------------------------------------------------------------------------------
 2. MODELO A: DAY TRADING 0-DTE EN EFECTIVO (Operaciones Intradiarias)
 ----------------------------------------------------------------------------------------
-• Capital Final                      : $1,446.14 USD
-• Ganancia Neta                      : +$-8,553.86 USD
-• RENDIMIENTO NETO EN 1 AÑO          : +-85.54%
-• Total de Operaciones Ejecutadas   : 171 trades
+• Capital Final                      : $21,976.14 USD
+• Ganancia Neta                      : +$-78,023.86 USD
+• RENDIMIENTO NETO EN 1 AÑO          : +-78.02%
+• Total de Operaciones Ejecutadas   : 172 trades
 • Operaciones Ganadoras              : 0 (0.0% Win Rate)
 
 ----------------------------------------------------------------------------------------
 3. MODELO B: RUEDA HÍBRIDA + INTERÉS COMPUESTOS (RE-INVERSIÓN EN ACCIONES) ⭐⭐⭐⭐⭐
 ----------------------------------------------------------------------------------------
-• Capital Final (Patrimonio NAV)    : $21,098.44 USD
-• Ganancia Neta                      : +$11,098.44 USD
-• RENDIMIENTO NETO EN 1 AÑO          : +110.98%
-• Acciones Iniciales Compradas      : 15.13 acciones
-• Acciones Finales Acumuladas       : 27.73 acciones (+12.60 compradas con primas)
-• Primas Totales Cobradas & Re-invertidas: +$8,907.40 USD
+• Capital Final (Patrimonio NAV)    : $123,201.39 USD
+• Ganancia Neta                      : +$23,201.39 USD
+• RENDIMIENTO NETO EN 1 AÑO          : +23.20%
+• Acciones Iniciales Compradas      : 151.52 acciones
+• Acciones Finales Acumuladas       : 164.10 acciones (+12.59 compradas con primas)
+• Primas Totales Cobradas & Re-invertidas: +$8,960.40 USD
 ========================================================================================

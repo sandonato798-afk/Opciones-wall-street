@@ -1,4 +1,0 @@
-[2026-09-14 19:59:32] [BROKER] Conectado a Motor de Paper Trading Intradiario (Simulación Alta Fidelidad).
-[2026-09-14 19:59:32] [SCAN] --- ESCANEANDO SEÑALES DE DAY TRADING (0-DTE / 1-DTE ETFs) ---
-[2026-09-14 19:59:32] [DATA] SPY: $760.88 | EMA9: $761.08 | EMA21: $761.3 | RSI: 21.1 | Señal: BEARISH_CROSS
-[2026-09-14 19:59:33] [DATA] QQQ: $709.18 | EMA9: $709.68 | EMA21: $710.14 | RSI: 13.1 | Señal: BEARISH_CROSS

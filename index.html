@@ -57,6 +57,11 @@
                 <button class="tab-btn" data-tab="tab-etfs">ETFs & Volatilidad</button>
             </nav>
 
+            <div class="sidebar-group-title">Venta de Tiempo (Theta)</div>
+            <nav class="nav-tabs">
+                <button class="tab-btn" data-tab="tab-spreads">👑 Spreads & Theta (+$\Theta$)</button>
+            </nav>
+
             <div class="sidebar-group-title">Day Trading</div>
             <nav class="nav-tabs">
                 <button class="tab-btn" data-tab="tab-daytrade">Day Trading 0-DTE</button>
@@ -271,6 +276,97 @@
                     </div>
                     <div id="wheel-active-cycle-detail">
                         <div style="color:var(--text-muted)">Cargando detalle del ciclo activo...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB SPREADS: VENTA DE TIEMPO & THETA -->
+            <section id="tab-spreads" class="tab-content">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">👑 Venta de Tiempo / Credit Spreads (Theta King $\Theta > 0$)</h2>
+                        <p class="page-subtitle">Estrategia institucional vendiendo primas OTM (Delta ~0.20, 7-14 DTE, Win Rate ~82%)</p>
+                    </div>
+                    <span class="badge badge-green">● Theta Positivo (+$\Theta$)</span>
+                </div>
+
+                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(6, 1fr);">
+                    <div class="metric-card">
+                        <div class="label">Capital Asignado</div>
+                        <div class="value" id="kpi-spread-capital">$100,000.00</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">Primas Cobradas</div>
+                        <div class="value text-green" id="kpi-spread-premiums">+$0.00 USD</div>
+                        <div class="subtext">Ingreso Pasivo Theta</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">Rendimiento Realizado</div>
+                        <div class="value text-cyan" id="kpi-spread-pnl-pct">+0.00%</div>
+                        <div class="subtext" id="kpi-spread-pnl-usd">+$0.00 USD</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">Decaimiento Diario (Theta)</div>
+                        <div class="value text-gold" id="kpi-spread-theta">+$0.00/día</div>
+                        <div class="subtext">A favor cada 24 hrs</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">Win Rate Probabilístico</div>
+                        <div class="value text-green" id="kpi-spread-winrate">82.5%</div>
+                        <div class="subtext" id="kpi-spread-trades-count">0 cerrados</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">Reglas de Salida</div>
+                        <div class="value text-cyan" style="font-size: 13px;">TP 70% | SL 1.5x</div>
+                        <div class="subtext">Gestión Automática</div>
+                    </div>
+                </div>
+
+                <!-- TOOLBAR CONTROLS -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="inline-toolbar">
+                        <div class="toolbar-item">
+                            <label>Estrategia Activa:</label>
+                            <span class="badge badge-cyan" style="padding: 6px 12px; font-size: 12px;">Bull Put Spreads & Iron Condors (7-14 DTE)</span>
+                        </div>
+                        <div class="toolbar-item">
+                            <label>Riesgo por Spread:</label>
+                            <span class="badge badge-green" style="padding: 6px 12px; font-size: 12px;">Máx 10% Capital ($10,000 USD Colateral)</span>
+                        </div>
+                        <button id="btn-run-spread-scan" class="btn btn-primary btn-sm">Escanear & Abrir Spreads</button>
+                    </div>
+                </div>
+
+                <!-- SPREADS ACTIVOS & HISTORIAL -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Spreads de Crédito Abiertos (En Mercado)</h3>
+                        <div>Capacidad: <strong id="spreads-open-capacity" class="text-green">0 / 3 Spreads</strong></div>
+                    </div>
+
+                    <div id="spreads-active-container" style="margin-bottom: 16px;">
+                        <div class="empty-msg-sm">No hay spreads abiertos actualmente. Haz clic en 'Escanear & Abrir Spreads'.</div>
+                    </div>
+
+                    <h4 style="font-size: 13px; margin-bottom: 8px; color: var(--text-heading);">Historial de Spreads Cerrados:</h4>
+                    <div class="table-responsive">
+                        <table class="chain-table compact-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha Cierre</th>
+                                    <th>Ticker / Estructura</th>
+                                    <th>Strikes (Short / Long)</th>
+                                    <th>Contratos</th>
+                                    <th>Crédito Inicial</th>
+                                    <th>Comisiones</th>
+                                    <th>Motivo Cierre</th>
+                                    <th>PnL Neto (USD y %)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="spreads-history-body">
+                                <tr><td colspan="8" style="color:var(--text-muted)">Sin spreads cerrados aún.</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </section>
