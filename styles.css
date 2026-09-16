@@ -1,32 +1,37 @@
 :root {
-    --bg-page: #F8FAFC;
-    --card-bg: #FFFFFF;
-    --card-border: #E2E8F0;
-    --card-hover: #F1F5F9;
+    /* DARK FOREST THEME PALETTE */
+    --bg-page: #0A1210;            /* Deep Midnight Forest Obsidian */
+    --card-bg: #121E1B;            /* Rich Dark Pine Card */
+    --card-border: #1E332D;        /* Subtle Pine Border */
+    --card-hover: #182B27;         /* Deep Forest Hover */
     
-    --primary-teal: #0D9488;
-    --primary-teal-light: #E6F4F1;
-    --primary-blue: #2563EB;
-    --accent-green: #10B981;
-    --accent-green-light: #D1FAE5;
-    --accent-red: #E11D48;
-    --accent-red-light: #FFE4E6;
-    --accent-amber: #D97706;
-    --accent-amber-light: #FEF3C7;
-    --accent-purple: #7C3AED;
-    --accent-purple-light: #F3E8FF;
+    --primary-teal: #34D399;       /* Vibrant Mint / Pine Emerald */
+    --primary-teal-light: rgba(52, 211, 153, 0.12);
+    --primary-blue: #38BDF8;
+    
+    --accent-green: #10B981;       /* Emerald Green */
+    --accent-green-light: rgba(16, 185, 129, 0.15);
+    
+    --accent-red: #FB7185;         /* Soft Rose Red */
+    --accent-red-light: rgba(244, 63, 94, 0.15);
+    
+    --accent-amber: #FBBF24;       /* Warm Gold */
+    --accent-amber-light: rgba(245, 158, 11, 0.15);
+    
+    --accent-purple: #C084FC;      /* Soft Lavender */
+    --accent-purple-light: rgba(168, 85, 247, 0.15);
 
-    --text-heading: #0F172A;
-    --text-body: #334155;
-    --text-muted: #64748B;
-    --text-light: #94A3B8;
+    --text-heading: #F0FDF4;       /* Mint White */
+    --text-body: #E2E8F0;          /* Crisp Slate White */
+    --text-muted: #84A99C;         /* Soft Sage Gray */
+    --text-light: #5A7E72;         /* Dark Sage Muted */
 
     --font-main: 'Inter', system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -46,10 +51,10 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* TOP HEADER BAR (DREAMS ERP STYLE) */
+/* TOP HEADER BAR (DARK FOREST NAV) */
 .top-navbar {
     height: 60px;
-    background: #FFFFFF;
+    background: #0E1A17;
     border-bottom: 1px solid var(--card-border);
     display: flex;
     justify-content: space-between;
@@ -70,14 +75,15 @@ body {
 .brand-icon-box {
     width: 36px;
     height: 36px;
-    background: var(--primary-teal-light);
-    color: var(--primary-teal);
+    background: linear-gradient(135deg, #059669, #10B981);
+    color: #FFFFFF;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
     font-size: 16px;
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
 }
 
 .brand-name {
@@ -104,7 +110,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: #F1F5F9;
+    background: #152622;
     border: 1px solid var(--card-border);
     padding: 6px 14px;
     border-radius: 20px;
@@ -137,6 +143,7 @@ body {
     height: 8px;
     background-color: var(--accent-green);
     border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent-green);
 }
 
 .status-text {
@@ -147,7 +154,7 @@ body {
 }
 
 .broker-badge {
-    background: #F1F5F9;
+    background: #152622;
     border: 1px solid var(--card-border);
     padding: 6px 14px;
     border-radius: 20px;
@@ -169,7 +176,7 @@ body {
 
 /* SIDEBAR NAVIGATION */
 .sidebar {
-    background: #FFFFFF;
+    background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 12px;
     padding: 20px 16px;
@@ -212,9 +219,6 @@ body {
     transition: all 0.15s ease;
     text-align: left;
     width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
 }
 
 .tab-btn:hover {
@@ -223,10 +227,10 @@ body {
 }
 
 .tab-btn.active {
-    background: #0F172A;
+    background: linear-gradient(135deg, #059669, #10B981);
     color: #FFFFFF;
     font-weight: 600;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 /* MAIN CONTENT WORKSPACE */
@@ -312,7 +316,7 @@ body {
 }
 
 .alert-title {
-    color: var(--text-body);
+    color: var(--text-heading);
     font-weight: 500;
 }
 
@@ -321,7 +325,7 @@ body {
     gap: 8px;
 }
 
-/* PORTFOLIO METRICS GRID (DREAMS ERP SPARKLINE STYLE) */
+/* PORTFOLIO METRICS GRID (DARK FOREST CARDS) */
 .portfolio-metrics-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -330,7 +334,7 @@ body {
 }
 
 .metric-card {
-    background: #FFFFFF;
+    background: #152622;
     border: 1px solid var(--card-border);
     border-radius: 12px;
     padding: 20px 22px;
@@ -343,10 +347,12 @@ body {
 .metric-card:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-2px);
+    border-color: var(--primary-teal);
 }
 
 .metric-card.metric-highlight {
-    border-color: rgba(13, 148, 136, 0.4);
+    border-color: rgba(52, 211, 153, 0.4);
+    background: linear-gradient(145deg, #152622, #182F2A);
 }
 
 .metric-card .label {
@@ -369,9 +375,6 @@ body {
     font-size: 12px;
     color: var(--text-muted);
     margin-top: 4px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 /* SPLIT 2-COLUMN GRID */
@@ -394,7 +397,7 @@ body {
 }
 
 .summary-item {
-    background: #F8FAFC;
+    background: #152622;
     border: 1px solid var(--card-border);
     padding: 10px 16px;
     border-radius: 8px;
@@ -415,7 +418,7 @@ body {
     font-weight: 700;
 }
 
-/* BADGES (SOFT PILLS) */
+/* BADGES (DARK FOREST SOFT PILLS) */
 .badge {
     padding: 4px 10px;
     border-radius: 20px;
@@ -424,23 +427,23 @@ body {
     display: inline-block;
 }
 
-.badge-live { background: var(--accent-green-light); color: var(--accent-green); }
-.badge-cyan { background: var(--primary-teal-light); color: var(--primary-teal); }
-.badge-green { background: var(--accent-green-light); color: var(--accent-green); }
-.badge-gold { background: var(--accent-amber-light); color: var(--accent-amber); }
-.badge-purple { background: var(--accent-purple-light); color: var(--accent-purple); }
-.badge-red { background: var(--accent-red-light); color: var(--accent-red); }
+.badge-live { background: var(--accent-green-light); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-cyan { background: var(--primary-teal-light); color: var(--primary-teal); border: 1px solid rgba(52, 211, 153, 0.3); }
+.badge-green { background: var(--accent-green-light); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-gold { background: var(--accent-amber-light); color: var(--accent-amber); border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-purple { background: var(--accent-purple-light); color: var(--accent-purple); border: 1px solid rgba(168, 85, 247, 0.3); }
+.badge-red { background: var(--accent-red-light); color: var(--accent-red); border: 1px solid rgba(244, 63, 94, 0.3); }
 
 .badge-dte {
     background: var(--primary-teal-light);
     color: var(--primary-teal);
-    border: 1px solid rgba(13, 148, 136, 0.3);
+    border: 1px solid rgba(52, 211, 153, 0.3);
 }
 
 .badge-dte-today {
     background: var(--accent-amber-light);
     color: var(--accent-amber);
-    border: 1px solid rgba(217, 119, 6, 0.3);
+    border: 1px solid rgba(245, 158, 11, 0.4);
     font-weight: 700;
 }
 
@@ -465,7 +468,7 @@ body {
 }
 
 .custom-select-sm {
-    background: #FFFFFF;
+    background: #152622;
     border: 1px solid var(--card-border);
     color: var(--text-heading);
     padding: 6px 12px;
@@ -481,7 +484,7 @@ body {
 }
 
 .info-pill-sm {
-    background: #F8FAFC;
+    background: #152622;
     border: 1px solid var(--card-border);
     padding: 6px 12px;
     border-radius: 8px;
@@ -489,7 +492,7 @@ body {
     color: var(--text-muted);
 }
 
-/* HIGH DENSITY DATA TABLES (DREAMS ERP STYLE) */
+/* HIGH DENSITY DATA TABLES (DARK FOREST STYLE) */
 .table-responsive {
     overflow-x: auto;
 }
@@ -502,7 +505,7 @@ body {
 }
 
 .compact-table th {
-    background: #F8FAFC;
+    background: #162723;
     padding: 10px 14px;
     color: var(--text-muted);
     font-size: 11px;
@@ -521,13 +524,13 @@ body {
 }
 
 .compact-table tr:hover td {
-    background: #F8FAFC;
+    background: #182B27;
 }
 
 .call-header { color: var(--primary-teal) !important; border-bottom: 2px solid var(--primary-teal) !important; }
 .put-header { color: var(--accent-red) !important; border-bottom: 2px solid var(--accent-red) !important; }
-.strike-header { background: #F1F5F9 !important; color: var(--text-heading) !important; }
-.strike-cell { background: #F8FAFC; font-weight: 700; color: var(--accent-amber); }
+.strike-header { background: #182F2A !important; color: var(--text-heading) !important; }
+.strike-cell { background: #152622; font-weight: 700; color: var(--accent-amber); }
 
 .empty-msg-sm {
     color: var(--text-muted);
@@ -544,7 +547,7 @@ body {
 }
 
 .etf-card {
-    background: #FFFFFF;
+    background: #121E1B;
     border: 1px solid var(--card-border);
     border-radius: 12px;
     padding: 16px 18px;
@@ -597,7 +600,7 @@ body {
 }
 
 .iv-bar-container {
-    background: #F8FAFC;
+    background: #152622;
     border: 1px solid var(--card-border);
     border-radius: 6px;
     padding: 8px;
@@ -613,14 +616,14 @@ body {
 
 .iv-progress {
     height: 6px;
-    background: #E2E8F0;
+    background: #1E332D;
     border-radius: 3px;
     overflow: hidden;
 }
 
 .iv-fill {
     height: 100%;
-    background: linear-gradient(90deg, #10B981, #0D9488, #E11D48);
+    background: linear-gradient(90deg, #10B981, #34D399, #FB7185);
 }
 
 /* STRATEGY BUILDER */
@@ -638,7 +641,7 @@ body {
 }
 
 .preset-btn {
-    background: #F8FAFC;
+    background: #152622;
     border: 1px solid var(--card-border);
     color: var(--text-heading);
     padding: 8px 10px;
@@ -650,7 +653,7 @@ body {
 }
 
 .preset-btn:hover {
-    background: #FFFFFF;
+    background: #182F2A;
     border-color: var(--primary-teal);
     color: var(--primary-teal);
 }
@@ -660,14 +663,14 @@ body {
     gap: 6px;
     align-items: center;
     margin-bottom: 8px;
-    background: #F8FAFC;
+    background: #152622;
     padding: 8px;
     border-radius: 6px;
     border: 1px solid var(--card-border);
 }
 
 .leg-row select, .leg-row input {
-    background: #FFFFFF;
+    background: #121E1B;
     border: 1px solid var(--card-border);
     color: var(--text-heading);
     padding: 6px;
@@ -684,7 +687,7 @@ body {
     font-size: 14px;
 }
 
-/* BUTTONS (DREAMS ERP CLEAN PILLS & ACCTION BUTTONS) */
+/* BUTTONS */
 .btn {
     padding: 8px 16px;
     border-radius: 8px;
@@ -700,14 +703,14 @@ body {
     gap: 6px;
 }
 
-.btn-primary { background: #0F172A; color: #FFFFFF; }
-.btn-primary:hover { background: #1E293B; }
+.btn-primary { background: linear-gradient(135deg, #059669, #10B981); color: #FFFFFF; }
+.btn-primary:hover { background: #047857; }
 
-.btn-secondary { background: #F1F5F9; color: var(--text-heading); border: 1px solid var(--card-border); }
-.btn-secondary:hover { background: #E2E8F0; }
+.btn-secondary { background: #152622; color: var(--text-heading); border: 1px solid var(--card-border); }
+.btn-secondary:hover { background: #182F2A; }
 
-.btn-success { background: var(--primary-teal); color: #FFFFFF; }
-.btn-success:hover { background: #0F766E; }
+.btn-success { background: #34D399; color: #0A1210; }
+.btn-success:hover { background: #10B981; }
 
 .btn-sm { padding: 6px 12px; font-size: 11px; }
 .btn-xs { padding: 4px 8px; font-size: 10px; }
@@ -728,7 +731,7 @@ body {
 }
 
 .risk-rules-list li {
-    background: #F8FAFC;
+    background: #152622;
     border: 1px solid var(--card-border);
     padding: 8px 12px;
     border-radius: 6px;
@@ -752,7 +755,7 @@ body {
     position: absolute;
     cursor: pointer;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: #CBD5E1;
+    background-color: #2D4A42;
     transition: .2s;
 }
 
@@ -768,7 +771,7 @@ body {
 }
 
 input:checked + .slider-sm {
-    background-color: var(--primary-teal);
+    background-color: var(--accent-green);
 }
 
 input:checked + .slider-sm:before {
