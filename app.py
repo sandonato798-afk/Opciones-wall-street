@@ -12,6 +12,7 @@ from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
 from wheel_compounding_engine import WheelCompoundingEngine, CONFIG as WHEEL_CONFIG
 from credit_spread_bot import CreditSpreadBot, CONFIG as SPREAD_CONFIG
 from cloud_persistence import load_state_from_github
+from master_portfolio_manager import MasterPortfolioManager
 
 PORT = int(os.environ.get("PORT", 5050))
 DIRECTORY = os.path.dirname(__file__)
@@ -20,6 +21,7 @@ engine = OptionsTradingEngine()
 daytrade_bot = DayTradeOptionsBot()
 wheel_engine = WheelCompoundingEngine()
 credit_bot = CreditSpreadBot()
+master_portfolio = MasterPortfolioManager(wheel_engine, credit_bot, daytrade_bot)
 
 def is_market_open():
     now = datetime.now()
@@ -88,7 +90,11 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             self.path = "/index.html"
             return super().do_GET()
 
-        if path == "/api/etfs":
+        if path == "/api/master/summary":
+            summary = master_portfolio.get_master_summary()
+            return self.send_json_response(summary)
+
+        elif path == "/api/etfs":
             etfs = engine.fetch_live_etf_prices()
             return self.send_json_response(etfs)
 

@@ -12,6 +12,7 @@ let profitMode = "AUTONOMOUS"; // "AUTONOMOUS" or "MANUAL"
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     initDistributionChart();
+    loadMasterPortfolioSummary();
     loadWheelStatus();
     loadDayTradeStatus();
     loadSpreadStatus();
@@ -56,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Auto Refresh Status
     setInterval(() => {
+        loadMasterPortfolioSummary();
         loadDayTradeStatus();
         loadWheelStatus();
         loadSpreadStatus();
@@ -130,71 +132,149 @@ async function executeManualProfitAction(action) {
     }
 }
 
-// Master Portfolio Sync
+// Master Portfolio 100k Summary Sync
+async function loadMasterPortfolioSummary() {
+    try {
+        const res = await fetch('/api/master/summary');
+        const data = await res.json();
+
+        // 1. Top Header Bar
+        const topNavEl = document.getElementById('topbar-nav');
+        if (topNavEl) topNavEl.innerText = `$${data.consolidated_nav_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+        const topRoiEl = document.getElementById('topbar-roi');
+        if (topRoiEl) {
+            topRoiEl.innerText = `${data.total_roi_pct >= 0 ? '+' : ''}${data.total_roi_pct.toFixed(2)}%`;
+            topRoiEl.className = data.total_roi_pct >= 0 ? 'text-green' : 'text-red';
+        }
+
+        const topMarginStatusEl = document.getElementById('topbar-margin-status');
+        if (topMarginStatusEl) {
+            topMarginStatusEl.innerText = `${data.margin_status === 'OPTIMAL' ? 'ÓPTIMO' : (data.margin_status === 'MODERATE' ? 'MODERADO' : 'ALERTA')} (${data.margin.margin_utilization_pct}%)`;
+            topMarginStatusEl.className = data.margin_status === 'OPTIMAL' ? 'text-green' : (data.margin_status === 'MODERATE' ? 'text-cyan' : 'text-red');
+        }
+
+        // 2. 4 Hero KPI Cards
+        const masterNavEl = document.getElementById('master-nav');
+        if (masterNavEl) masterNavEl.innerText = `$${data.consolidated_nav_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+        const masterRoiTextEl = document.getElementById('master-roi-text');
+        if (masterRoiTextEl) {
+            masterRoiTextEl.innerText = `Retorno Total: ${data.total_roi_pct >= 0 ? '+' : ''}${data.total_roi_pct.toFixed(2)}% (${data.total_pnl_usd >= 0 ? '+' : ''}$${data.total_pnl_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD)`;
+            masterRoiTextEl.className = data.total_pnl_usd >= 0 ? 'subtext text-green' : 'subtext text-red';
+        }
+
+        const wheelLedger = data.strategies_ledger[0];
+        const spreadsLedger = data.strategies_ledger[1];
+        const dtLedger = data.strategies_ledger[2];
+
+        const masterWheelValEl = document.getElementById('master-wheel-val');
+        if (masterWheelValEl) masterWheelValEl.innerText = `$${(data.margin.breakdown.wheel_core_usd || 80000.0).toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+        const masterWheelSubEl = document.getElementById('master-wheel-sub');
+        if (masterWheelSubEl) masterWheelSubEl.innerText = `${wheelLedger.shares_held.toFixed(4)} acciones SPY + Colateral Base`;
+
+        const masterSpreadsValEl = document.getElementById('master-spreads-val');
+        if (masterSpreadsValEl) {
+            masterSpreadsValEl.innerText = (spreadsLedger.premiums_collected_usd > 0 ? '+' : '') + `$${spreadsLedger.premiums_collected_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+            masterSpreadsValEl.className = 'value text-green';
+        }
+
+        const masterSpreadsSubEl = document.getElementById('master-spreads-sub');
+        if (masterSpreadsSubEl) masterSpreadsSubEl.innerText = `${spreadsLedger.active_spreads_count} Spreads Activos | Win Rate: ${spreadsLedger.win_rate_pct}%`;
+
+        const masterDtPnlEl = document.getElementById('master-dt-pnl');
+        if (masterDtPnlEl) {
+            masterDtPnlEl.innerText = (dtLedger.net_pnl_usd >= 0 ? '+' : '') + `$${dtLedger.net_pnl_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+            masterDtPnlEl.className = dtLedger.net_pnl_usd >= 0 ? 'value text-green' : 'value text-red';
+        }
+
+        const masterDtPctEl = document.getElementById('master-dt-pct');
+        if (masterDtPctEl) {
+            masterDtPctEl.innerText = `${dtLedger.net_pnl_pct >= 0 ? '+' : ''}${dtLedger.net_pnl_pct.toFixed(2)}% | ${dtLedger.closed_trades_count} trades auditados`;
+            masterDtPctEl.className = dtLedger.net_pnl_usd >= 0 ? 'subtext text-green' : 'subtext text-red';
+        }
+
+        // 3. Margin & Collateral Health Bar
+        const nav = data.consolidated_nav_usd || 100000.0;
+        const wheelPct = ((data.margin.breakdown.wheel_core_usd / nav) * 100).toFixed(1);
+        const spreadsPct = ((data.margin.breakdown.spreads_collateral_usd / nav) * 100).toFixed(1);
+        const dtPct = ((data.margin.breakdown.daytrade_intraday_usd / nav) * 100).toFixed(1);
+        const freePct = Math.max(0, 100 - (parseFloat(wheelPct) + parseFloat(spreadsPct) + parseFloat(dtPct))).toFixed(1);
+
+        const barWheel = document.getElementById('bar-wheel');
+        if (barWheel) barWheel.style.width = `${wheelPct}%`;
+
+        const barSpreads = document.getElementById('bar-spreads');
+        if (barSpreads) barSpreads.style.width = `${spreadsPct}%`;
+
+        const barDaytrade = document.getElementById('bar-daytrade');
+        if (barDaytrade) barDaytrade.style.width = `${dtPct}%`;
+
+        const barFree = document.getElementById('bar-free');
+        if (barFree) barFree.style.width = `${freePct}%`;
+
+        const marginHealthBadge = document.getElementById('margin-health-badge');
+        if (marginHealthBadge) {
+            marginHealthBadge.innerText = data.margin_status === 'OPTIMAL' ? '● ÓPTIMO' : (data.margin_status === 'MODERATE' ? '● MODERADO' : '● ALERTA');
+            marginHealthBadge.className = data.margin_status === 'OPTIMAL' ? 'badge badge-green' : (data.margin_status === 'MODERATE' ? 'badge badge-cyan' : 'badge badge-red');
+        }
+
+        const marginUsedText = document.getElementById('margin-used-text');
+        if (marginUsedText) marginUsedText.innerText = `$${data.margin.total_margin_used_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD (${data.margin.margin_utilization_pct}%)`;
+
+        const marginFreeText = document.getElementById('margin-free-text');
+        if (marginFreeText) marginFreeText.innerText = `$${data.margin.free_margin_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
+
+        const legendWheel = document.getElementById('legend-wheel-val');
+        if (legendWheel) legendWheel.innerText = `$${data.margin.breakdown.wheel_core_usd.toLocaleString('en-US', {minimumFractionDigits: 0})} (${wheelPct}%)`;
+
+        const legendSpreads = document.getElementById('legend-spreads-val');
+        if (legendSpreads) legendSpreads.innerText = `$${data.margin.breakdown.spreads_collateral_usd.toLocaleString('en-US', {minimumFractionDigits: 0})} (${spreadsPct}%)`;
+
+        const legendDt = document.getElementById('legend-dt-val');
+        if (legendDt) legendDt.innerText = `$${data.margin.breakdown.daytrade_intraday_usd.toLocaleString('en-US', {minimumFractionDigits: 0})} (${dtPct}%)`;
+
+        const legendFree = document.getElementById('legend-free-val');
+        if (legendFree) legendFree.innerText = `$${data.margin.free_margin_usd.toLocaleString('en-US', {minimumFractionDigits: 0})} (${freePct}%)`;
+
+        // 4. Side-by-Side Strategy Ledger Table
+        const ledgerBody = document.getElementById('strategy-ledger-body');
+        if (ledgerBody && data.strategies_ledger) {
+            ledgerBody.innerHTML = '';
+            data.strategies_ledger.forEach(item => {
+                const isProf = item.net_pnl_usd >= 0;
+                const pnlClass = isProf ? 'text-green' : 'text-red';
+                const statusBadge = item.id === 'wheel' ? 'badge-cyan' : (item.id === 'spreads' ? 'badge-green' : 'badge-gold');
+                const roleBadge = item.id === 'wheel' ? 'Colateral Base (80%)' : (item.id === 'spreads' ? 'Margen Riesgo (10%)' : 'Buying Power (5%)');
+
+                ledgerBody.innerHTML += `
+                    <tr>
+                        <td>
+                            <strong style="font-size: 14px; color:#00F2FE;">${item.name}</strong>
+                            <div style="font-size: 11px; color:#9CA3AF;">Objetivo: ${item.target_asset}</div>
+                        </td>
+                        <td><span class="badge ${statusBadge}">${roleBadge}</span></td>
+                        <td style="font-weight:700; color:#FFFFFF;">$${item.capital_allocated_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                        <td class="${pnlClass}" style="font-weight:700; font-size: 14px;">
+                            ${isProf ? '+' : ''}$${item.net_pnl_usd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD
+                            <div style="font-size: 11px;">(${isProf ? '+' : ''}${item.net_pnl_pct.toFixed(2)}%)</div>
+                        </td>
+                        <td style="color:#00FF87; font-weight:700;">+$${(item.premiums_collected_usd || 0).toLocaleString('en-US', {minimumFractionDigits: 2})} USD</td>
+                        <td><strong>${item.active_contracts || item.active_spreads_count || item.open_positions_count || 0} abiertas</strong></td>
+                        <td style="color:#00F2FE; font-weight:700;">${item.win_rate_pct ? item.win_rate_pct.toFixed(1) + '%' : '75.0%+'}</td>
+                        <td><span class="badge badge-live">${item.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+    } catch (err) {
+        console.error("Error cargando resumen maestro:", err);
+    }
+}
+
 function syncMasterPortfolio() {
-    if (!latestWheelData || !latestDayTradeData) return;
-
-    const dtCapital = latestDayTradeData.capital || 100000.0;
-    const dtTotalPnlUsd = latestDayTradeData.total_pnl_usd || 0.0;
-    const dtTotalPnlPct = latestDayTradeData.total_pnl_pct || 0.0;
-
-    let cashInTrades = 0.0;
-    if (latestDayTradeData.open_positions && latestDayTradeData.open_positions.length > 0) {
-        latestDayTradeData.open_positions.forEach(p => {
-            const cost = p.total_cost_usd || ((p.entry_premium * 100 * p.contracts) + (p.open_fee_usd || 0));
-            cashInTrades += cost;
-        });
-    }
-
-    const freeCash = Math.max(0.0, dtCapital - cashInTrades);
-    const shares = latestWheelData.etf_shares || 0.0;
-    const etfPrice = latestWheelData.etf_price || 560.50;
-    const sharesVal = shares * etfPrice;
-    
-    // Total NAV Consolidating Wheels + Day Trade + Spreads
-    const spreadPnl = latestSpreadData ? (latestSpreadData.total_pnl_usd || 0.0) : 0.0;
-    const totalNav = dtCapital + sharesVal + spreadPnl;
-
-    const masterNavEl = document.getElementById('master-nav');
-    if (masterNavEl) masterNavEl.innerText = `$${totalNav.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-
-    const masterCashEl = document.getElementById('master-cash');
-    if (masterCashEl) masterCashEl.innerText = `$${dtCapital.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-
-    const masterFreeCashEl = document.getElementById('master-free-cash');
-    if (masterFreeCashEl) masterFreeCashEl.innerText = `$${freeCash.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-
-    const masterInTradesEl = document.getElementById('master-in-trades');
-    if (masterInTradesEl) masterInTradesEl.innerText = `$${cashInTrades.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-
-    const openDtCount = latestDayTradeData.open_positions ? latestDayTradeData.open_positions.length : 0;
-    const openSpreadCount = (latestSpreadData && latestSpreadData.open_spreads) ? latestSpreadData.open_spreads.length : 0;
-    const masterOpenCountEl = document.getElementById('master-open-trades-count');
-    if (masterOpenCountEl) masterOpenCountEl.innerText = `${openDtCount + openSpreadCount} operaciones activas`;
-
-    const masterSharesValEl = document.getElementById('master-shares-val');
-    if (masterSharesValEl) masterSharesValEl.innerText = `$${sharesVal.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-
-    const masterSharesCountEl = document.getElementById('master-shares-count');
-    if (masterSharesCountEl) masterSharesCountEl.innerText = `${shares.toFixed(4)} acciones ${latestWheelData.etf_symbol || 'SPY'}`;
-
-    const masterDtPnlEl = document.getElementById('master-dt-pnl');
-    if (masterDtPnlEl) {
-        masterDtPnlEl.innerText = (dtTotalPnlUsd >= 0 ? '+' : '') + `$${dtTotalPnlUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-        masterDtPnlEl.className = dtTotalPnlUsd >= 0 ? 'value text-green' : 'value text-red';
-    }
-
-    const masterDtPctEl = document.getElementById('master-dt-pct');
-    if (masterDtPctEl) {
-        masterDtPctEl.innerText = (dtTotalPnlPct >= 0 ? '+' : '') + `${dtTotalPnlPct.toFixed(2)}% realizado`;
-        masterDtPctEl.className = dtTotalPnlPct >= 0 ? 'subtext text-green' : 'subtext text-red';
-    }
-
-    const manualPnlText = document.getElementById('manual-profit-avail-text');
-    if (manualPnlText) {
-        manualPnlText.innerText = (dtTotalPnlUsd >= 0 ? '+' : '') + `$${dtTotalPnlUsd.toLocaleString('en-US', {minimumFractionDigits: 2})} USD`;
-        manualPnlText.className = dtTotalPnlUsd >= 0 ? 'text-green' : 'text-red';
-    }
+    loadMasterPortfolioSummary();
 }
 
 // Load Active Issued Option Contracts & DTE Expiration Monitor

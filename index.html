@@ -24,6 +24,17 @@
         </div>
 
         <div class="navbar-status-bar">
+            <!-- CONSOLIDATED NAV BADGE -->
+            <div class="info-pill-sm" style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.3);">
+                NAV Maestro: <strong id="topbar-nav" class="text-gold" style="font-size: 13px; margin-left: 4px;">$100,000.00 USD</strong>
+                <span id="topbar-roi" class="text-green" style="margin-left: 6px; font-weight: 700;">+0.00%</span>
+            </div>
+
+            <!-- MARGIN HEALTH PILL -->
+            <div class="info-pill-sm" id="topbar-margin-pill" style="background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.3);">
+                Margen: <strong id="topbar-margin-status" class="text-green" style="margin-left: 4px;">ÓPTIMO (89.5%)</strong>
+            </div>
+
             <div class="inline-profit-control">
                 <span class="control-label">Re-Inversión:</span>
                 <label class="switch-sm">
@@ -43,47 +54,39 @@
     </header>
 
     <div class="app-layout">
-        <!-- SIDEBAR NAVIGATION (DREAMS ERP STYLE WITH GROUPS) -->
+        <!-- SIDEBAR NAVIGATION (CATEGORIZED BY STRATEGY ECOSYSTEM) -->
         <aside class="sidebar">
-            <div class="sidebar-group-title">Principal</div>
+            <div class="sidebar-group-title">Gestión Global ($100k)</div>
             <nav class="nav-tabs">
-                <button class="tab-btn active" data-tab="tab-master">Resumen Consolidado</button>
-                <button class="tab-btn" data-tab="tab-contracts">Contratos & DTE</button>
+                <button class="tab-btn active" data-tab="tab-master">🏛️ Portafolio Maestro 100k</button>
+                <button class="tab-btn" data-tab="tab-contracts">📋 Contratos & DTE</button>
             </nav>
 
-            <div class="sidebar-group-title">Rueda ETF</div>
+            <div class="sidebar-group-title">Estrategias en Vivo</div>
             <nav class="nav-tabs">
-                <button class="tab-btn" data-tab="tab-wheel">Rueda & Compounding</button>
-                <button class="tab-btn" data-tab="tab-etfs">ETFs & Volatilidad</button>
+                <button class="tab-btn" data-tab="tab-wheel">🏛️ Núcleo Rueda (30-DTE)</button>
+                <button class="tab-btn" data-tab="tab-spreads">👑 Venta de Tiempo (Theta)</button>
+                <button class="tab-btn" data-tab="tab-daytrade">⚡ Day Trading 0-DTE</button>
             </nav>
 
-            <div class="sidebar-group-title">Venta de Tiempo (Theta)</div>
+            <div class="sidebar-group-title">Mercado & Herramientas</div>
             <nav class="nav-tabs">
-                <button class="tab-btn" data-tab="tab-spreads">👑 Spreads & Theta (+$\Theta$)</button>
-            </nav>
-
-            <div class="sidebar-group-title">Day Trading</div>
-            <nav class="nav-tabs">
-                <button class="tab-btn" data-tab="tab-daytrade">Day Trading 0-DTE</button>
-                <button class="tab-btn" data-tab="tab-chain">Cadena de Opciones</button>
-            </nav>
-
-            <div class="sidebar-group-title">Herramientas</div>
-            <nav class="nav-tabs">
-                <button class="tab-btn" data-tab="tab-builder">Arquitecto Payoff</button>
-                <button class="tab-btn" data-tab="tab-strategy-rules">Estrategia & Reglas</button>
+                <button class="tab-btn" data-tab="tab-etfs">📈 ETFs & Volatilidad</button>
+                <button class="tab-btn" data-tab="tab-chain">⛓️ Cadena de Opciones</button>
+                <button class="tab-btn" data-tab="tab-builder">📐 Arquitecto Payoff</button>
+                <button class="tab-btn" data-tab="tab-strategy-rules">📜 Estrategia & Reglas</button>
             </nav>
         </aside>
 
         <!-- MAIN CONTENT AREA -->
         <main class="main-content">
 
-            <!-- TAB 1: RESUMEN CONSOLIDADO -->
+            <!-- TAB 1: RESUMEN CONSOLIDADO MAESTRO 100K -->
             <section id="tab-master" class="tab-content active">
                 <div class="page-header">
                     <div>
-                        <h2 class="page-title">Resumen del Portafolio Maestro</h2>
-                        <p class="page-subtitle">Monitoreo consolidado de capital, tenencia en Rueda y PnL de Day Trading</p>
+                        <h2 class="page-title">Portafolio Maestro Unificado ($100,000.00 USD)</h2>
+                        <p class="page-subtitle">Gestión de Margen de Cartera (Portfolio Margin) con 3 Libros Contables Aislados y Respaldo de Colateral</p>
                     </div>
                     <span class="badge badge-live">● Sincronizado en Vivo</span>
                 </div>
@@ -91,7 +94,7 @@
                 <!-- COMPACT MANUAL PROFIT ALERT (HIDDEN BY DEFAULT) -->
                 <div id="profit-mode-desc-manual" class="compact-alert" style="display: none;">
                     <div>
-                        <span class="alert-title">Ganancias de Day Trading Disponibles:</span>
+                        <span class="alert-title">Ganancias Disponibles para Asignar:</span>
                         <strong class="text-green" id="manual-profit-avail-text" style="font-size: 15px; margin-left: 6px;">+$0.00 USD</strong>
                     </div>
                     <div class="compact-btn-group">
@@ -101,45 +104,102 @@
                     </div>
                 </div>
 
-                <!-- TOP METRICS GRID (DREAMS ERP STYLE) -->
-                <div class="portfolio-metrics-grid">
+                <!-- 4 HERO KPI CARDS -->
+                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
                     <div class="metric-card metric-highlight">
-                        <div class="label">Patrimonio Total (NAV)</div>
+                        <div class="label">Patrimonio Total Consolidado (NAV)</div>
                         <div class="value text-gold" id="master-nav">$100,000.00 USD</div>
-                        <div class="subtext">Efectivo + Acciones ETF</div>
+                        <div class="subtext" id="master-roi-text">Retorno Total: +0.00% (+$0.00 USD)</div>
                     </div>
                     <div class="metric-card">
-                        <div class="label">Efectivo Total (Cash)</div>
-                        <div class="value text-green" id="master-cash">$100,000.00 USD</div>
-                        <div class="subtext">Incluye PnL Realizado</div>
+                        <div class="label">🏛️ Núcleo Rueda (Colateral Base)</div>
+                        <div class="value text-cyan" id="master-wheel-val">$80,000.00 USD</div>
+                        <div class="subtext" id="master-wheel-sub">80% Cuenta | Acciones SPY + Cash</div>
                     </div>
                     <div class="metric-card">
-                        <div class="label">Efectivo Libre</div>
-                        <div class="value text-cyan" id="master-free-cash">$100,000.00 USD</div>
-                        <div class="subtext">Para nuevas órdenes</div>
+                        <div class="label">👑 Flujo Venta de Tiempo (Theta)</div>
+                        <div class="value text-green" id="master-spreads-val">+$0.00 USD</div>
+                        <div class="subtext" id="master-spreads-sub">Primas cobradas a 7-14 DTE</div>
                     </div>
                     <div class="metric-card">
-                        <div class="label">En Opciones Abiertas</div>
-                        <div class="value text-purple" id="master-in-trades">$0.00 USD</div>
-                        <div class="subtext" id="master-open-trades-count">0 abiertas</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="label">Acciones (Rueda)</div>
-                        <div class="value text-cyan" id="master-shares-val">$0.00 USD</div>
-                        <div class="subtext" id="master-shares-count">0.0000 acciones SPY</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="label">PnL Day Trading</div>
+                        <div class="label">⚡ Alfa Day Trading (0-DTE)</div>
                         <div class="value text-green" id="master-dt-pnl">+$0.00 USD</div>
-                        <div class="subtext" id="master-dt-pct">+0.00% acumulado</div>
+                        <div class="subtext" id="master-dt-pct">+0.00% | 15 trades auditados</div>
+                    </div>
+                </div>
+
+                <!-- PORTFOLIO MARGIN HEALTH & ALLOCATION BAR (IBKR STYLE) -->
+                <div class="margin-meter-card">
+                    <div class="margin-meter-header">
+                        <div class="margin-meter-title">
+                            <span>🛡️ Estado de Margen de Cartera & Colateral (Interactive Brokers Model)</span>
+                            <span class="badge badge-green" id="margin-health-badge">● ÓPTIMO</span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--text-muted);">
+                            Margen Utilizado: <strong id="margin-used-text" class="text-cyan">$0.00</strong> / 
+                            Libre: <strong id="margin-free-text" class="text-green">$0.00</strong>
+                        </div>
+                    </div>
+
+                    <div class="margin-progress-bar">
+                        <div class="margin-seg-wheel" id="bar-wheel" style="width: 75%;" title="Rueda Colateral Base"></div>
+                        <div class="margin-seg-spreads" id="bar-spreads" style="width: 10%;" title="Credit Spreads Margen"></div>
+                        <div class="margin-seg-daytrade" id="bar-daytrade" style="width: 5%;" title="Day Trading Buying Power"></div>
+                        <div class="margin-seg-free" id="bar-free" style="width: 10%;" title="Reserva Líquida Libre"></div>
+                    </div>
+
+                    <div class="margin-legend-grid">
+                        <div class="margin-legend-item">
+                            <span class="legend-dot dot-wheel"></span>
+                            <span>🏛️ Rueda Colateral: <strong id="legend-wheel-val">$75,000 (75%)</strong></span>
+                        </div>
+                        <div class="margin-legend-item">
+                            <span class="legend-dot dot-spreads"></span>
+                            <span>👑 Spreads Margen: <strong id="legend-spreads-val">$10,000 (10%)</strong></span>
+                        </div>
+                        <div class="margin-legend-item">
+                            <span class="legend-dot dot-daytrade"></span>
+                            <span>⚡ Day Trading Intradiario: <strong id="legend-dt-val">$5,000 (5%)</strong></span>
+                        </div>
+                        <div class="margin-legend-item">
+                            <span class="legend-dot dot-free"></span>
+                            <span>🛡️ Reserva Líquida Libre: <strong id="legend-free-val">$10,000 (10%)</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SIDE-BY-SIDE STRATEGY LEDGER TABLE -->
+                <div class="strategy-ledger-card">
+                    <div class="card-header">
+                        <h3>Desglose de Libros Contables por Estrategia ($100k Base)</h3>
+                        <span class="badge badge-cyan">3 Motores Operativos</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="chain-table compact-table">
+                            <thead>
+                                <tr>
+                                    <th>Estrategia</th>
+                                    <th>Rol en el Portafolio</th>
+                                    <th>Capital Asignado</th>
+                                    <th>Rendimiento Neto (USD / %)</th>
+                                    <th>Flujo Primas</th>
+                                    <th>Operaciones Activas</th>
+                                    <th>Win Rate</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="strategy-ledger-body">
+                                <tr><td colspan="8" style="color:var(--text-muted)">Cargando libros contables consolidados...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
                 <!-- SPLIT 2-COLUMN GRID FOR ASSET ALLOCATION & HOLDINGS TABLE -->
-                <div class="dashboard-split-grid">
+                <div class="dashboard-split-grid" style="margin-top: 20px;">
                     <div class="card">
                         <div class="card-header">
-                            <h3>Asignación de Activos</h3>
+                            <h3>Asignación de Activos en Vivo</h3>
                             <span class="badge badge-cyan">En Vivo</span>
                         </div>
                         <div class="chart-wrapper-compact">
@@ -147,7 +207,7 @@
                         </div>
                         <div class="summary-cards-column" id="holdings-summary-cards" style="margin-top: 14px;">
                             <div class="summary-item">
-                                <span class="subtext">Acciones SPY</span>
+                                <span class="subtext">Acciones SPY (Rueda)</span>
                                 <span class="value text-cyan" id="dist-shares-val">$0.00 USD</span>
                                 <span class="badge badge-cyan" id="dist-shares-pct">0%</span>
                             </div>

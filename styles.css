@@ -810,3 +810,97 @@ input:checked + .slider-sm:before {
     .dashboard-split-grid { grid-template-columns: 1fr; }
     .builder-grid { grid-template-columns: 1fr; }
 }
+
+/* PORTFOLIO MARGIN HEALTH BAR & LEDGER STYLES */
+.margin-meter-card {
+    background: #272C32;
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.margin-meter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.margin-meter-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-heading);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.margin-progress-bar {
+    height: 18px;
+    background: #181C20;
+    border-radius: 9px;
+    display: flex;
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    margin-bottom: 12px;
+}
+
+.margin-seg-wheel {
+    background: linear-gradient(90deg, #38BDF8, #0284C7);
+    height: 100%;
+    transition: width 0.4s ease;
+}
+
+.margin-seg-spreads {
+    background: linear-gradient(90deg, #34D399, #059669);
+    height: 100%;
+    transition: width 0.4s ease;
+}
+
+.margin-seg-daytrade {
+    background: linear-gradient(90deg, #FBBF24, #D97706);
+    height: 100%;
+    transition: width 0.4s ease;
+}
+
+.margin-seg-free {
+    background: #2D3748;
+    height: 100%;
+    transition: width 0.4s ease;
+}
+
+.margin-legend-grid {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.margin-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+.dot-wheel { background: #38BDF8; }
+.dot-spreads { background: #34D399; }
+.dot-daytrade { background: #FBBF24; }
+.dot-free { background: #94A3B8; }
+
+.strategy-ledger-card {
+    background: #272C32;
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-top: 20px;
+    box-shadow: var(--shadow-sm);
+}
+
