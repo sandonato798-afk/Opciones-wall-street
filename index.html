@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wall Street Options & Day Trading | D+ARQ Intelligence</title>
+    <title>Wall Street Options Dashboard | D+ARQ Intelligence</title>
     <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css?v=4.0">
+    <link rel="stylesheet" href="styles.css?v=5.0">
 </head>
 <body>
-    <!-- TOP INSTITUTIONAL HEADER BAR -->
+    <!-- TOP HEADER BAR (DREAMS ERP STYLE) -->
     <header class="top-navbar">
         <div class="navbar-brand">
-            <span class="brand-name">WALL STREET OPTIONS</span>
-            <span class="brand-divider">|</span>
-            <span class="brand-sub">D+ARQ Intelligence</span>
+            <div class="brand-icon-box">W</div>
+            <div>
+                <span class="brand-name">Wall Street Options</span>
+                <span class="brand-sub"> / D+ARQ Intelligence</span>
+            </div>
         </div>
 
         <div class="navbar-status-bar">
@@ -41,15 +43,28 @@
     </header>
 
     <div class="app-layout">
-        <!-- SIDEBAR NAVIGATION -->
+        <!-- SIDEBAR NAVIGATION (DREAMS ERP STYLE WITH GROUPS) -->
         <aside class="sidebar">
+            <div class="sidebar-group-title">Principal</div>
             <nav class="nav-tabs">
                 <button class="tab-btn active" data-tab="tab-master">Resumen Consolidado</button>
                 <button class="tab-btn" data-tab="tab-contracts">Contratos & DTE</button>
+            </nav>
+
+            <div class="sidebar-group-title">Rueda ETF</div>
+            <nav class="nav-tabs">
                 <button class="tab-btn" data-tab="tab-wheel">Rueda & Compounding</button>
-                <button class="tab-btn" data-tab="tab-daytrade">Day Trading 0-DTE</button>
                 <button class="tab-btn" data-tab="tab-etfs">ETFs & Volatilidad</button>
-                <button class="tab-btn" data-tab="tab-chain">Cadena Opciones</button>
+            </nav>
+
+            <div class="sidebar-group-title">Day Trading</div>
+            <nav class="nav-tabs">
+                <button class="tab-btn" data-tab="tab-daytrade">Day Trading 0-DTE</button>
+                <button class="tab-btn" data-tab="tab-chain">Cadena de Opciones</button>
+            </nav>
+
+            <div class="sidebar-group-title">Herramientas</div>
+            <nav class="nav-tabs">
                 <button class="tab-btn" data-tab="tab-builder">Arquitecto Payoff</button>
                 <button class="tab-btn" data-tab="tab-strategy-rules">Estrategia & Reglas</button>
             </nav>
@@ -60,11 +75,19 @@
 
             <!-- TAB 1: RESUMEN CONSOLIDADO -->
             <section id="tab-master" class="tab-content active">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Resumen del Portafolio Maestro</h2>
+                        <p class="page-subtitle">Monitoreo consolidado de capital, tenencia en Rueda y PnL de Day Trading</p>
+                    </div>
+                    <span class="badge badge-live">● Sincronizado en Vivo</span>
+                </div>
+
                 <!-- COMPACT MANUAL PROFIT ALERT (HIDDEN BY DEFAULT) -->
                 <div id="profit-mode-desc-manual" class="compact-alert" style="display: none;">
                     <div>
-                        <span class="alert-title">Ganancias Day Trading Disponibles:</span>
-                        <strong class="text-green" id="manual-profit-avail-text">+$0.00 USD</strong>
+                        <span class="alert-title">Ganancias de Day Trading Disponibles:</span>
+                        <strong class="text-green" id="manual-profit-avail-text" style="font-size: 15px; margin-left: 6px;">+$0.00 USD</strong>
                     </div>
                     <div class="compact-btn-group">
                         <button class="btn btn-secondary btn-xs" onclick="executeManualProfitAction('TRANSFER_WHEEL')">Re-Invertir en Rueda (SPY)</button>
@@ -73,7 +96,7 @@
                     </div>
                 </div>
 
-                <!-- TOP METRICS ROW -->
+                <!-- TOP METRICS GRID (DREAMS ERP STYLE) -->
                 <div class="portfolio-metrics-grid">
                     <div class="metric-card metric-highlight">
                         <div class="label">Patrimonio Total (NAV)</div>
@@ -108,16 +131,16 @@
                 </div>
 
                 <!-- SPLIT 2-COLUMN GRID FOR ASSET ALLOCATION & HOLDINGS TABLE -->
-                <div class="dashboard-split-grid" style="margin-top: 10px;">
-                    <div class="card compact-card">
-                        <div class="card-header-sm">
+                <div class="dashboard-split-grid">
+                    <div class="card">
+                        <div class="card-header">
                             <h3>Asignación de Activos</h3>
                             <span class="badge badge-cyan">En Vivo</span>
                         </div>
                         <div class="chart-wrapper-compact">
                             <canvas id="distributionChart"></canvas>
                         </div>
-                        <div class="summary-cards-column" id="holdings-summary-cards" style="margin-top: 10px;">
+                        <div class="summary-cards-column" id="holdings-summary-cards" style="margin-top: 14px;">
                             <div class="summary-item">
                                 <span class="subtext">Acciones SPY</span>
                                 <span class="value text-cyan" id="dist-shares-val">$0.00 USD</span>
@@ -136,11 +159,11 @@
                         </div>
                     </div>
 
-                    <div class="card compact-card">
-                        <div class="card-header-sm">
+                    <div class="card">
+                        <div class="card-header">
                             <h3>Tenencia de Activos en Cartera</h3>
                         </div>
-                        <div class="table-responsive" style="margin-top: 6px;">
+                        <div class="table-responsive">
                             <table class="chain-table compact-table">
                                 <thead>
                                     <tr>
@@ -164,13 +187,16 @@
 
             <!-- TAB 2: CONTRATOS & DTE -->
             <section id="tab-contracts" class="tab-content">
-                <div class="card compact-card">
-                    <div class="card-header-sm">
-                        <h3>Contratos de Opciones Emitidos & Monitoreo DTE</h3>
-                        <button class="btn btn-secondary btn-xs" onclick="loadIssuedContracts()">Actualizar</button>
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Contratos Emitidos & Monitoreo DTE</h2>
+                        <p class="page-subtitle">Supervisión centralizada de contratos vendidos (Covered Calls, CSP) y vencimientos</p>
                     </div>
+                    <button class="btn btn-secondary btn-sm" onclick="loadIssuedContracts()">Actualizar</button>
+                </div>
 
-                    <div class="table-responsive" style="margin-top: 8px;">
+                <div class="card">
+                    <div class="table-responsive">
                         <table class="chain-table compact-table">
                             <thead>
                                 <tr>
@@ -195,7 +221,14 @@
 
             <!-- TAB 3: RUEDA & COMPOUNDING -->
             <section id="tab-wheel" class="tab-content">
-                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(5, 1fr); margin-bottom: 10px;">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Estrategia "The Wheel" & Interés Compuesto</h2>
+                        <p class="page-subtitle">Re-inversión automática de primas cobradas en acciones físicas del ETF</p>
+                    </div>
+                </div>
+
+                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(5, 1fr);">
                     <div class="metric-card">
                         <div class="label">Inversión Base</div>
                         <div class="value" id="wheel-initial-cap">$10,000.00</div>
@@ -218,10 +251,10 @@
                     </div>
                 </div>
 
-                <div class="card compact-card" style="margin-bottom: 10px;">
+                <div class="card" style="margin-top: 20px;">
                     <div class="inline-toolbar">
                         <div class="toolbar-item">
-                            <label>ETF Base:</label>
+                            <label>ETF Base de Inversión:</label>
                             <select id="wheel-select-etf" class="custom-select-sm">
                                 <option value="SPY" selected>SPY - S&P 500 ETF</option>
                                 <option value="QQQ">QQQ - Nasdaq 100 ETF</option>
@@ -231,8 +264,8 @@
                     </div>
                 </div>
 
-                <div class="card compact-card" id="wheel-active-cycle-card">
-                    <div class="card-header-sm" style="margin-bottom: 8px;">
+                <div class="card" id="wheel-active-cycle-card">
+                    <div class="card-header">
                         <h3>Detalle del Ciclo Activo & Origen de Primas</h3>
                         <span class="badge badge-cyan" id="wheel-cycle-status-badge">Ciclo 30-DTE Activo</span>
                     </div>
@@ -244,7 +277,14 @@
 
             <!-- TAB 4: DAY TRADING 0-DTE -->
             <section id="tab-daytrade" class="tab-content">
-                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(6, 1fr); margin-bottom: 10px;">
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Day Trading 0-DTE / 1-DTE</h2>
+                        <p class="page-subtitle">Ejecución algorítmica intradiaria en ETFs de Wall Street</p>
+                    </div>
+                </div>
+
+                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(6, 1fr);">
                     <div class="metric-card">
                         <div class="label">Inversión Inicial</div>
                         <div class="value" id="kpi-initial-cap">$10,000.00</div>
@@ -269,20 +309,20 @@
                         <div class="subtext" id="kpi-trades-count">0 trades</div>
                     </div>
                     <div class="metric-card">
-                        <div class="label">Comisiones</div>
+                        <div class="label">Comisiones Broker</div>
                         <div class="value text-red" id="kpi-commissions">-$0.00</div>
                         <div class="subtext">$0.65/contrato</div>
                     </div>
                 </div>
 
-                <!-- COMPACT HORIZONTAL TOOLBAR FOR DAY TRADING -->
-                <div class="card compact-card" style="margin-bottom: 10px;">
+                <!-- TOOLBAR CONTROLS -->
+                <div class="card" style="margin-top: 20px;">
                     <div class="inline-toolbar">
                         <div class="toolbar-item">
                             <label>Modo Operación:</label>
                             <select id="select-mode" class="custom-select-sm">
                                 <option value="PAPER_TRADING" selected>Paper Trading (Simulación)</option>
-                                <option value="LIVE_BROKER">Broker Real (API Conexión)</option>
+                                <option value="LIVE_BROKER">Broker Real (Conexión API)</option>
                             </select>
                         </div>
                         <div class="toolbar-item">
@@ -299,18 +339,18 @@
                     </div>
                 </div>
 
-                <!-- FULL WIDTH OPERATIONAL WORKSPACE -->
-                <div class="card compact-card">
-                    <div class="card-header-sm">
+                <!-- FULL WORKSPACE FOR TRADES & HISTORY -->
+                <div class="card">
+                    <div class="card-header">
                         <h3>Monitoreo de Posiciones e Historial Intradiario</h3>
                         <div>Capital Activo: <strong id="dt-current-capital" class="text-green">$100,000.00 USD</strong></div>
                     </div>
 
-                    <div id="dt-active-positions" style="margin-top: 6px; margin-bottom: 10px;">
+                    <div id="dt-active-positions" style="margin-bottom: 16px;">
                         <div class="empty-msg-sm">No hay posiciones intradiarias abiertas. Escaneando durante horario de mercado...</div>
                     </div>
 
-                    <h4 style="font-size: 12px; margin-bottom: 4px; color: var(--text-muted);">Historial de Operaciones Cerradas:</h4>
+                    <h4 style="font-size: 13px; margin-bottom: 8px; color: var(--text-heading);">Historial de Operaciones Cerradas:</h4>
                     <div class="table-responsive">
                         <table class="chain-table compact-table">
                             <thead>
@@ -334,9 +374,10 @@
 
             <!-- TAB 5: ETFS & VOLATILIDAD -->
             <section id="tab-etfs" class="tab-content">
-                <div class="card compact-card" style="margin-bottom: 10px;">
-                    <div class="card-header-sm">
-                        <h3 style="margin:0;">ETFs de Wall Street & Rango de Volatilidad Implícita (IV Rank)</h3>
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">ETFs & Volatilidad Implícita (IV Rank)</h2>
+                        <p class="page-subtitle">Filtro de volatilidad para selección de contratos de venta o compra</p>
                     </div>
                 </div>
                 <div class="etf-grid" id="etf-cards-container">
@@ -346,7 +387,7 @@
 
             <!-- TAB 6: CADENA DE OPCIONES -->
             <section id="tab-chain" class="tab-content">
-                <div class="card compact-card" style="margin-bottom: 10px;">
+                <div class="card" style="margin-bottom: 20px;">
                     <div class="inline-toolbar">
                         <div class="toolbar-item">
                             <label>ETF Objetivo:</label>
@@ -375,7 +416,7 @@
                     </div>
                 </div>
 
-                <div class="table-responsive card compact-card">
+                <div class="table-responsive card">
                     <table class="chain-table compact-table" id="option-chain-table">
                         <thead>
                             <tr>
@@ -407,7 +448,7 @@
             <!-- TAB 7: ARQUITECTO PAYOFF -->
             <section id="tab-builder" class="tab-content">
                 <div class="builder-grid">
-                    <div class="builder-controls card compact-card">
+                    <div class="builder-controls card">
                         <h3>Configurador de Estrategia</h3>
                         <div class="preset-buttons">
                             <button class="preset-btn" onclick="loadPreset('covered_call')">Covered Call</button>
@@ -417,19 +458,19 @@
                         </div>
 
                         <div class="legs-list-container">
-                            <h4 style="font-size:11px; margin-bottom:4px;">Patas de la Posición:</h4>
+                            <h4 style="font-size:12px; margin-bottom:6px;">Patas de la Posición:</h4>
                             <div id="legs-container"></div>
                             <button class="btn btn-secondary btn-xs" id="btn-add-leg">+ Agregar Pata</button>
                         </div>
 
-                        <div class="action-bar" style="margin-top: 10px;">
+                        <div class="action-bar" style="margin-top: 16px;">
                             <button id="btn-calculate-payoff" class="btn btn-primary btn-sm w-100">Simular Payoff</button>
-                            <button id="btn-execute-paper" class="btn btn-success btn-sm w-100" style="margin-top: 4px;">Abrir Posición Paper</button>
+                            <button id="btn-execute-paper" class="btn btn-success btn-sm w-100" style="margin-top: 6px;">Abrir Posición Paper</button>
                         </div>
                     </div>
 
-                    <div class="builder-chart-panel card compact-card">
-                        <div class="card-header-sm">
+                    <div class="builder-chart-panel card">
+                        <div class="card-header">
                             <h3>Curva de Rendimiento al Vencimiento</h3>
                             <div class="payoff-metrics">
                                 <div>Max Ganancia: <strong id="metric-max-profit" class="text-green">$0.00</strong></div>
@@ -447,23 +488,26 @@
 
             <!-- TAB 8: ESTRATEGIA & REGLAS -->
             <section id="tab-strategy-rules" class="tab-content">
-                <div class="card compact-card" style="margin-bottom: 10px;">
-                    <h3 style="margin: 0;">Documentación & Reglas del Sistema</h3>
+                <div class="page-header">
+                    <div>
+                        <h2 class="page-title">Documentación & Parámetros del Sistema</h2>
+                        <p class="page-subtitle">Manual operativo de la Rueda de Interés Compuesto y Bot Intradiario 0-DTE</p>
+                    </div>
                 </div>
 
                 <div class="builder-grid">
-                    <div class="card compact-card">
-                        <h4 style="margin:0 0 6px 0;">Estrategia "The Wheel" (La Rueda)</h4>
+                    <div class="card">
+                        <h4 style="margin:0 0 10px 0; font-size:14px; font-weight:700;">Estrategia "The Wheel" (La Rueda)</h4>
                         <ul class="risk-rules-list">
-                            <li><strong>Valorización ETF</strong>: ~9.0% anual histórico S&P 500</li>
+                            <li><strong>Valorización ETF</strong>: ~9.0% anual histórico del S&P 500</li>
                             <li><strong>Flujo Primas Opciones</strong>: ~2.0% mensual (~24% anual)</li>
                             <li><strong>Regla de Compuesto</strong>: 100% primas convertidas en acciones</li>
                             <li><strong>Ciclo Continuo</strong>: Cash-Secured Puts ➔ Covered Calls</li>
                         </ul>
                     </div>
 
-                    <div class="card compact-card">
-                        <h4 style="margin:0 0 6px 0;">Parámetros Riesgo Day Trading 0-DTE</h4>
+                    <div class="card">
+                        <h4 style="margin:0 0 10px 0; font-size:14px; font-weight:700;">Parámetros Riesgo Day Trading 0-DTE</h4>
                         <ul class="risk-rules-list">
                             <li><strong>Capital/Trade</strong>: 5% por operación ($5,000 base)</li>
                             <li><strong>Máx Posiciones</strong>: 4 abiertas simultáneas</li>
@@ -480,6 +524,6 @@
         </main>
     </div>
 
-    <script src="app.js?v=4.0"></script>
+    <script src="app.js?v=5.0"></script>
 </body>
 </html>
