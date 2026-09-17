@@ -59,27 +59,42 @@
                     <div class="card">
                         <div class="card-title">CAPA 1: RUEDA (35%)</div>
                         <div class="val" id="home-c1-nav">$0.00</div>
-                        <div class="sub" id="home-c1-pnl">+$0.00</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <div class="sub" id="home-c1-pnl" style="margin:0;">+$0.00</div>
+                            <div class="status-dot" style="font-size: 11px; opacity: 0.8;" id="health-wheel"><span class="dot green"></span> ---</div>
+                        </div>
                     </div>
                     <div class="card">
                         <div class="card-title">CAPA 2: SPREADS (20%)</div>
                         <div class="val" id="home-c2-nav">$0.00</div>
-                        <div class="sub" id="home-c2-pnl">+$0.00</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <div class="sub" id="home-c2-pnl" style="margin:0;">+$0.00</div>
+                            <div class="status-dot" style="font-size: 11px; opacity: 0.8;" id="health-spreads"><span class="dot green"></span> ---</div>
+                        </div>
                     </div>
                     <div class="card">
                         <div class="card-title">CAPA 3: ALPHA (20%)</div>
                         <div class="val" id="home-c3-nav">$0.00</div>
-                        <div class="sub" id="home-c3-pnl">+$0.00</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <div class="sub" id="home-c3-pnl" style="margin:0;">+$0.00</div>
+                            <div class="status-dot" style="font-size: 11px; opacity: 0.8;" id="health-alpha"><span class="dot green"></span> ---</div>
+                        </div>
                     </div>
                     <div class="card">
                         <div class="card-title">CAPA 4: RSI (15%)</div>
                         <div class="val" id="home-c4-nav">$0.00</div>
-                        <div class="sub" id="home-c4-pnl">+$0.00</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <div class="sub" id="home-c4-pnl" style="margin:0;">+$0.00</div>
+                            <div class="status-dot" style="font-size: 11px; opacity: 0.8;" id="health-rsi"><span class="dot green"></span> ---</div>
+                        </div>
                     </div>
                     <div class="card">
                         <div class="card-title">CAPA 5: DAYTRADING (10%)</div>
                         <div class="val" id="home-c5-nav">$0.00</div>
-                        <div class="sub" id="home-c5-pnl">+$0.00</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <div class="sub" id="home-c5-pnl" style="margin:0;">+$0.00</div>
+                            <div class="status-dot" style="font-size: 11px; opacity: 0.8;" id="health-daytrade"><span class="dot green"></span> ---</div>
+                        </div>
                     </div>
                 </div>
 
@@ -87,7 +102,7 @@
                     <h2>PERFORMANCE ANALYTICS</h2>
                 </div>
                 
-                <div class="grid-4">
+                <div class="grid-6">
                     <div class="card">
                         <div class="card-title">TIEMPO ACTIVO</div>
                         <div class="val" id="home-perf-days">0 DÍAS</div>
@@ -96,6 +111,14 @@
                     <div class="card">
                         <div class="card-title">ROI ANUALIZADO (CAGR)</div>
                         <div class="val text-green" id="home-perf-cagr">0.00%</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">PROFIT FACTOR</div>
+                        <div class="val text-green" id="home-perf-pf">0.0</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">MAX DRAWDOWN</div>
+                        <div class="val text-red" id="home-perf-mdd">0.00%</div>
                     </div>
                     <div class="card">
                         <div class="card-title">FLUJO MENSUAL ESP.</div>

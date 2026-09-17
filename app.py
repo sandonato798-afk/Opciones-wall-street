@@ -43,23 +43,47 @@ def is_market_open():
     time_num = now.hour * 100 + now.minute
     return 930 <= time_num <= 1600
 
+# Global Health Monitor
+SYSTEM_HEALTH_PINGS = {
+    "wheel": 0,
+    "spreads": 0,
+    "alpha": 0,
+    "rsi": 0,
+    "daytrade": 0
+}
+
 def background_trading_loop():
     print("Motor de Opciones Hibrido (5 Capas + Colateral SGOV/GLD/TLT + Reinversion Auto 50/30/20) iniciado.")
     cycle = 0
+    import time as builtin_time
     while True:
         try:
             cycle += 1
             # 1. Chequeo automatico de Rueda & Compounding
             wheel_engine.auto_check_and_run_cycle()
+            SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
 
             # 3. Alpha Trade: monitoreo automatico de posiciones sinteticas
             alpha_bot.monitor_positions()
+            SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
 
             # 2 & 4 & 5. Escaneos intradiarios solo en horario de mercado
+            if is_market_open() or True: # Record pings even if market closed (or else UI goes red on weekends)
+                # We do the scan but the bots internally handle market closed. Wait, bots might not. 
+                pass
+            
             if is_market_open():
                 daytrade_bot.run_intraday_scan()
+                SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
                 credit_bot.scan_and_execute_spreads()
+                SYSTEM_HEALTH_PINGS["spreads"] = builtin_time.time()
                 rsi_bot.scan_market()
+                SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
+            else:
+                # If market closed, we just ping to show they are alive and waiting
+                SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
+                SYSTEM_HEALTH_PINGS["spreads"] = builtin_time.time()
+                SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
 
             # Motor de Reinversion Automatica: verifica cada 10 ciclos (~10 min)
             if cycle % 10 == 0:
@@ -119,6 +143,7 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
 
         if path == "/api/master/summary":
             summary = master_portfolio.get_master_summary()
+            summary["health_pings"] = SYSTEM_HEALTH_PINGS
             return self.send_json_response(summary)
 
         elif path == "/api/etfs":

@@ -80,6 +80,14 @@ async function loadMaster() {
             cagrEl.innerText = formatPct(data.performance_analytics.annualized_roi_pct);
             cagrEl.className = 'val ' + colorClass(data.performance_analytics.annualized_roi_pct);
 
+            const pfEl = document.getElementById('home-perf-pf');
+            pfEl.innerText = (data.performance_analytics.profit_factor || 0).toFixed(2);
+            pfEl.className = 'val ' + (data.performance_analytics.profit_factor >= 1.5 ? 'text-green' : (data.performance_analytics.profit_factor >= 1.0 ? 'text-green' : 'text-red'));
+
+            const mddEl = document.getElementById('home-perf-mdd');
+            mddEl.innerText = formatPct(data.performance_analytics.max_drawdown_pct);
+            mddEl.className = 'val ' + colorClass(data.performance_analytics.max_drawdown_pct);
+
             const monthlyEl = document.getElementById('home-perf-monthly');
             monthlyEl.innerText = sign(data.performance_analytics.projected_monthly_usd) + formatUSD(data.performance_analytics.projected_monthly_usd);
             monthlyEl.className = 'val ' + colorClass(data.performance_analytics.projected_monthly_usd);
@@ -156,6 +164,34 @@ async function loadMaster() {
                     el.innerText = pnlTxt; el.className = pnlClass;
                 }
             });
+        }
+        
+        // Render Health Pings
+        if (data.health_pings) {
+            const now = Date.now() / 1000;
+            const updateHealth = (id, lastPing) => {
+                const el = document.getElementById('health-' + id);
+                if (!el) return;
+                const diff = now - lastPing;
+                if (lastPing === 0) {
+                    el.innerHTML = '<span class="dot" style="background:gray"></span> WAITING';
+                } else if (diff < 180) { // < 3 mins
+                    el.innerHTML = '<span class="dot green"></span> ONLINE';
+                    el.style.color = 'var(--accent-green)';
+                } else if (diff < 600) { // < 10 mins
+                    el.innerHTML = '<span class="dot" style="background:#F59E0B"></span> DELAYED';
+                    el.style.color = '#F59E0B';
+                } else {
+                    el.innerHTML = '<span class="dot" style="background:var(--primary-red)"></span> OFFLINE';
+                    el.style.color = 'var(--primary-red)';
+                }
+            };
+            
+            updateHealth('wheel', data.health_pings.wheel || 0);
+            updateHealth('spreads', data.health_pings.spreads || 0);
+            updateHealth('alpha', data.health_pings.alpha || 0);
+            updateHealth('rsi', data.health_pings.rsi || 0);
+            updateHealth('daytrade', data.health_pings.daytrade || 0);
         }
     } catch(e) { console.error('Error loadMaster', e); }
 }
