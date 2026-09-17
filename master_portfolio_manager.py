@@ -262,10 +262,25 @@ class MasterPortfolioManager:
                           if hasattr(self.daytrade_bot, 'get_win_rate_stats')
                           else {"total": 0, "wins": 0, "losses": 0, "win_rate": 0.0})
 
-        # 4. NAV Consolidado
+        # 4. NAV Consolidado & Analiticas de Rendimiento
         total_pnl_usd    = round(wheel_pnl_usd + spread_pnl_usd + alpha_pnl_usd + rsi_pnl_usd + dt_pnl_usd, 2)
         consolidated_nav = round(self.initial_capital + total_pnl_usd, 2)
         total_roi_pct    = round((total_pnl_usd / self.initial_capital) * 100.0, 2)
+
+        # 4.1 Inception y Proyecciones
+        SYSTEM_INCEPTION_DATE = "2024-01-15" # Fecha de inicio del sistema (configurable)
+        inception_dt = datetime.strptime(SYSTEM_INCEPTION_DATE, "%Y-%m-%d")
+        days_active = max(1, (datetime.now() - inception_dt).days)
+        months_active = max(1.0, days_active / 30.44)
+        
+        annualized_roi_pct = round((total_roi_pct / days_active) * 365, 2) if days_active > 0 else 0.0
+        projected_monthly_usd = round(total_pnl_usd / months_active, 2)
+
+        # 4.2 Theta Global (Θ) Estimado (Cuanto ganamos por dia solo por paso del tiempo)
+        # Estimacion gruesa: Primas cobradas / DTE promedio
+        wheel_theta = wheel_premiums / 45.0  # asumiendo ciclos de 45 DTE
+        spreads_theta = spread_premiums / 10.0 # asumiendo ciclos de 7-14 DTE
+        global_theta_usd = round(wheel_theta + spreads_theta, 2)
 
         # 5. Colateral Diversificado con precios en vivo
         collateral_data = self._fetch_collateral_prices(consolidated_nav)
@@ -287,6 +302,14 @@ class MasterPortfolioManager:
             "consolidated_nav_usd": consolidated_nav,
             "total_pnl_usd": total_pnl_usd,
             "total_roi_pct": total_roi_pct,
+            "performance_analytics": {
+                "inception_date": SYSTEM_INCEPTION_DATE,
+                "days_active": days_active,
+                "months_active": round(months_active, 1),
+                "annualized_roi_pct": annualized_roi_pct,
+                "projected_monthly_usd": projected_monthly_usd,
+                "global_theta_usd_per_day": global_theta_usd
+            },
             "spy_current_price": spy_price,
             "margin_status": margin_status,
             # Colateral diversificado (replaces treasury_sgov para compatibilidad se mantiene alias)
