@@ -212,7 +212,11 @@ async function loadWheel() {
         tbodyPos.innerHTML = '';
         if(data.wheel_positions && data.wheel_positions.length > 0) {
             data.wheel_positions.forEach(p => {
-                const exp = p.expiration_date ? `${p.expiration_date} (${p.target_dte || 30}d)` : `${p.target_dte || 30} días`;
+                let exp = p.expiration_date ? `${p.expiration_date} (${p.target_dte || 30}d)` : `${p.target_dte || 30} días`;
+                if(p.expiration_date) {
+                    const diffDays = Math.ceil((new Date(p.expiration_date) - new Date()) / 86400000);
+                    exp = `${p.expiration_date} (${p.target_dte || 30}d) [Faltan: ${diffDays}d]`;
+                }
                 tbodyPos.innerHTML += `<tr>
                     <td><strong>${p.symbol}</strong></td>
                     <td>${p.strategy_type || 'Cash-Secured Put'}</td>
