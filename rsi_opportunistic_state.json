@@ -3,16 +3,16 @@
   "status_mode": "ACTIVE_TRADE",
   "open_trades": [
     {
-      "id": 1789657051245,
-      "symbol": "SPY",
+      "id": 1789657111218,
+      "symbol": "DIA",
       "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
-      "entry_date": "2026-09-17 14:57:31",
-      "entry_rsi": 21.3,
-      "underlying_price": 760.8,
-      "put_strike": 749.4,
-      "contracts": 6,
-      "premium_per_share": 2.28,
-      "premium_collected_usd": 1368.0,
+      "entry_date": "2026-09-17 14:58:31",
+      "entry_rsi": 23.5,
+      "underlying_price": 517.23,
+      "put_strike": 509.5,
+      "contracts": 9,
+      "premium_per_share": 1.55,
+      "premium_collected_usd": 1395.0,
       "dte": 1,
       "status": "OPEN"
     }
@@ -73,9 +73,9 @@
   "total_premiums_collected": 4104.0,
   "total_pnl_usd": 3693.6000000000004,
   "last_rsi_scanned": {
-    "SPY": 21.3,
-    "QQQ": 30.9,
-    "DIA": 10.3
+    "SPY": 30.2,
+    "QQQ": 36.0,
+    "DIA": 23.5
   },
-  "last_update": "2026-09-17 14:57:31"
+  "last_update": "2026-09-17 14:58:31"
 }
