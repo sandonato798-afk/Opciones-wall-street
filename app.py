@@ -44,13 +44,15 @@ def is_market_open():
     return 930 <= time_num <= 1600
 
 def background_trading_loop():
-    print("⚡ Motores de Opciones Híbridos (5 Capas + Portfolio Margin + Tesorería SGOV) iniciados en segundo plano.")
+    print("Motor de Opciones Hibrido (5 Capas + Colateral SGOV/GLD/TLT + Reinversion Auto 50/30/20) iniciado.")
+    cycle = 0
     while True:
         try:
-            # 1. Chequeo automático de Rueda & Compounding
+            cycle += 1
+            # 1. Chequeo automatico de Rueda & Compounding
             wheel_engine.auto_check_and_run_cycle()
 
-            # 3. Alpha Trade: monitoreo automático de posiciones sintéticas
+            # 3. Alpha Trade: monitoreo automatico de posiciones sinteticas
             alpha_bot.monitor_positions()
 
             # 2 & 4 & 5. Escaneos intradiarios solo en horario de mercado
@@ -58,10 +60,18 @@ def background_trading_loop():
                 daytrade_bot.run_intraday_scan()
                 credit_bot.scan_and_execute_spreads()
                 rsi_bot.scan_market()
+
+            # Motor de Reinversion Automatica: verifica cada 10 ciclos (~10 min)
+            if cycle % 10 == 0:
+                result = master_portfolio.check_and_execute_reinvestment()
+                if result and result.get("status") == "EXECUTED":
+                    print(f"[REINVESTMENT] Reinversion automatica ejecutada: ${result['record']['total_reinvested_usd']:.2f}")
+
             time.sleep(60)
         except Exception as e:
-            print(f"⚠️ Error en bucle en segundo plano: {e}")
+            print(f"Error en bucle en segundo plano: {e}")
             time.sleep(30)
+
 
 def self_ping_loop():
     time.sleep(15)
@@ -120,6 +130,13 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/rsi-opportunistic/status":
             return self.send_json_response(rsi_bot.get_status())
+
+        elif path == "/api/collateral/status":
+            summary = master_portfolio.get_master_summary()
+            return self.send_json_response(summary.get("collateral_portfolio", {}))
+
+        elif path == "/api/reinvestment/status":
+            return self.send_json_response(master_portfolio.get_reinvestment_status())
 
         elif path == "/api/option-chain":
             symbol = query.get("symbol", ["SPY"])[0]
@@ -234,6 +251,16 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             available_funds = float(payload.get("available_funds_usd", 1000.0))
             res = alpha_bot.decouple_short_put(pos_id, available_funds)
             return self.send_json_response(res)
+
+        elif path == "/api/reinvestment/execute":
+            # Forzar ejecucion manual del motor de reinversion (ignora threshold)
+            total = master_portfolio._get_total_premiums_collected()
+            already = master_portfolio._reinvestment_state.get("total_reinvested_usd", 0.0)
+            pending = round(total - already, 2)
+            if pending <= 0:
+                return self.send_json_response({"status": "NOTHING_PENDING", "pending_usd": pending})
+            result = master_portfolio.check_and_execute_reinvestment()
+            return self.send_json_response(result)
 
         elif path == "/api/payoff":
             legs = payload.get("legs", [])
