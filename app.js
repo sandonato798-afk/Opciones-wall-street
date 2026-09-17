@@ -211,16 +211,18 @@ async function loadWheel() {
         tbodyPos.innerHTML = '';
         if(data.wheel_positions && data.wheel_positions.length > 0) {
             data.wheel_positions.forEach(p => {
+                const exp = p.expiration_date ? `${p.expiration_date} (${p.target_dte || 30}d)` : `${p.target_dte || 30} días`;
                 tbodyPos.innerHTML += `<tr>
                     <td><strong>${p.symbol}</strong></td>
                     <td>${p.strategy_type || 'Cash-Secured Put'}</td>
                     <td>Strike $${p.strike}</td>
+                    <td><span style="color:var(--accent-blue);">${exp}</span></td>
                     <td class="text-green">${formatUSD(p.premium_collected_usd || 0)}</td>
                     <td><span class="text-green">🟢 ${p.status || 'ACTIVA'}</span></td>
                 </tr>`;
             });
         } else {
-            tbodyPos.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas. Esperando inicio de ciclo mensual.</td></tr>';
+            tbodyPos.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas. Esperando inicio de ciclo mensual.</td></tr>';
         }
 
         // 2. Historial de Ciclos
@@ -265,7 +267,7 @@ async function loadSpreads() {
                     <td>${s.type || 'BULL_PUT_SPREAD'}</td>
                     <td>Short Put $${s.short_strike} / Long Put $${s.long_strike}</td>
                     <td class="text-green">+${formatUSD(s.total_credit_collected_usd)}</td>
-                    <td>${s.dte} días</td>
+                    <td><span style="color:var(--accent-blue);">${s.dte || 7} días</span></td>
                     <td class="${colorClass(pnl)}">${sign(pnl)}${formatUSD(pnl)}</td>
                     <td><span class="text-green">🟢 ${s.status || 'ABIERTO'}</span></td>
                 </tr>`;
@@ -331,12 +333,13 @@ async function loadAlpha() {
         if(data.open_positions && data.open_positions.length > 0) {
             hasOpen = true;
             data.open_positions.forEach(p => {
-                const statusBadge = p.decoupled ? '<span class="text-green">🟢 RISK-FREE CALL</span>' : '<span class="text-green">🟢 ACTIVO (120 DTE)</span>';
+                const statusBadge = p.decoupled ? '<span class="text-green">🟢 RISK-FREE CALL</span>' : '<span class="text-green">🟢 ACTIVO</span>';
                 const pnl = p.unrealized_pnl_usd || 0;
                 tbodyPos.innerHTML += `<tr>
                     <td><strong>${p.symbol}</strong></td>
                     <td>Sintético (2x Put + 2x Call)</td>
                     <td>Put K$${p.short_put_strike} / Call K$${p.long_call_strike}</td>
+                    <td><span style="color:var(--accent-blue);">${p.dte || 120} días (LEAPS)</span></td>
                     <td class="${colorClass(pnl)}"><strong>${sign(pnl)}${formatUSD(pnl)}</strong></td>
                     <td class="text-red">$${p.short_put_current_buyback_cost || 0} USD</td>
                     <td>${statusBadge}</td>
@@ -351,6 +354,7 @@ async function loadAlpha() {
                     <td><strong>${p.symbol}</strong></td>
                     <td>Risk-Free Long Call</td>
                     <td>Call K$${p.long_call_strike}</td>
+                    <td><span style="color:var(--accent-blue);">${p.dte || 120} días (LEAPS)</span></td>
                     <td class="text-green"><strong>+${formatUSD(p.unrealized_pnl_usd || 0)}</strong></td>
                     <td class="text-green">$0.00 (Desacoplado)</td>
                     <td><span class="text-green">⭐ 100% RISK-FREE</span></td>
@@ -359,7 +363,7 @@ async function loadAlpha() {
         }
         
         if (!hasOpen) {
-            tbodyPos.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No hay posiciones sintéticas abiertas</td></tr>';
+            tbodyPos.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No hay posiciones sintéticas abiertas</td></tr>';
         }
 
         // 2. Historial de Alpha
@@ -395,8 +399,10 @@ async function loadRsi() {
         const totalPnl = data.total_pnl_usd || 0;
         document.getElementById('rsi-cap').innerText = formatUSD(allocCap + totalPnl);
         
-        const spyRsi = data.last_rsi_scanned?.SPY ?? 30.0;
-        document.getElementById('rsi-val').innerText = Number(spyRsi).toFixed(1);
+        const rsiVal = data.current_market_indicators?.SPY?.rsi || 30.0;
+        const rsiEl = document.getElementById('rsi-val');
+        rsiEl.innerText = Number(rsiVal).toFixed(1);
+        rsiEl.className = 'val ' + (rsiVal < 30 ? 'text-red' : (rsiVal > 70 ? 'text-green' : ''));
         
         const totalOpps = (data.open_trades?.length || 0) + (data.closed_trades?.length || 0);
         document.getElementById('rsi-opps').innerText = totalOpps;
@@ -416,7 +422,7 @@ async function loadRsi() {
                     <td><span style="color:var(--primary-red);font-weight:bold;">${p.entry_rsi} (Pánico)</span></td>
                     <td>Strike $${p.put_strike}</td>
                     <td class="text-green">+${formatUSD(p.premium_collected_usd)}</td>
-                    <td>${p.dte} día</td>
+                    <td><span style="color:var(--accent-blue);">${p.dte || 1} día (1-DTE)</span></td>
                     <td><span class="text-green">🟢 ABIERTA</span></td>
                 </tr>`;
             });
@@ -470,9 +476,11 @@ async function loadDaytrade() {
         if(data.open_positions && data.open_positions.length > 0) {
             data.open_positions.forEach(p => {
                 const pnl = p.pnl_usd || 0;
+                const dteLabel = p.dte === 0 ? '0-DTE (Hoy Intradía)' : `${p.dte || 0} DTE`;
                 tbodyOpen.innerHTML += `<tr>
                     <td><strong>${p.option_ticker}</strong></td>
                     <td>${p.contracts || 1} contratos</td>
+                    <td><span style="color:var(--accent-blue);font-weight:bold;">${dteLabel}</span></td>
                     <td>${formatUSD(p.total_cost_usd)}</td>
                     <td>$${p.entry_premium || 0}</td>
                     <td class="${colorClass(pnl)}"><strong>${sign(pnl)}${formatUSD(pnl)}</strong></td>
@@ -480,13 +488,31 @@ async function loadDaytrade() {
                 </tr>`;
             });
         } else {
-            tbodyOpen.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas en este momento. Escaneando señales intradiarias cada 60s.</td></tr>';
+            tbodyOpen.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas en este momento. Escaneando señales intradiarias cada 60s.</td></tr>';
         }
 
         // 2. Historial de Operaciones Intradía Cerradas
         const tbodyHist = document.getElementById('dt-history');
         tbodyHist.innerHTML = '';
         if(data.closed_trades && data.closed_trades.length > 0) {
+            data.closed_trades.slice().reverse().forEach(p => {
+                const net = p.final_pnl_usd !== undefined ? p.final_pnl_usd : (p.pnl_usd || 0);
+                const roiVal = p.final_pnl_pct !== undefined ? p.final_pnl_pct : (p.roi_pct || 0);
+                const roi = (roiVal >= 0 ? '+' : '') + Number(roiVal).toFixed(2) + '%';
+                const dteLabel = p.dte !== undefined ? (p.dte === 0 ? '0-DTE' : `${p.dte} DTE`) : '0-DTE';
+                
+                let dur = '-';
+                if(p.entry_time && p.exit_time) {
+                    try {
+                        const t1 = new Date(p.entry_time.replace(' ', 'T')).getTime();
+                        const t2 = new Date(p.exit_time.replace(' ', 'T')).getTime();
+                        if(!isNaN(t1) && !isNaN(t2) && t2 > t1) {
+                            const mins = Math.round((t2 - t1) / 60000);
+                            dur = `${mins} min`;
+                        }
+                    } catch(e) {}
+                }
+
                 let statusBadge = '';
                 if (net > 0) {
                     statusBadge = '<span class="text-green">✅ GANADORA</span>';
@@ -496,10 +522,11 @@ async function loadDaytrade() {
                     statusBadge = '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>';
                 }
                 tbodyHist.innerHTML += `<tr>
-                    <td>${p.timestamp || p.entry_time || '-'}</td>
-                    <td><strong>${p.option_ticker}</strong></td>
-                    <td>${formatUSD(p.entry_premium || 0)}</td>
-                    <td>${formatUSD(p.exit_premium || 0)}</td>
+                    <td>${p.exit_time || p.entry_time || '-'}</td>
+                    <td><strong>${p.option_ticker || p.symbol || '-'}</strong></td>
+                    <td><span style="color:var(--accent-blue);font-weight:600;">${dteLabel}</span></td>
+                    <td>$${p.entry_premium !== undefined ? Number(p.entry_premium).toFixed(2) : '-'}</td>
+                    <td>$${p.exit_premium !== undefined ? Number(p.exit_premium).toFixed(2) : '-'}</td>
                     <td>${dur}</td>
                     <td class="${colorClass(net)}"><strong>${sign(net)}${formatUSD(net)}</strong></td>
                     <td class="${colorClass(net)}">${roi}</td>
@@ -507,7 +534,7 @@ async function loadDaytrade() {
                 </tr>`;
             });
         } else {
-            tbodyHist.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No hay historial de operaciones cerradas</td></tr>';
+            tbodyHist.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No hay historial de operaciones cerradas</td></tr>';
         }
     } catch(e) { console.error('Error loadDaytrade', e); }
 }

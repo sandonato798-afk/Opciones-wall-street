@@ -177,7 +177,7 @@
                 <div class="card">
                     <div class="card-title">POSICIONES ACTIVAS (EN CURSO)</div>
                     <table class="data-table">
-                        <thead><tr><th>ACTIVO</th><th>TIPO</th><th>STRIKE</th><th>PRIMA / ACCIONES</th><th>ESTADO</th></tr></thead>
+                        <thead><tr><th>ACTIVO</th><th>TIPO</th><th>STRIKE</th><th>VENCIMIENTO (DTE)</th><th>PRIMA / ACCIONES</th><th>ESTADO</th></tr></thead>
                         <tbody id="wheel-positions"></tbody>
                     </table>
                 </div>
@@ -205,7 +205,7 @@
                 <div class="card">
                     <div class="card-title">SPREADS ABIERTOS (POSICIONES ACTIVAS)</div>
                     <table class="data-table">
-                        <thead><tr><th>SÍMBOLO</th><th>ESTRATEGIA</th><th>STRIKES (CORTO/LARGO)</th><th>PRIMA COBRADA</th><th>DTE</th><th>PnL FLOTANTE</th><th>ESTADO</th></tr></thead>
+                        <thead><tr><th>SÍMBOLO</th><th>ESTRATEGIA</th><th>STRIKES (CORTO/LARGO)</th><th>PRIMA COBRADA</th><th>VENCIMIENTO (DTE)</th><th>PnL FLOTANTE</th><th>ESTADO</th></tr></thead>
                         <tbody id="spreads-positions"></tbody>
                     </table>
                 </div>
@@ -233,7 +233,7 @@
                 <div class="card">
                     <div class="card-title">SINTÉTICOS ACTIVOS Y LONG CALLS DESACOPLADOS</div>
                     <table class="data-table">
-                        <thead><tr><th>SÍMBOLO</th><th>ESTRUCTURA</th><th>STRIKES (PUT / CALL)</th><th>PnL FLOTANTE</th><th>COSTO RECOMPRA</th><th>ESTADO</th></tr></thead>
+                        <thead><tr><th>SÍMBOLO</th><th>ESTRUCTURA</th><th>STRIKES (PUT / CALL)</th><th>PLAZO / VENCIMIENTO</th><th>PnL FLOTANTE</th><th>COSTO RECOMPRA</th><th>ESTADO</th></tr></thead>
                         <tbody id="alpha-positions"></tbody>
                     </table>
                 </div>
@@ -260,7 +260,7 @@
                 <div class="card">
                     <div class="card-title">OPERACIONES 1DTE ABIERTAS (EN MONITOREO)</div>
                     <table class="data-table">
-                        <thead><tr><th>SÍMBOLO</th><th>ESTRATEGIA</th><th>RSI ENTRADA</th><th>STRIKE PUT</th><th>PRIMA COBRADA</th><th>DTE</th><th>ESTADO</th></tr></thead>
+                        <thead><tr><th>SÍMBOLO</th><th>ESTRATEGIA</th><th>RSI ENTRADA</th><th>STRIKE PUT</th><th>PRIMA COBRADA</th><th>VENCIMIENTO (DTE)</th><th>ESTADO</th></tr></thead>
                         <tbody id="rsi-positions"></tbody>
                     </table>
                 </div>
@@ -291,20 +291,20 @@
                 <div class="card">
                     <div class="card-title">POSICIONES INTRADÍA ABIERTAS (EN VIVO)</div>
                     <table class="data-table">
-                        <thead><tr><th>TICKER CONTRATO</th><th>CONTRATOS</th><th>COSTO TOTAL</th><th>PRECIO ENTRADA</th><th>PnL FLOTANTE</th><th>ESTADO</th></tr></thead>
+                        <thead><tr><th>TICKER CONTRATO</th><th>CONTRATOS</th><th>PLAZO / VENCIMIENTO</th><th>COSTO TOTAL</th><th>PRECIO ENTRADA</th><th>PnL FLOTANTE</th><th>ESTADO</th></tr></thead>
                         <tbody id="dt-open-positions"></tbody>
                     </table>
                 </div>
                 <div class="card" style="margin-top: 20px;">
                     <div class="card-title">HISTORIAL DE OPERACIONES INTRADÍA CERRADAS</div>
                     <table class="data-table">
-                        <thead><tr><th>FECHA HORA</th><th>TICKER CONTRATO</th><th>ENTRADA</th><th>SALIDA</th><th>DURACIÓN</th><th>PnL NETO</th><th>ROI</th><th>ESTADO</th></tr></thead>
+                        <thead><tr><th>FECHA HORA</th><th>TICKER CONTRATO</th><th>PLAZO</th><th>ENTRADA</th><th>SALIDA</th><th>DURACIÓN</th><th>PnL NETO</th><th>ROI</th><th>ESTADO</th></tr></thead>
                         <tbody id="dt-history"></tbody>
                     </table>
                 </div>
             </section>
         </main>
     </div>
-    <script src="app.js?v=12.0"></script>
+    <script src="app.js?v=13.0"></script>
 </body>
 </html>
