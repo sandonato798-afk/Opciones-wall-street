@@ -1,22 +1,7 @@
 {
   "allocated_capital": 15000.0,
-  "status_mode": "ACTIVE_TRADE",
-  "open_trades": [
-    {
-      "id": 1789661210574,
-      "symbol": "QQQ",
-      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
-      "entry_date": "2026-09-17 16:06:50",
-      "entry_rsi": 29.5,
-      "underlying_price": 716.1,
-      "put_strike": 705.4,
-      "contracts": 6,
-      "premium_per_share": 2.15,
-      "premium_collected_usd": 1290.0,
-      "dte": 1,
-      "status": "OPEN"
-    }
-  ],
+  "status_mode": "IDLE_MONITORING",
+  "open_trades": [],
   "closed_trades": [
     {
       "id": 1789652787380,
@@ -107,9 +92,9 @@
   "total_premiums_collected": 6867.0,
   "total_pnl_usd": 6180.3,
   "last_rsi_scanned": {
-    "SPY": 39.7,
-    "QQQ": 29.5,
-    "DIA": 66.7
+    "SPY": 46.2,
+    "QQQ": 36.4,
+    "DIA": 61.6
   },
-  "last_update": "2026-09-17 16:06:50"
+  "last_update": "2026-09-17 16:07:26"
 }
