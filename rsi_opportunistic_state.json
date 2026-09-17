@@ -3,13 +3,13 @@
   "status_mode": "ACTIVE_TRADE",
   "open_trades": [
     {
-      "id": 1789670079561,
+      "id": 1789670235482,
       "symbol": "SPY",
       "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
-      "entry_date": "2026-09-17 18:34:39",
-      "entry_rsi": 28.7,
-      "underlying_price": 762.54,
-      "put_strike": 751.1,
+      "entry_date": "2026-09-17 18:37:15",
+      "entry_rsi": 25.3,
+      "underlying_price": 762.25,
+      "put_strike": 750.8,
       "contracts": 6,
       "premium_per_share": 2.29,
       "premium_collected_usd": 1374.0,
@@ -136,14 +136,31 @@
       "exit_rsi": 17.5,
       "pnl_usd": 1263.6,
       "exit_date": "2026-09-17 18:34:39"
+    },
+    {
+      "id": 1789670079561,
+      "symbol": "SPY",
+      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+      "entry_date": "2026-09-17 18:34:39",
+      "entry_rsi": 28.7,
+      "underlying_price": 762.54,
+      "put_strike": 751.1,
+      "contracts": 6,
+      "premium_per_share": 2.29,
+      "premium_collected_usd": 1374.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 25.3,
+      "pnl_usd": 1236.6,
+      "exit_date": "2026-09-17 18:37:15"
     }
   ],
-  "total_premiums_collected": 9666.0,
-  "total_pnl_usd": 8699.4,
+  "total_premiums_collected": 11040.0,
+  "total_pnl_usd": 9936.0,
   "last_rsi_scanned": {
-    "SPY": 28.7,
-    "QQQ": 32.4,
-    "DIA": 17.5
+    "SPY": 25.3,
+    "QQQ": 28.3,
+    "DIA": 12.9
   },
-  "last_update": "2026-09-17 18:34:39"
+  "last_update": "2026-09-17 18:37:15"
 }
