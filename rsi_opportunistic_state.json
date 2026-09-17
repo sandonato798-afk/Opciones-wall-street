@@ -1,0 +1,14 @@
+{
+  "allocated_capital": 15000.0,
+  "status_mode": "IDLE_MONITORING",
+  "open_trades": [],
+  "closed_trades": [],
+  "total_premiums_collected": 0.0,
+  "total_pnl_usd": 0.0,
+  "last_rsi_scanned": {
+    "SPY": 48.5,
+    "QQQ": 51.2,
+    "DIA": 46.8
+  },
+  "last_update": "2026-09-17 03:23:01"
+}
