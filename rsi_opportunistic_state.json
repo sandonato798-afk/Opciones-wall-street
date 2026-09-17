@@ -1,14 +1,81 @@
 {
   "allocated_capital": 15000.0,
-  "status_mode": "IDLE_MONITORING",
-  "open_trades": [],
-  "closed_trades": [],
-  "total_premiums_collected": 0.0,
-  "total_pnl_usd": 0.0,
+  "status_mode": "ACTIVE_TRADE",
+  "open_trades": [
+    {
+      "id": 1789656990175,
+      "symbol": "SPY",
+      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+      "entry_date": "2026-09-17 11:56:30",
+      "entry_rsi": 9.2,
+      "underlying_price": 760.53,
+      "put_strike": 749.1,
+      "contracts": 6,
+      "premium_per_share": 2.28,
+      "premium_collected_usd": 1368.0,
+      "dte": 1,
+      "status": "OPEN"
+    }
+  ],
+  "closed_trades": [
+    {
+      "id": 1789652787380,
+      "symbol": "SPY",
+      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+      "entry_date": "2026-09-17 13:46:27",
+      "entry_rsi": 15.4,
+      "underlying_price": 760.91,
+      "put_strike": 749.5,
+      "contracts": 6,
+      "premium_per_share": 2.28,
+      "premium_collected_usd": 1368.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 50.7,
+      "pnl_usd": 1231.2,
+      "exit_date": "2026-09-17 13:49:55"
+    },
+    {
+      "id": 1789654099858,
+      "symbol": "SPY",
+      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+      "entry_date": "2026-09-17 14:08:19",
+      "entry_rsi": 28.8,
+      "underlying_price": 760.09,
+      "put_strike": 748.7,
+      "contracts": 6,
+      "premium_per_share": 2.28,
+      "premium_collected_usd": 1368.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 39.0,
+      "pnl_usd": 1231.2,
+      "exit_date": "2026-09-17 14:12:18"
+    },
+    {
+      "id": 1789654398861,
+      "symbol": "SPY",
+      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+      "entry_date": "2026-09-17 14:13:18",
+      "entry_rsi": 29.6,
+      "underlying_price": 760.41,
+      "put_strike": 749.0,
+      "contracts": 6,
+      "premium_per_share": 2.28,
+      "premium_collected_usd": 1368.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 67.6,
+      "pnl_usd": 1231.2,
+      "exit_date": "2026-09-17 14:18:42"
+    }
+  ],
+  "total_premiums_collected": 4104.0,
+  "total_pnl_usd": 3693.6000000000004,
   "last_rsi_scanned": {
-    "SPY": 48.5,
-    "QQQ": 51.2,
-    "DIA": 46.8
+    "SPY": 9.2,
+    "QQQ": 17.7,
+    "DIA": 9.7
   },
-  "last_update": "2026-09-17 03:23:01"
+  "last_update": "2026-09-17 11:56:30"
 }
