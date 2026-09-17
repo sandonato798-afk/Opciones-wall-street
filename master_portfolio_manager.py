@@ -282,6 +282,25 @@ class MasterPortfolioManager:
         spreads_theta = spread_premiums / 10.0 # asumiendo ciclos de 7-14 DTE
         global_theta_usd = round(wheel_theta + spreads_theta, 2)
 
+        # 4.3 Max Drawdown & Profit Factor (Simulados para Paper Trading / Tracking en vivo)
+        # En una DB real esto iteraría las curvas de capital diarias. Para paper trading:
+        # Profit Factor = Gross Profit / Gross Loss
+        gross_profit = wheel_pnl_usd + spread_pnl_usd + (dt_stats["wins"] * 450) + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
+        gross_loss = abs((dt_stats["losses"] * -240) + (rsi_pnl_usd if rsi_pnl_usd < 0 else 0))
+        if gross_profit == 0 and gross_loss == 0:
+            profit_factor = 0.0
+        elif gross_loss == 0:
+            profit_factor = 99.9
+        else:
+            profit_factor = round(gross_profit / gross_loss, 2)
+
+        # Max Drawdown: Estimamos caídas intradiarias vs NAV actual
+        # Tomaremos las perdidas de DT + posibles perdidas flotantes de Spreads como drawdown proxy
+        mdd_proxy_usd = abs(gross_loss) * 1.5 # Proxy conservador
+        max_drawdown_pct = round((mdd_proxy_usd / self.initial_capital) * -100.0, 2)
+        if max_drawdown_pct > 0:
+            max_drawdown_pct = 0.0
+
         # 5. Colateral Diversificado con precios en vivo
         collateral_data = self._fetch_collateral_prices(consolidated_nav)
 
@@ -308,7 +327,9 @@ class MasterPortfolioManager:
                 "months_active": round(months_active, 1),
                 "annualized_roi_pct": annualized_roi_pct,
                 "projected_monthly_usd": projected_monthly_usd,
-                "global_theta_usd_per_day": global_theta_usd
+                "global_theta_usd_per_day": global_theta_usd,
+                "max_drawdown_pct": max_drawdown_pct,
+                "profit_factor": profit_factor
             },
             "spy_current_price": spy_price,
             "margin_status": margin_status,
