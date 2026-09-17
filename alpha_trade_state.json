@@ -16,14 +16,14 @@
       "long_call_premium_paid": 1450.0,
       "net_cost_usd": 0.0,
       "status": "ACTIVE_SYNTHETIC",
-      "short_put_current_buyback_cost": 13.83,
+      "short_put_current_buyback_cost": 13.34,
       "decoupled": false,
       "current_underlying_price": 704.72,
-      "unrealized_pnl_usd": 2872.34
+      "unrealized_pnl_usd": 2873.32
     }
   ],
   "decoupled_calls": [],
   "closed_positions": [],
   "total_decouple_funds_used": 0.0,
-  "last_update": "2026-09-17 12:22:43"
+  "last_update": "2026-09-17 12:23:43"
 }
