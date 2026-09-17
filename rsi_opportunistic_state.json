@@ -101,17 +101,17 @@
       "premium_collected_usd": 1395.0,
       "dte": 1,
       "status": "OPEN",
-      "exit_rsi": 44.7,
+      "exit_rsi": 45.3,
       "pnl_usd": 1255.5,
-      "exit_date": "2026-09-17 17:02:07"
+      "exit_date": "2026-09-17 17:02:45"
     }
   ],
   "total_premiums_collected": 8262.0,
   "total_pnl_usd": 7435.8,
   "last_rsi_scanned": {
-    "SPY": 54.0,
-    "QQQ": 55.1,
-    "DIA": 44.7
+    "SPY": 53.8,
+    "QQQ": 54.8,
+    "DIA": 45.3
   },
-  "last_update": "2026-09-17 17:02:07"
+  "last_update": "2026-09-17 17:02:45"
 }
