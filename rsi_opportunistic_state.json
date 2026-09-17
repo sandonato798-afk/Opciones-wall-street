@@ -1,22 +1,7 @@
 {
   "allocated_capital": 15000.0,
-  "status_mode": "ACTIVE_TRADE",
-  "open_trades": [
-    {
-      "id": 1789664332776,
-      "symbol": "DIA",
-      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
-      "entry_date": "2026-09-17 16:58:52",
-      "entry_rsi": 24.0,
-      "underlying_price": 518.33,
-      "put_strike": 510.6,
-      "contracts": 9,
-      "premium_per_share": 1.55,
-      "premium_collected_usd": 1395.0,
-      "dte": 1,
-      "status": "OPEN"
-    }
-  ],
+  "status_mode": "IDLE_MONITORING",
+  "open_trades": [],
   "closed_trades": [
     {
       "id": 1789652787380,
@@ -102,14 +87,31 @@
       "exit_rsi": 54.4,
       "pnl_usd": 1231.2,
       "exit_date": "2026-09-17 15:08:03"
+    },
+    {
+      "id": 1789664332776,
+      "symbol": "DIA",
+      "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+      "entry_date": "2026-09-17 16:58:52",
+      "entry_rsi": 24.0,
+      "underlying_price": 518.33,
+      "put_strike": 510.6,
+      "contracts": 9,
+      "premium_per_share": 1.55,
+      "premium_collected_usd": 1395.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 37.1,
+      "pnl_usd": 1255.5,
+      "exit_date": "2026-09-17 17:00:16"
     }
   ],
-  "total_premiums_collected": 6867.0,
-  "total_pnl_usd": 6180.3,
+  "total_premiums_collected": 8262.0,
+  "total_pnl_usd": 7435.8,
   "last_rsi_scanned": {
-    "SPY": 35.2,
-    "QQQ": 37.2,
-    "DIA": 24.0
+    "SPY": 47.7,
+    "QQQ": 48.6,
+    "DIA": 37.1
   },
-  "last_update": "2026-09-17 16:58:52"
+  "last_update": "2026-09-17 17:00:16"
 }
