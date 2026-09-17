@@ -32,7 +32,11 @@ async function refreshAllData() {
 }
 
 function formatUSD(num) {
-    return '$' + (num || 0).toLocaleString('en-US', {minimumFractionDigits: 2});
+    if (num === null || num === undefined) num = 0;
+    const isNeg = num < 0;
+    const absVal = Math.abs(num);
+    const formatted = absVal.toLocaleString('en-US', {minimumFractionDigits: 2});
+    return (isNeg ? '-$' : '$') + formatted;
 }
 function formatPct(num) {
     return (num || 0).toFixed(2) + '%';
@@ -41,7 +45,7 @@ function colorClass(num) {
     return num >= 0 ? 'text-green' : 'text-red';
 }
 function sign(num) {
-    return num >= 0 ? '+' : '';
+    return num > 0 ? '+' : '';
 }
 
 async function loadMaster() {
@@ -276,12 +280,8 @@ async function loadDaytrade() {
         const data = await res.json();
         document.getElementById('dt-cap').innerText = formatUSD(10000 + (data.total_pnl_usd || 0));
         
-        // Fix Win Rate calculation (stats might return raw total as percentage if backend math is messy)
+        // Revert Win Rate to rely on backend because JS logic was flawed (relied on buggy data earlier)
         let wr = data.stats?.win_rate || 0;
-        if (data.closed_trades && data.closed_trades.length > 0) {
-            const wins = data.closed_trades.filter(t => (t.final_pnl_usd || 0) > 0).length;
-            wr = (wins / data.closed_trades.length) * 100;
-        }
         document.getElementById('dt-wr').innerText = formatPct(wr);
         
         document.getElementById('dt-mode').innerText = data.config?.execution_mode || 'PAPER';
@@ -297,7 +297,7 @@ async function loadDaytrade() {
                     <td>${p.option_ticker}</td>
                     <td>${formatUSD(p.total_cost_usd)}</td>
                     <td>-</td>
-                    <td class="${colorClass(p.pnl_usd)}">${sign(p.pnl_usd)}${formatUSD(Math.abs(p.pnl_usd))}</td>
+                    <td class="${colorClass(p.pnl_usd)}">${sign(p.pnl_usd)}${formatUSD(p.pnl_usd).replace('-$', '$')}</td>
                     <td>OPEN</td>
                 </tr>`;
             });
@@ -309,7 +309,7 @@ async function loadDaytrade() {
                     <td>${p.option_ticker}</td>
                     <td>${formatUSD(p.total_cost_usd)}</td>
                     <td>${formatUSD(p.exit_premium * 100 * (p.contracts||1))}</td>
-                    <td class="${colorClass(net)}">${sign(net)}${formatUSD(Math.abs(net))}</td>
+                    <td class="${colorClass(net)}">${sign(net)}${formatUSD(net)}</td>
                     <td>CLOSED</td>
                 </tr>`;
             });
