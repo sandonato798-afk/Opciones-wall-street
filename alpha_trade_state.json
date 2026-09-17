@@ -1,0 +1,29 @@
+{
+  "allocated_capital": 20000.0,
+  "open_positions": [
+    {
+      "id": 178960001,
+      "symbol": "QQQ",
+      "strategy": "ZERO_COST_SYNTHETIC_LEAP",
+      "entry_date": "2026-09-05 03:22:30",
+      "dte": 120,
+      "underlying_price_at_entry": 692.5,
+      "short_put_strike": 670.0,
+      "short_put_contracts": 2,
+      "short_put_premium_collected": 1450.0,
+      "long_call_strike": 715.0,
+      "long_call_contracts": 2,
+      "long_call_premium_paid": 1450.0,
+      "net_cost_usd": 0.0,
+      "status": "ACTIVE_SYNTHETIC",
+      "short_put_current_buyback_cost": 420.0,
+      "decoupled": false,
+      "current_underlying_price": 704.16,
+      "unrealized_pnl_usd": 1280.0
+    }
+  ],
+  "decoupled_calls": [],
+  "closed_positions": [],
+  "total_decouple_funds_used": 0.0,
+  "last_update": "2026-09-17 03:22:30"
+}
