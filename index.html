@@ -74,6 +74,43 @@
                     </div>
                 </div>
 
+                <div class="header-section" style="margin-top: 24px;">
+                    <h2>PERFORMANCE ANALYTICS</h2>
+                </div>
+                
+                <div class="grid-4">
+                    <div class="card">
+                        <div class="card-title">TIEMPO ACTIVO</div>
+                        <div class="val" id="home-perf-days">0 DÍAS</div>
+                        <div class="sub" id="home-perf-inception">Desde -</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">ROI ANUALIZADO (CAGR)</div>
+                        <div class="val text-green" id="home-perf-cagr">0.00%</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">FLUJO MENSUAL ESP.</div>
+                        <div class="val text-green" id="home-perf-monthly">$0.00</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">THETA GLOBAL (Θ)</div>
+                        <div class="val text-green" id="home-perf-theta">+$0.00/d</div>
+                    </div>
+                </div>
+
+                <div class="header-section" style="margin-top: 24px;">
+                    <h2>ASSET DISTRIBUTION (COLLATERAL & MARGIN)</h2>
+                </div>
+
+                <div class="card" style="margin-bottom: 24px; padding: 24px;">
+                    <div class="distribution-bar-container" style="display: flex; height: 32px; border-radius: 6px; overflow: hidden; font-family: var(--font-mono);">
+                        <div id="bar-sgov" style="width: 30%; background-color: var(--accent-green); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">SGOV 30%</div>
+                        <div id="bar-gld" style="width: 20%; background-color: #F59E0B; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">GLD 20%</div>
+                        <div id="bar-tlt" style="width: 10%; background-color: var(--steel-blue); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">TLT 10%</div>
+                        <div id="bar-margin" style="width: 40%; background-color: var(--primary-red); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">MARGIN 40%</div>
+                    </div>
+                </div>
+
                 <div class="grid-3">
                     <div class="card">
                         <div class="card-title">TESORERÍA SGOV</div>

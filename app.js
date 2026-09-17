@@ -66,6 +66,59 @@ async function loadMaster() {
         document.getElementById('home-margin-val').innerText = (data.margin?.margin_utilization_pct || 0) + '%';
         document.getElementById('home-margin-status').innerText = data.margin_status || 'OPTIMAL';
         
+        // Performance Analytics
+        if (data.performance_analytics) {
+            document.getElementById('home-perf-days').innerText = data.performance_analytics.days_active + ' DÍAS';
+            document.getElementById('home-perf-inception').innerText = 'Desde ' + data.performance_analytics.inception_date;
+            
+            const cagrEl = document.getElementById('home-perf-cagr');
+            cagrEl.innerText = formatPct(data.performance_analytics.annualized_roi_pct);
+            cagrEl.className = 'val ' + colorClass(data.performance_analytics.annualized_roi_pct);
+
+            const monthlyEl = document.getElementById('home-perf-monthly');
+            monthlyEl.innerText = sign(data.performance_analytics.projected_monthly_usd) + formatUSD(data.performance_analytics.projected_monthly_usd);
+            monthlyEl.className = 'val ' + colorClass(data.performance_analytics.projected_monthly_usd);
+
+            const thetaEl = document.getElementById('home-perf-theta');
+            thetaEl.innerText = sign(data.performance_analytics.global_theta_usd_per_day) + formatUSD(data.performance_analytics.global_theta_usd_per_day) + '/d';
+            thetaEl.className = 'val ' + colorClass(data.performance_analytics.global_theta_usd_per_day);
+        }
+
+        // Collateral Portfolio
+        if (data.collateral_portfolio && data.collateral_portfolio.breakdown) {
+            const breakdown = data.collateral_portfolio.breakdown;
+            const sgovPct = breakdown.SGOV?.target_pct || 0;
+            const gldPct = breakdown.GLD?.target_pct || 0;
+            const tltPct = breakdown.TLT?.target_pct || 0;
+            const marginPct = Math.max(0, 100 - (data.collateral_portfolio.total_collateral_pct || 0));
+
+            const sgovBar = document.getElementById('bar-sgov');
+            const gldBar = document.getElementById('bar-gld');
+            const tltBar = document.getElementById('bar-tlt');
+            const marginBar = document.getElementById('bar-margin');
+
+            if(sgovBar) {
+                sgovBar.style.width = sgovPct + '%';
+                sgovBar.innerText = 'SGOV ' + sgovPct + '%';
+                sgovBar.style.display = sgovPct > 0 ? 'flex' : 'none';
+            }
+            if(gldBar) {
+                gldBar.style.width = gldPct + '%';
+                gldBar.innerText = 'GLD ' + gldPct + '%';
+                gldBar.style.display = gldPct > 0 ? 'flex' : 'none';
+            }
+            if(tltBar) {
+                tltBar.style.width = tltPct + '%';
+                tltBar.innerText = 'TLT ' + tltPct + '%';
+                tltBar.style.display = tltPct > 0 ? 'flex' : 'none';
+            }
+            if(marginBar) {
+                marginBar.style.width = marginPct + '%';
+                marginBar.innerText = 'MARGIN ' + marginPct + '%';
+                marginBar.style.display = marginPct > 0 ? 'flex' : 'none';
+            }
+        }
+
         if (data.strategies_ledger) {
             data.strategies_ledger.forEach(l => {
                 if(l.id === 'wheel') document.getElementById('home-c1-nav').innerText = formatUSD(l.capital_allocated_usd);
