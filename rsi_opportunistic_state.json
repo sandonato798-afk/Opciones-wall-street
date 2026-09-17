@@ -92,9 +92,9 @@
   "total_premiums_collected": 6867.0,
   "total_pnl_usd": 6180.3,
   "last_rsi_scanned": {
-    "SPY": 46.0,
-    "QQQ": 39.9,
-    "DIA": 47.2
+    "SPY": 42.0,
+    "QQQ": 36.1,
+    "DIA": 49.0
   },
-  "last_update": "2026-09-17 16:32:47"
+  "last_update": "2026-09-17 16:33:17"
 }
