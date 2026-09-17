@@ -3,12 +3,12 @@
   "status_mode": "ACTIVE_TRADE",
   "open_trades": [
     {
-      "id": 1789666044531,
+      "id": 1789666091939,
       "symbol": "DIA",
       "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
-      "entry_date": "2026-09-17 17:27:24",
-      "entry_rsi": 21.1,
-      "underlying_price": 518.14,
+      "entry_date": "2026-09-17 17:28:11",
+      "entry_rsi": 25.7,
+      "underlying_price": 518.19,
       "put_strike": 510.4,
       "contracts": 9,
       "premium_per_share": 1.55,
@@ -124,9 +124,9 @@
   "total_premiums_collected": 8262.0,
   "total_pnl_usd": 7435.8,
   "last_rsi_scanned": {
-    "SPY": 33.6,
-    "QQQ": 43.5,
-    "DIA": 21.1
+    "SPY": 43.1,
+    "QQQ": 48.7,
+    "DIA": 25.7
   },
-  "last_update": "2026-09-17 17:27:24"
+  "last_update": "2026-09-17 17:28:11"
 }
