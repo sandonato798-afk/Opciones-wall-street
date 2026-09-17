@@ -285,6 +285,7 @@ async function loadSpreads() {
             if(data.closed_spreads && data.closed_spreads.length > 0) {
                 data.closed_spreads.slice().reverse().forEach(s => {
                     const net = s.final_pnl_usd || 0;
+                    const statusBadge = net > 0 ? '<span class="text-green">✅ GANADORA (TP 70%)</span>' : (net < 0 ? '<span class="text-red">❌ PÉRDIDA (SL)</span>' : '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>');
                     tbodyHist.innerHTML += `<tr>
                         <td>${s.entry_date || '-'} → ${s.exit_date || '-'}</td>
                         <td><strong>${s.symbol}</strong></td>
@@ -292,10 +293,11 @@ async function loadSpreads() {
                         <td>$${s.short_strike}/$${s.long_strike}</td>
                         <td>${s.exit_reason || 'TAKE_PROFIT_70%'}</td>
                         <td class="${colorClass(net)}"><strong>${sign(net)}${formatUSD(net)}</strong></td>
+                        <td>${statusBadge}</td>
                     </tr>`;
                 });
             } else {
-                tbodyHist.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin spreads cerrados aún (2 spreads en curso).</td></tr>';
+                tbodyHist.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin spreads cerrados aún (2 spreads en curso).</td></tr>';
             }
         }
     } catch(e) { console.error('Error loadSpreads', e); }
@@ -367,13 +369,14 @@ async function loadAlpha() {
             if(data.closed_positions && data.closed_positions.length > 0) {
                 data.closed_positions.slice().reverse().forEach(p => {
                     const net = p.final_pnl_usd || 0;
+                    const statusBadge = net > 0 ? '<span class="text-green">✅ GANADORA</span>' : (net < 0 ? '<span class="text-red">❌ PÉRDIDA</span>' : '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>');
                     tbodyHist.innerHTML += `<tr>
                         <td>${p.entry_date || '-'} → ${p.exit_date || '-'}</td>
                         <td><strong>${p.symbol}</strong></td>
                         <td>${p.strategy || 'Sintético LEAPS'}</td>
                         <td>${formatUSD(p.decouple_cost_paid_usd || 0)}</td>
                         <td class="${colorClass(net)}"><strong>${sign(net)}${formatUSD(net)}</strong></td>
-                        <td><span class="text-green">CERRADO</span></td>
+                        <td>${statusBadge}</td>
                     </tr>`;
                 });
             } else {
@@ -428,6 +431,7 @@ async function loadRsi() {
             if(data.closed_trades && data.closed_trades.length > 0) {
                 data.closed_trades.slice().reverse().forEach(p => {
                     const net = p.pnl_usd || 0;
+                    const statusBadge = net > 0 ? '<span class="text-green">✅ GANADORA (TP 90%)</span>' : (net < 0 ? '<span class="text-red">❌ PÉRDIDA</span>' : '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>');
                     tbodyHist.innerHTML += `<tr>
                         <td>${p.entry_date || '-'} → ${p.exit_date || '-'}</td>
                         <td><strong>${p.symbol}</strong></td>
@@ -435,7 +439,7 @@ async function loadRsi() {
                         <td>Strike $${p.put_strike}</td>
                         <td class="text-green">+${formatUSD(p.premium_collected_usd || 0)}</td>
                         <td class="${colorClass(net)}"><strong>+${formatUSD(net)}</strong></td>
-                        <td><span class="text-green">✅ CERRADA (TP 90%)</span></td>
+                        <td>${statusBadge}</td>
                     </tr>`;
                 });
             } else {
@@ -483,10 +487,14 @@ async function loadDaytrade() {
         const tbodyHist = document.getElementById('dt-history');
         tbodyHist.innerHTML = '';
         if(data.closed_trades && data.closed_trades.length > 0) {
-            data.closed_trades.slice().reverse().forEach(p => {
-                const net = p.final_pnl_usd || 0;
-                const roi = p.roi_pct != null ? formatPct(p.roi_pct) : (p.total_cost_usd > 0 ? formatPct((net / p.total_cost_usd) * 100) : '0.0%');
-                const dur = p.duration_minutes ? `${p.duration_minutes}m` : '-';
+                let statusBadge = '';
+                if (net > 0) {
+                    statusBadge = '<span class="text-green">✅ GANADORA</span>';
+                } else if (net < 0) {
+                    statusBadge = '<span class="text-red">❌ PÉRDIDA</span>';
+                } else {
+                    statusBadge = '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>';
+                }
                 tbodyHist.innerHTML += `<tr>
                     <td>${p.timestamp || p.entry_time || '-'}</td>
                     <td><strong>${p.option_ticker}</strong></td>
@@ -495,7 +503,7 @@ async function loadDaytrade() {
                     <td>${dur}</td>
                     <td class="${colorClass(net)}"><strong>${sign(net)}${formatUSD(net)}</strong></td>
                     <td class="${colorClass(net)}">${roi}</td>
-                    <td><span class="text-green">✅ GANADORA</span></td>
+                    <td>${statusBadge}</td>
                 </tr>`;
             });
         } else {
