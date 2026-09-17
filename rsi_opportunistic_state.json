@@ -188,15 +188,15 @@
       "status": "OPEN",
       "exit_rsi": 38.2,
       "pnl_usd": 1263.6,
-      "exit_date": "2026-09-17 19:26:00"
+      "exit_date": "2026-09-17 19:26:43"
     }
   ],
   "total_premiums_collected": 15222.0,
   "total_pnl_usd": 13699.800000000001,
   "last_rsi_scanned": {
-    "SPY": 48.3,
-    "QQQ": 50.6,
+    "SPY": 40.4,
+    "QQQ": 44.5,
     "DIA": 38.2
   },
-  "last_update": "2026-09-17 19:26:00"
+  "last_update": "2026-09-17 19:26:43"
 }
