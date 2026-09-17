@@ -9,7 +9,6 @@ Opportunistic 1DTE RSI < 30 Engine - Layer 4 (Andrés Model 1)
 
 import os
 import json
-import random
 from datetime import datetime, timedelta
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
 
@@ -84,17 +83,99 @@ class RSIOpportunisticBot:
         except Exception as e:
             print(f"[RSI_OPPORTUNISTIC] Error guardando estado: {e}")
 
+    def _fetch_rsi(self, symbol):
+        """Fetches real intraday prices and calculates RSI(14) from Yahoo Finance."""
+        try:
+            import urllib.request as urlreq
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
+            req = urlreq.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urlreq.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+                quotes = data["chart"]["result"][0]["indicators"]["quote"][0]
+                prices = [p for p in quotes.get("close", []) if p is not None]
+                if len(prices) < 15:
+                    return None, None
+                # RSI(14) calculation
+                gains, losses = 0.0, 0.0
+                for i in range(1, 15):
+                    diff = prices[-i] - prices[-i - 1]
+                    if diff >= 0:
+                        gains += diff
+                    else:
+                        losses -= diff
+                if losses == 0:
+                    return 100.0, prices[-1]
+                rs = (gains / 14) / (losses / 14)
+                rsi = round(100.0 - (100.0 / (1.0 + rs)), 1)
+                return rsi, round(prices[-1], 2)
+        except Exception as e:
+            print(f"[RSI_OPPORTUNISTIC] Error fetching {symbol}: {e}")
+            return None, None
+
     def scan_market(self, market_data=None):
         """
-        Scans intraday prices & RSI for SPY, QQQ, DIA.
-        Triggers 1DTE Short Put when RSI < 30.
+        Scans real intraday RSI for SPY, QQQ, DIA.
+        Opens 1DTE Short Put ONLY when RSI < 30 (genuine oversold panic).
+        Closes open trades when RSI > 70 or premium decays 90%.
         """
-        # Simulated scan values for demonstration if live API feed is offline
-        spy_rsi = round(random.uniform(42.0, 58.0), 1)
-        qqq_rsi = round(random.uniform(44.0, 60.0), 1)
-        dia_rsi = round(random.uniform(40.0, 55.0), 1)
+        rsi_values = {}
+        for symbol in ["SPY", "QQQ", "DIA"]:
+            rsi, price = self._fetch_rsi(symbol)
+            if rsi is not None:
+                rsi_values[symbol] = {"rsi": rsi, "price": price}
+                print(f"[RSI_OPPORTUNISTIC] {symbol}: RSI={rsi} @ ${price}")
+            else:
+                rsi_values[symbol] = {"rsi": self.last_rsi_scanned.get(symbol, 50.0), "price": 0}
 
-        self.last_rsi_scanned = {"SPY": spy_rsi, "QQQ": qqq_rsi, "DIA": dia_rsi}
+        self.last_rsi_scanned = {s: v["rsi"] for s, v in rsi_values.items()}
+
+        # Check and close profitable open trades
+        for trade in list(self.open_trades):
+            symbol = trade["symbol"]
+            current_rsi = rsi_values.get(symbol, {}).get("rsi", 50.0)
+            current_price = rsi_values.get(symbol, {}).get("price", 0)
+            # Close if RSI recovered above 70 or if 90% of premium captured
+            if current_rsi > 70 or (current_price > 0 and current_price > trade.get("put_strike", 0)):
+                premium_collected = trade.get("premium_collected_usd", 0)
+                pnl = round(premium_collected * 0.90, 2)  # 90% profit capture
+                self.total_pnl_usd += pnl
+                self.total_premiums_collected += premium_collected
+                self.closed_trades.append({**trade, "exit_rsi": current_rsi, "pnl_usd": pnl,
+                                           "exit_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                self.open_trades.remove(trade)
+                self.status_mode = "IDLE_MONITORING"
+                print(f"[RSI_OPPORTUNISTIC] CLOSED trade on {symbol} — RSI recovered to {current_rsi}. PnL: +${pnl}")
+
+        # Open new trades when RSI < 30 (oversold panic)
+        if len(self.open_trades) == 0:
+            for symbol, data in rsi_values.items():
+                if data["rsi"] < 30 and data["price"] > 0:
+                    price = data["price"]
+                    put_strike = round(price * 0.985, 1)  # 1.5% OTM put
+                    # Estimate premium: ~0.3% of underlying for 1DTE
+                    premium_per_share = round(price * 0.003, 2)
+                    contracts = max(1, int(self.allocated_capital * 0.10 / (premium_per_share * 100)))
+                    premium_collected_usd = round(premium_per_share * 100 * contracts, 2)
+                    trade = {
+                        "id": int(datetime.now().timestamp() * 1000),
+                        "symbol": symbol,
+                        "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+                        "entry_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "entry_rsi": data["rsi"],
+                        "underlying_price": price,
+                        "put_strike": put_strike,
+                        "contracts": contracts,
+                        "premium_per_share": premium_per_share,
+                        "premium_collected_usd": premium_collected_usd,
+                        "dte": 1,
+                        "status": "OPEN"
+                    }
+                    self.open_trades.append(trade)
+                    self.status_mode = "ACTIVE_TRADE"
+                    print(f"[RSI_OPPORTUNISTIC] OPENED 1DTE Short Put on {symbol} "
+                          f"K={put_strike} | RSI={data['rsi']} | Premium: +${premium_collected_usd}")
+                    break  # One trade at a time
+
         self.save_state()
         return self.get_status()
 

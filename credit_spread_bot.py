@@ -217,7 +217,7 @@ class CreditSpreadBot:
         if profit_captured_pct >= CONFIG["profit_target_pct"]:
             self.close_spread(spread, "PROFIT_TARGET_70_PCT", curr_spread_val)
         # 2. Stop Loss: si la perdida llega al 1.5x de la prima
-        elif curr_spread_val >= spread["net_credit_per_share"] * (1.0 + CONFIG["stop_loss_multiplier"]):
+        elif curr_spread_val >= spread["net_credit_per_share"] * CONFIG["stop_loss_multiplier"]:
             self.close_spread(spread, "STOP_LOSS_1.5X", curr_spread_val)
 
     def close_spread(self, spread, reason, exit_spread_val):

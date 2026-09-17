@@ -8,7 +8,7 @@ Alpha Trade Engine - Layer 3 (60-180 DTE Zero-Cost Risk-Free Synthetic LEAPS)
 
 import os
 import json
-import random
+import urllib.request
 from datetime import datetime, timedelta
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
 
@@ -47,30 +47,31 @@ class AlphaTradeBot:
             self._initialize_default_state()
 
     def _initialize_default_state(self):
-        # Create an initial demo Alpha Trade position on SPY if empty
-        self.open_positions = [
-            {
-                "id": 178960001,
-                "symbol": "QQQ",
-                "strategy": "ZERO_COST_SYNTHETIC_LEAP",
-                "entry_date": (datetime.now() - timedelta(days=12)).strftime("%Y-%m-%d %H:%M:%S"),
-                "dte": 120,
-                "underlying_price_at_entry": 692.50,
-                "short_put_strike": 670.0,
-                "short_put_contracts": 2,
-                "short_put_premium_collected": 1450.0,
-                "long_call_strike": 715.0,
-                "long_call_contracts": 2,
-                "long_call_premium_paid": 1450.0,
-                "net_cost_usd": 0.0,
-                "status": "ACTIVE_SYNTHETIC",
-                "short_put_current_buyback_cost": 420.0, # Reduced due to passage of time & market rise
-                "decoupled": False,
-                "current_underlying_price": 704.16,
-                "unrealized_pnl_usd": 1280.0
+        """
+        Initializes a clean empty state when no prior state exists.
+        Does NOT push to GitHub on init — avoids overwriting real cloud state
+        when GitHub is temporarily slow on Render cold start.
+        """
+        self.open_positions = []
+        self.decoupled_calls = []
+        self.closed_positions = []
+        self.total_decouple_funds_used = 0.0
+        self.last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Save locally only — no GitHub sync to avoid overwriting real data
+        try:
+            data = {
+                "allocated_capital": self.allocated_capital,
+                "open_positions": self.open_positions,
+                "decoupled_calls": self.decoupled_calls,
+                "closed_positions": self.closed_positions,
+                "total_decouple_funds_used": self.total_decouple_funds_used,
+                "last_update": self.last_update
             }
-        ]
-        self.save_state()
+            with open(STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            print("[ALPHA_TRADE] Estado inicial vacío guardado localmente (sin push a GitHub).")
+        except Exception as e:
+            print(f"[ALPHA_TRADE] Warning al guardar estado inicial: {e}")
 
     def _apply_dict(self, data):
         self.allocated_capital = data.get("allocated_capital", 20000.0)
@@ -127,6 +128,59 @@ class AlphaTradeBot:
                         "message": f"Fondos insuficientes (${available_funds_usd:.2f} USD disponibles vs ${buyback_cost:.2f} USD requeridos)."
                     }
         return {"success": False, "message": "Posición no encontrada o ya desacoplada."}
+
+    def fetch_underlying_price(self, symbol):
+        """Fetches live underlying price from Yahoo Finance."""
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+                return round(data["chart"]["result"][0]["meta"]["regularMarketPrice"], 2)
+        except Exception:
+            return None
+
+    def monitor_positions(self):
+        """
+        Called every 60s by the background loop.
+        Updates floating PnL on open synthetic positions using live prices.
+        Flags positions where the Short Put buyback cost has dropped enough to decouple.
+        """
+        changed = False
+        for pos in self.open_positions:
+            symbol = pos.get("symbol", "QQQ")
+            live_price = self.fetch_underlying_price(symbol)
+            if live_price is None:
+                continue
+
+            pos["current_underlying_price"] = live_price
+
+            # Estimate call PnL: if underlying rose above long_call_strike, intrinsic value increases
+            call_strike = pos.get("long_call_strike", live_price)
+            call_premium_paid = pos.get("long_call_premium_paid", 0) / 100.0  # per share
+            intrinsic_call = max(0.0, live_price - call_strike)
+            estimated_call_value = max(call_premium_paid, intrinsic_call)
+
+            # Estimate put buyback: if underlying rose, short put loses value (good for us)
+            put_strike = pos.get("short_put_strike", live_price * 0.97)
+            entry_price = pos.get("underlying_price_at_entry", live_price)
+            price_move_pct = (live_price - entry_price) / entry_price if entry_price > 0 else 0.0
+            original_buyback = pos.get("short_put_current_buyback_cost", 400.0)
+            # Put value decreases as underlying rises
+            adjusted_buyback = max(10.0, round(original_buyback * (1.0 - price_move_pct * 2), 2))
+            pos["short_put_current_buyback_cost"] = adjusted_buyback
+
+            # Unrealized PnL: call appreciation minus put obligation
+            net_pnl = round((estimated_call_value * 100 * pos.get("long_call_contracts", 2))
+                            - (adjusted_buyback * pos.get("short_put_contracts", 2)), 2)
+            pos["unrealized_pnl_usd"] = net_pnl
+            changed = True
+
+            print(f"[ALPHA_TRADE] Monitor: {symbol} @ ${live_price} | "
+                  f"Put Buyback: ${adjusted_buyback} | Unrealized PnL: ${net_pnl}")
+
+        if changed:
+            self.save_state()
 
     def get_status(self):
         total_unrealized_pnl = sum(p.get("unrealized_pnl_usd", 0.0) for p in self.open_positions)

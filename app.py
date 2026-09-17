@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
+import sys
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import http.server
 import socketserver
 import json
 import os
 import urllib.parse
+import urllib.request
 import webbrowser
 import threading
 import time
@@ -30,11 +33,15 @@ rsi_bot = RSIOpportunisticBot()
 master_portfolio = MasterPortfolioManager(wheel_engine, credit_bot, alpha_bot, rsi_bot, daytrade_bot)
 
 def is_market_open():
-    now = datetime.now()
+    # Use UTC-based Eastern time (EDT=UTC-4, EST=UTC-5)
+    # Using UTC-4 (EDT) — covers Apr-Oct; adjust to UTC-5 in Nov-Mar if needed
+    from datetime import timezone, timedelta
+    eastern = timezone(timedelta(hours=-4))
+    now = datetime.now(eastern)
     if now.weekday() >= 5:
         return False
     time_num = now.hour * 100 + now.minute
-    return 1030 <= time_num <= 1700
+    return 930 <= time_num <= 1600
 
 def background_trading_loop():
     print("⚡ Motores de Opciones Híbridos (5 Capas + Portfolio Margin + Tesorería SGOV) iniciados en segundo plano.")
@@ -43,7 +50,10 @@ def background_trading_loop():
             # 1. Chequeo automático de Rueda & Compounding
             wheel_engine.auto_check_and_run_cycle()
 
-            # 2. Escaneo intradiario 0-DTE, Credit Spreads & RSI Opportunistic 1DTE
+            # 3. Alpha Trade: monitoreo automático de posiciones sintéticas
+            alpha_bot.monitor_positions()
+
+            # 2 & 4 & 5. Escaneos intradiarios solo en horario de mercado
             if is_market_open():
                 daytrade_bot.run_intraday_scan()
                 credit_bot.scan_and_execute_spreads()

@@ -55,7 +55,7 @@ class MasterPortfolioManager:
         # Capa 5: Day Trading (10% - $10k)
         dt_capital = getattr(self.daytrade_bot, 'capital', 102352.6)
         dt_initial = getattr(self.daytrade_bot, 'initial_capital', 100000.0)
-        dt_pnl_usd = round(getattr(self.daytrade_bot, 'daily_pnl_usd', dt_capital - dt_initial), 2)
+        dt_pnl_usd = round(dt_capital - dt_initial, 2)  # Total accumulated PnL (not daily)
         open_dt_trades = getattr(self.daytrade_bot, 'open_positions', [])
         closed_dt_trades = getattr(self.daytrade_bot, 'closed_trades', [])
         dt_commissions = getattr(self.daytrade_bot, 'total_commissions_paid', 481.0)
