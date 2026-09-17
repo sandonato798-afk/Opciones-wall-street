@@ -1,22 +1,37 @@
 {
-  "last_update": "2026-09-15 18:20:00",
-  "initial_capital": 100000.0,
-  "cash_balance": 100000.0,
-  "etf_shares": 0.7579,
-  "accumulated_premiums_usd": 574.0,
-  "total_reinvested_usd": 574.0,
-  "wheel_positions": [],
-  "history": [
-    {
-      "timestamp": "2026-09-15 19:04:03",
-      "type": "CASH_SECURED_PUT",
-      "symbol": "SPY",
-      "etf_price": 757.4,
-      "strike": 734.7,
-      "premium_collected_usd": 574.0,
-      "shares_bought": 0.7579,
-      "total_shares_now": 0.7579,
-      "portfolio_nav_usd": 100574.03
-    }
-  ]
+    "last_update":  "2026-09-15 18:20:00",
+    "initial_capital":  100000.0,
+    "cash_balance":  100000.0,
+    "etf_shares":  0.7579,
+    "accumulated_premiums_usd":  574.0,
+    "total_reinvested_usd":  574.0,
+    "wheel_positions":  [
+                            {
+                                "issued_date":  "2026-09-15 19:04:03",
+                                "symbol":  "SPY",
+                                "id":  "WHEEL_CSP_RESTORED",
+                                "premium_collected_usd":  574,
+                                "contracts":  1,
+                                "expiration_date":  "2026-10-15",
+                                "underlying_price":  757.4,
+                                "ticker":  "SPY_PUT_734.7_30DTE",
+                                "strike":  734.7,
+                                "status":  "ACTIVE",
+                                "target_dte":  30,
+                                "strategy_type":  "CASH_SECURED_PUT"
+                            }
+                        ],
+    "history":  [
+                    {
+                        "timestamp":  "2026-09-15 19:04:03",
+                        "type":  "CASH_SECURED_PUT",
+                        "symbol":  "SPY",
+                        "etf_price":  757.4,
+                        "strike":  734.7,
+                        "premium_collected_usd":  574.0,
+                        "shares_bought":  0.7579,
+                        "total_shares_now":  0.7579,
+                        "portfolio_nav_usd":  100574.03
+                    }
+                ]
 }
