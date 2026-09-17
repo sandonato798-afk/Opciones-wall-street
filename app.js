@@ -187,7 +187,7 @@ async function loadSpreads() {
         const res = await fetch('/api/spreads/status');
         if(!res.ok) return;
         const data = await res.json();
-        document.getElementById('spreads-cap').innerText = formatUSD(data.capital);
+        document.getElementById('spreads-cap').innerText = formatUSD(20000 + (data.total_pnl_usd || 0));
         document.getElementById('spreads-wr').innerText = formatPct(data.stats?.win_rate || 0);
         
         let totalTheta = 0;
@@ -218,9 +218,9 @@ async function loadAlpha() {
         const res = await fetch('/api/alpha/status');
         if(!res.ok) return;
         const data = await res.json();
-        document.getElementById('alpha-cap').innerText = formatUSD(data.capital);
-        document.getElementById('alpha-leaps').innerText = formatUSD(data.leaps_value_usd);
-        document.getElementById('alpha-risk').innerText = formatUSD(data.short_put_risk_usd);
+        document.getElementById('alpha-cap').innerText = formatUSD(20000 + (data.net_pnl_usd || 0));
+        document.getElementById('alpha-leaps').innerText = formatUSD(data.leaps_value_usd || 0);
+        document.getElementById('alpha-risk').innerText = formatUSD(data.short_put_risk_usd || 0);
         const pnlEl = document.getElementById('alpha-pnl');
         pnlEl.innerText = sign(data.net_pnl_usd) + formatUSD(data.net_pnl_usd);
         pnlEl.className = 'val ' + colorClass(data.net_pnl_usd);
@@ -246,7 +246,7 @@ async function loadRsi() {
         const res = await fetch('/api/rsi-opportunistic/status');
         if(!res.ok) return;
         const data = await res.json();
-        document.getElementById('rsi-cap').innerText = formatUSD(data.capital);
+        document.getElementById('rsi-cap').innerText = formatUSD(15000 + (data.total_pnl_usd || 0));
         document.getElementById('rsi-val').innerText = (data.current_rsi || 0).toFixed(2);
         document.getElementById('rsi-opps').innerText = data.opportunities_found || 0;
         const pnlEl = document.getElementById('rsi-pnl');
@@ -274,8 +274,16 @@ async function loadDaytrade() {
         const res = await fetch('/api/daytrade/status');
         if(!res.ok) return;
         const data = await res.json();
-        document.getElementById('dt-cap').innerText = formatUSD(data.capital);
-        document.getElementById('dt-wr').innerText = formatPct(data.stats?.win_rate || 0);
+        document.getElementById('dt-cap').innerText = formatUSD(10000 + (data.total_pnl_usd || 0));
+        
+        // Fix Win Rate calculation (stats might return raw total as percentage if backend math is messy)
+        let wr = data.stats?.win_rate || 0;
+        if (data.closed_trades && data.closed_trades.length > 0) {
+            const wins = data.closed_trades.filter(t => (t.final_pnl_usd || 0) > 0).length;
+            wr = (wins / data.closed_trades.length) * 100;
+        }
+        document.getElementById('dt-wr').innerText = formatPct(wr);
+        
         document.getElementById('dt-mode').innerText = data.config?.execution_mode || 'PAPER';
         const pnlEl = document.getElementById('dt-pnl');
         pnlEl.innerText = sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd);
