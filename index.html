@@ -43,9 +43,18 @@
                 
                 <div class="grid-6">
                     <div class="card master-card">
-                        <div class="card-title">MASTER STATS</div>
+                        <div class="card-title">MASTER NAV (Valor Neto)</div>
                         <div class="val" id="home-master-nav">$0.00</div>
-                        <div class="sub" id="home-master-pnl">+$0.00</div>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); font-family: var(--font-mono); font-size: 13px; line-height: 1.6;">
+                            <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+                                <span>Capital Inicial:</span>
+                                <span id="home-master-initial">$0.00</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Ganancia (PnL):</span>
+                                <span id="home-master-pnl" style="font-weight: bold;">+$0.00</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="card">
                         <div class="card-title">CAPA 1: RUEDA (35%)</div>

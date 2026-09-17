@@ -58,9 +58,10 @@ async function loadMaster() {
         
         // Home tab
         document.getElementById('home-master-nav').innerText = formatUSD(data.consolidated_nav_usd);
+        document.getElementById('home-master-initial').innerText = formatUSD(data.initial_master_capital_usd);
         const homePnl = document.getElementById('home-master-pnl');
-        homePnl.innerText = sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd);
-        homePnl.className = 'sub ' + colorClass(data.total_pnl_usd);
+        homePnl.innerText = sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd) + '  (' + sign(data.total_roi_pct) + formatPct(data.total_roi_pct) + ')';
+        homePnl.className = colorClass(data.total_pnl_usd);
 
         document.getElementById('home-sgov-val').innerText = formatUSD(data.treasury_sgov?.allocated_usd || 60000);
         document.getElementById('home-margin-val').innerText = (data.margin?.margin_utilization_pct || 0) + '%';
