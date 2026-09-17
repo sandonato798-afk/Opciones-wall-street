@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import http.server
 import socketserver
 import json
@@ -11,6 +12,8 @@ from options_engine import OptionsTradingEngine
 from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
 from wheel_compounding_engine import WheelCompoundingEngine, CONFIG as WHEEL_CONFIG
 from credit_spread_bot import CreditSpreadBot, CONFIG as SPREAD_CONFIG
+from alpha_trade_bot import AlphaTradeBot
+from rsi_opportunistic_bot import RSIOpportunisticBot
 from cloud_persistence import load_state_from_github
 from master_portfolio_manager import MasterPortfolioManager
 
@@ -21,7 +24,10 @@ engine = OptionsTradingEngine()
 daytrade_bot = DayTradeOptionsBot()
 wheel_engine = WheelCompoundingEngine()
 credit_bot = CreditSpreadBot()
-master_portfolio = MasterPortfolioManager(wheel_engine, credit_bot, daytrade_bot)
+alpha_bot = AlphaTradeBot()
+rsi_bot = RSIOpportunisticBot()
+
+master_portfolio = MasterPortfolioManager(wheel_engine, credit_bot, alpha_bot, rsi_bot, daytrade_bot)
 
 def is_market_open():
     now = datetime.now()
@@ -31,16 +37,17 @@ def is_market_open():
     return 1030 <= time_num <= 1700
 
 def background_trading_loop():
-    print("⚡ Motores de Opciones (Day Trading 0-DTE, Rueda Automática & Credit Spreads) iniciados en segundo plano.")
+    print("⚡ Motores de Opciones Híbridos (5 Capas + Portfolio Margin + Tesorería SGOV) iniciados en segundo plano.")
     while True:
         try:
-            # 1. Chequeo automático de Rueda & Compounding (mensual/30 DTE)
+            # 1. Chequeo automático de Rueda & Compounding
             wheel_engine.auto_check_and_run_cycle()
 
-            # 2. Escaneo intradiario 0-DTE y Credit Spreads (Venta de Tiempo) si el mercado está abierto
+            # 2. Escaneo intradiario 0-DTE, Credit Spreads & RSI Opportunistic 1DTE
             if is_market_open():
                 daytrade_bot.run_intraday_scan()
                 credit_bot.scan_and_execute_spreads()
+                rsi_bot.scan_market()
             time.sleep(60)
         except Exception as e:
             print(f"⚠️ Error en bucle en segundo plano: {e}")
@@ -97,6 +104,12 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/etfs":
             etfs = engine.fetch_live_etf_prices()
             return self.send_json_response(etfs)
+
+        elif path == "/api/alpha/status":
+            return self.send_json_response(alpha_bot.get_status())
+
+        elif path == "/api/rsi-opportunistic/status":
+            return self.send_json_response(rsi_bot.get_status())
 
         elif path == "/api/option-chain":
             symbol = query.get("symbol", ["SPY"])[0]
@@ -206,7 +219,13 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
         except Exception:
             payload = {}
 
-        if path == "/api/payoff":
+        if path == "/api/alpha/decouple":
+            pos_id = int(payload.get("position_id", 0))
+            available_funds = float(payload.get("available_funds_usd", 1000.0))
+            res = alpha_bot.decouple_short_put(pos_id, available_funds)
+            return self.send_json_response(res)
+
+        elif path == "/api/payoff":
             legs = payload.get("legs", [])
             payoff = engine.calculate_strategy_payoff(legs)
             return self.send_json_response(payoff)
@@ -287,9 +306,9 @@ def run_server():
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("", PORT), OptionsAPIHandler) as httpd:
         print("=" * 75)
-        print(f"🚀 SISTEMA DE OPCIONES & DAY TRADING 0-DTE (WALL STREET)")
+        print(f"🚀 SISTEMA HÍBRIDO DE OPCIONES (5 CAPAS + PORTFOLIO MARGIN + SGOV)")
         print(f"🌐 Servidor Web Activo en Puerto: {PORT}")
-        print(f"⚡ Modo de Ejecución Actual: {DAYTRADE_CONFIG['execution_mode']} (Broker: {DAYTRADE_CONFIG['broker_name']})")
+        print(f"⚡ Modo de Ejecución: {DAYTRADE_CONFIG['execution_mode']} (Broker: {DAYTRADE_CONFIG['broker_name']})")
         print("=" * 75)
         
         try:

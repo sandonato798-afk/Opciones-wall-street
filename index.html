@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css?v=9.0">
+    <link rel="stylesheet" href="styles.css?v=10.0">
 </head>
 <body>
     <!-- TOP HEADER BAR (DREAMS ERP STYLE) -->
@@ -62,11 +62,13 @@
                 <button class="tab-btn" data-tab="tab-contracts">📋 Contratos & DTE</button>
             </nav>
 
-            <div class="sidebar-group-title">Estrategias en Vivo</div>
+            <div class="sidebar-group-title">Estrategias en Vivo (5 Capas)</div>
             <nav class="nav-tabs">
-                <button class="tab-btn" data-tab="tab-wheel">🏛️ Núcleo Rueda (30-DTE)</button>
-                <button class="tab-btn" data-tab="tab-spreads">👑 Venta de Tiempo (Theta)</button>
-                <button class="tab-btn" data-tab="tab-daytrade">⚡ Day Trading 0-DTE</button>
+                <button class="tab-btn" data-tab="tab-wheel">🏛️ Capa 1: La Rueda (30-45DTE)</button>
+                <button class="tab-btn" data-tab="tab-spreads">👑 Capa 2: Credit Spreads (7-14DTE)</button>
+                <button class="tab-btn" data-tab="tab-alpha">🚀 Capa 3: Alpha Trade (Sintéticos)</button>
+                <button class="tab-btn" data-tab="tab-rsi">🔴 Capa 4: Oportunista 1DTE (RSI&lt;30)</button>
+                <button class="tab-btn" data-tab="tab-daytrade">⚡ Capa 5: Day Trading (0-3DTE)</button>
             </nav>
 
             <div class="sidebar-group-title">Mercado & Herramientas</div>
@@ -85,8 +87,8 @@
             <section id="tab-master" class="tab-content active">
                 <div class="page-header">
                     <div>
-                        <h2 class="page-title">Portafolio Maestro Unificado ($100,000.00 USD)</h2>
-                        <p class="page-subtitle">Gestión de Margen de Cartera (Portfolio Margin) con 3 Libros Contables Aislados y Respaldo de Colateral</p>
+                        <h2 class="page-title">Portafolio Maestro Híbrido ($100,000.00 USD)</h2>
+                        <p class="page-subtitle">Arquitectura de 5 Capas bajo Portfolio Margin con Tesorería SGOV (5.2% APY) y Reinversión 50/30/20</p>
                     </div>
                     <span class="badge badge-live">● Sincronizado en Vivo</span>
                 </div>
@@ -104,27 +106,32 @@
                     </div>
                 </div>
 
-                <!-- 4 HERO KPI CARDS -->
-                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <!-- 5 HERO KPI CARDS -->
+                <div class="portfolio-metrics-grid" style="grid-template-columns: repeat(5, 1fr);">
                     <div class="metric-card metric-highlight">
-                        <div class="label">Patrimonio Total Consolidado (NAV)</div>
+                        <div class="label">Patrimonio Total (NAV)</div>
                         <div class="value text-gold" id="master-nav">$100,000.00 USD</div>
                         <div class="subtext" id="master-roi-text">Retorno Total: +0.00% (+$0.00 USD)</div>
                     </div>
                     <div class="metric-card">
-                        <div class="label">🏛️ Núcleo Rueda (Colateral Base)</div>
-                        <div class="value text-cyan" id="master-wheel-val">$80,000.00 USD</div>
-                        <div class="subtext" id="master-wheel-sub">80% Cuenta | Acciones SPY + Cash</div>
+                        <div class="label">🏦 Tesorería Activa (SGOV)</div>
+                        <div class="value text-green" id="master-sgov-val">$60,000.00 USD</div>
+                        <div class="subtext" id="master-sgov-sub">T-Bills 5.2% APY (+$3,120/año)</div>
                     </div>
                     <div class="metric-card">
-                        <div class="label">👑 Flujo Venta de Tiempo (Theta)</div>
-                        <div class="value text-green" id="master-spreads-val">+$0.00 USD</div>
-                        <div class="subtext" id="master-spreads-sub">Primas cobradas a 7-14 DTE</div>
+                        <div class="label">🏛️ Capa 1: Rueda (35%)</div>
+                        <div class="value text-cyan" id="master-wheel-val">$35,000.00 USD</div>
+                        <div class="subtext" id="master-wheel-sub">Colateral Base SPY + Cash</div>
                     </div>
                     <div class="metric-card">
-                        <div class="label">⚡ Alfa Day Trading (0-DTE)</div>
-                        <div class="value text-green" id="master-dt-pnl">+$0.00 USD</div>
-                        <div class="subtext" id="master-dt-pct">+0.00% | 15 trades auditados</div>
+                        <div class="label">🚀 Capa 3: Alpha Trade (20%)</div>
+                        <div class="value text-purple" id="master-alpha-val">+$1,280.00 USD</div>
+                        <div class="subtext" id="master-alpha-sub">Calls Limpios sin riesgo</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="label">⚡ Capa 5: Day Trading (10%)</div>
+                        <div class="value text-green" id="master-dt-pnl">+$2,352.60 USD</div>
+                        <div class="subtext" id="master-dt-pct">15 trades auditados (100% WR)</div>
                     </div>
                 </div>
 
@@ -680,6 +687,6 @@
         </main>
     </div>
 
-    <script src="app.js?v=9.0"></script>
+    <script src="app.js?v=10.0"></script>
 </body>
 </html>
