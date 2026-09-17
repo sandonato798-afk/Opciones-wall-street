@@ -18,12 +18,12 @@
       "status": "ACTIVE_SYNTHETIC",
       "short_put_current_buyback_cost": 10.0,
       "decoupled": false,
-      "current_underlying_price": 716.57,
+      "current_underlying_price": 716.56,
       "unrealized_pnl_usd": 2880.0
     }
   ],
   "decoupled_calls": [],
   "closed_positions": [],
   "total_decouple_funds_used": 0.0,
-  "last_update": "2026-09-17 15:51:48"
+  "last_update": "2026-09-17 15:52:31"
 }
