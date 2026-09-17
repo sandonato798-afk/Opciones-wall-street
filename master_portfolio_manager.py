@@ -373,19 +373,19 @@ class MasterPortfolioManager:
             },
             "strategies_ledger": [
                 {
-                    "id": "wheel", "name": "Capa 1: La Rueda (30-45 DTE)",
-                    "role": "Nucleo de Acumulacion & Colateral Base",
-                    "target_asset": "SPY / QQQ",
-                    "capital_allocated_usd": 35000.0, "capital_allocated_pct": 35.0,
+                    "id": "wheel", "name": "Capa 1: La Rueda (Overlay 100% Colateral)",
+                    "role": "Overlay de Renta sobre Cartera & Compounding 100%",
+                    "target_asset": "SPY / QQQ / GLD / TLT",
+                    "capital_allocated_usd": consolidated_nav, "capital_allocated_pct": 100.0,
                     "net_pnl_usd": wheel_pnl_usd, "shares_held": wheel_shares,
                     "shares_val_usd": wheel_shares_val,
-                    "premiums_collected_usd": wheel_premiums, "status": "ACTIVE_COMPOUNDING"
+                    "premiums_collected_usd": wheel_premiums, "status": "ACTIVE_COMPOUNDING_OVERLAY"
                 },
                 {
                     "id": "spreads", "name": "Capa 2: Credit Spreads (7-14 DTE)",
                     "role": "Generacion de Flujo Pasivo Theta",
                     "target_asset": "SPY / QQQ",
-                    "capital_allocated_usd": 20000.0, "capital_allocated_pct": 20.0,
+                    "capital_allocated_usd": 30000.0, "capital_allocated_pct": 30.0,
                     "net_pnl_usd": spread_pnl_usd, "premiums_collected_usd": spread_premiums,
                     "active_spreads_count": len(open_spreads), "win_rate_pct": 82.5,
                     "status": "SELLING_THETA"
@@ -394,7 +394,7 @@ class MasterPortfolioManager:
                     "id": "alpha", "name": "Capa 3: Alpha Trade (60-180 DTE)",
                     "role": "Multiplicador Alcista sin Techo a Costo $0",
                     "target_asset": "QQQ / NVDA",
-                    "capital_allocated_usd": 20000.0, "capital_allocated_pct": 20.0,
+                    "capital_allocated_usd": 30000.0, "capital_allocated_pct": 30.0,
                     "net_pnl_usd": alpha_pnl_usd,
                     "decoupled_calls_count": alpha_status.get("decoupled_calls_count", 0),
                     "status": "ZERO_COST_LEAP"
@@ -403,7 +403,7 @@ class MasterPortfolioManager:
                     "id": "rsi_opportunistic", "name": "Capa 4: Oportunista 1DTE (RSI < 30)",
                     "role": "Explotacion de Panico & Picos de IV",
                     "target_asset": "SPY / QQQ / DIA",
-                    "capital_allocated_usd": 15000.0, "capital_allocated_pct": 15.0,
+                    "capital_allocated_usd": 25000.0, "capital_allocated_pct": 25.0,
                     "net_pnl_usd": rsi_pnl_usd,
                     "status": rsi_status.get("status_mode", "IDLE_MONITORING")
                 },
@@ -411,7 +411,7 @@ class MasterPortfolioManager:
                     "id": "daytrade", "name": "Capa 5: Day Trading 0-3 DTE",
                     "role": "Alfa & Rupturas Intradiarias (Filtro VWAP)",
                     "target_asset": "SPY / QQQ",
-                    "capital_allocated_usd": 10000.0, "capital_allocated_pct": 10.0,
+                    "capital_allocated_usd": 15000.0, "capital_allocated_pct": 15.0,
                     "net_pnl_usd": dt_pnl_usd, "win_rate_pct": dt_stats.get("win_rate", 0.0),
                     "closed_trades_count": len(closed_dt_trades), "status": "SCANNING_INTRADAY"
                 }

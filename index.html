@@ -165,14 +165,14 @@
             <!-- TAB: RUEDA -->
             <section id="tab-wheel" class="tab-content">
                 <div class="header-section">
-                    <h2>CAPA 1: LA RUEDA (CASH-SECURED PUTS & COVERED CALLS)</h2>
+                    <h2>CAPA 1: LA RUEDA (OVERLAY SOBRE 100% CARTERA DE COLATERAL)</h2>
                     <button class="btn btn-primary" onclick="runWheelCycle()">RUN CYCLE</button>
                 </div>
                 <div class="grid-4">
-                    <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="wheel-cap">$0.00</div></div>
-                    <div class="card"><div class="card-title">ACCIONES EN CARTERA</div><div class="val" id="wheel-shares">0</div></div>
-                    <div class="card"><div class="card-title">PRIMAS COBRADAS</div><div class="val text-green" id="wheel-prems">$0.00</div></div>
-                    <div class="card"><div class="card-title">CAGR ESTIMADO</div><div class="val text-green" id="wheel-cagr">0.00%</div></div>
+                    <div class="card"><div class="card-title">COLATERAL RESPALDADO</div><div class="val" id="wheel-cap">$100,000.00 (100% NAV)</div><div class="sub">SGOV + GLD + TLT</div></div>
+                    <div class="card"><div class="card-title">ACCIONES EN CARTERA</div><div class="val" id="wheel-shares">0</div><div class="sub">Covered Calls Activos</div></div>
+                    <div class="card"><div class="card-title">PRIMAS REINVERTIDAS</div><div class="val text-green" id="wheel-prems">$0.00</div><div class="sub">Interés Compuesto</div></div>
+                    <div class="card"><div class="card-title">CAGR TOTAL (YIELD STACKING)</div><div class="val text-green" id="wheel-cagr">0.00%</div><div class="sub">T-Bills 5.2% + Primas</div></div>
                 </div>
                 <div class="card">
                     <div class="card-title">POSICIONES ACTIVAS (EN CURSO)</div>
