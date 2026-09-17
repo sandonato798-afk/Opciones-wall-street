@@ -122,11 +122,35 @@ async function loadMaster() {
 
         if (data.strategies_ledger) {
             data.strategies_ledger.forEach(l => {
-                if(l.id === 'wheel') document.getElementById('home-c1-nav').innerText = formatUSD(l.capital_allocated_usd);
-                if(l.id === 'spreads') document.getElementById('home-c2-nav').innerText = formatUSD(l.capital_allocated_usd);
-                if(l.id === 'alpha') document.getElementById('home-c3-nav').innerText = formatUSD(l.capital_allocated_usd);
-                if(l.id === 'rsi') document.getElementById('home-c4-nav').innerText = formatUSD(l.capital_allocated_usd);
-                if(l.id === 'daytrade') document.getElementById('home-c5-nav').innerText = formatUSD(l.capital_allocated_usd);
+                const liveNav = (l.capital_allocated_usd || 0) + (l.net_pnl_usd || 0);
+                const pnlTxt = sign(l.net_pnl_usd) + formatUSD(l.net_pnl_usd);
+                const pnlClass = 'sub ' + colorClass(l.net_pnl_usd);
+                
+                if(l.id === 'wheel') {
+                    document.getElementById('home-c1-nav').innerText = formatUSD(liveNav);
+                    const el = document.getElementById('home-c1-pnl');
+                    el.innerText = pnlTxt; el.className = pnlClass;
+                }
+                if(l.id === 'spreads') {
+                    document.getElementById('home-c2-nav').innerText = formatUSD(liveNav);
+                    const el = document.getElementById('home-c2-pnl');
+                    el.innerText = pnlTxt; el.className = pnlClass;
+                }
+                if(l.id === 'alpha') {
+                    document.getElementById('home-c3-nav').innerText = formatUSD(liveNav);
+                    const el = document.getElementById('home-c3-pnl');
+                    el.innerText = pnlTxt; el.className = pnlClass;
+                }
+                if(l.id === 'rsi_opportunistic') {
+                    document.getElementById('home-c4-nav').innerText = formatUSD(liveNav);
+                    const el = document.getElementById('home-c4-pnl');
+                    el.innerText = pnlTxt; el.className = pnlClass;
+                }
+                if(l.id === 'daytrade') {
+                    document.getElementById('home-c5-nav').innerText = formatUSD(liveNav);
+                    const el = document.getElementById('home-c5-pnl');
+                    el.innerText = pnlTxt; el.className = pnlClass;
+                }
             });
         }
     } catch(e) { console.error('Error loadMaster', e); }
