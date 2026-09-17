@@ -268,7 +268,7 @@ class MasterPortfolioManager:
         total_roi_pct    = round((total_pnl_usd / self.initial_capital) * 100.0, 2)
 
         # 4.1 Inception y Proyecciones
-        SYSTEM_INCEPTION_DATE = "2024-01-15" # Fecha de inicio del sistema (configurable)
+        SYSTEM_INCEPTION_DATE = "2026-09-15" # Fecha de inicio del sistema (configurable)
         inception_dt = datetime.strptime(SYSTEM_INCEPTION_DATE, "%Y-%m-%d")
         days_active = max(1, (datetime.now() - inception_dt).days)
         months_active = max(1.0, days_active / 30.44)
