@@ -119,29 +119,36 @@ class AlphaTradeBot:
                 continue
                 
             # Simulamos el cálculo de DMA200 y RSI Semanal (En un entorno real se baja data histórica larga)
-            # Para la arquitectura, el gatillo lógico queda programado:
-            dma_200 = current_price * 1.01 # Placeholder simulado para el test
-            rsi_weekly = 40 # Placeholder simulado para el test
+            # Lógica de Cruce de Confirmación (Momentum Reversal)
+            # En entorno real, esto compara la vela anterior vs la vela actual
+            prev_price = current_price * 0.99 
+            dma_200 = current_price * 0.995 # Simula que el precio acaba de cruzar hacia arriba
             
-            # GATILLO MACROECONÓMICO
-            if current_price <= dma_200 or rsi_weekly <= 45:
-                print(f"[ALPHA_TRADE] 🎯 Oportunidad Macro Detectada en {symbol}. RSI Semanal: {rsi_weekly} | Precio vs DMA200: ${current_price}/${dma_200}")
+            prev_rsi_weekly = 44
+            current_rsi_weekly = 46 # Simula que el RSI acaba de cruzar de menos a mas de 45
+            
+            # GATILLO DE CONFIRMACIÓN ALCISTA
+            cruce_dma_alcista = (prev_price <= dma_200) and (current_price > dma_200)
+            cruce_rsi_alcista = (prev_rsi_weekly <= 45) and (current_rsi_weekly > 45)
+            
+            if cruce_dma_alcista or cruce_rsi_alcista:
+                motivo = "DMA200 Cross-Up" if cruce_dma_alcista else "RSI > 45 Cross-Up"
+                print(f"[ALPHA_TRADE] 🎯 Confirmación Macro Detectada en {symbol} ({motivo}).")
                 
-                # Armado del Sintético a 2 Años a Costo Cero
-                put_strike = round(current_price * 0.85, 1) # Vende Put 15% OTM
-                call_strike = round(current_price * 1.05, 1) # Compra Call 5% OTM
+                # Búsqueda del vencimiento máximo absoluto (LEAP más lejano, 2 a 3 años)
+                max_available_dte = 850 # Placeholder para "furthest possible expiration"
                 
-                premium_collected = round(current_price * 0.08 * 100, 2) # Prima estimada
-                
-                # Abre en números pares obligatoriamente para permitir el Desacople Autofinanciado futuro
+                put_strike = round(current_price * 0.85, 1)
+                call_strike = round(current_price * 1.05, 1)
+                premium_collected = round(current_price * 0.08 * 100, 2)
                 contracts = 2
                 
                 new_position = {
                     "id": int(datetime.now().timestamp() * 1000),
                     "symbol": symbol,
-                    "strategy": "ZERO_COST_SYNTHETIC_LEAP_2YR",
+                    "strategy": "ZERO_COST_SYNTHETIC_LEAP_MAX_DTE",
                     "entry_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "dte": 730, # 2 años
+                    "dte": max_available_dte, # Vencimiento más lejano posible # 2 años
                     "underlying_price_at_entry": current_price,
                     "short_put_strike": put_strike,
                     "short_put_contracts": contracts,
