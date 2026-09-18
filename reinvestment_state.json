@@ -1,10 +1,10 @@
 {
-  "total_reinvested_usd": 75927.6,
-  "sgov_accumulated_usd": 67963.8,
+  "total_reinvested_usd": 92587.6,
+  "sgov_accumulated_usd": 76293.8,
   "gld_accumulated_usd": 20000.0,
   "tlt_accumulated_usd": 10000.0,
-  "last_reinvestment_date": "2026-09-18 14:41:11",
-  "reinvestment_count": 5,
+  "last_reinvestment_date": "2026-09-18 15:25:08",
+  "reinvestment_count": 7,
   "reinvestment_history": [
     {
       "date": "2026-09-18 05:47:48",
@@ -50,7 +50,25 @@
       "alpha_20_usd": 1329.0,
       "wheel_shares_bought": 2.6253,
       "alpha_decoupled": false
+    },
+    {
+      "date": "2026-09-18 14:47:46",
+      "total_reinvested_usd": 8956.0,
+      "sgov_50_usd": 4478.0,
+      "spy_30_usd": 2686.8,
+      "alpha_20_usd": 1791.2,
+      "wheel_shares_bought": 3.5392,
+      "alpha_decoupled": false
+    },
+    {
+      "date": "2026-09-18 15:25:08",
+      "total_reinvested_usd": 7704.0,
+      "sgov_50_usd": 3852.0,
+      "spy_30_usd": 2311.2,
+      "alpha_20_usd": 1540.8,
+      "wheel_shares_bought": 3.0416,
+      "alpha_decoupled": false
     }
   ],
-  "last_updated": "2026-09-18 14:41:11"
+  "last_updated": "2026-09-18 15:25:08"
 }
