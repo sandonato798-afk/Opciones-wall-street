@@ -3,12 +3,12 @@
   "status_mode": "ACTIVE_TRADE",
   "open_trades": [
     {
-      "id": 1789760019328,
+      "id": 1789760082032,
       "symbol": "SPY",
       "strategy": "NAKED_PUT_PANIC_SCALP_1DTE",
-      "entry_date": "2026-09-18 16:33:39",
-      "entry_rsi": 11.8,
-      "underlying_price": 760.71,
+      "entry_date": "2026-09-18 16:34:42",
+      "entry_rsi": 13.1,
+      "underlying_price": 760.72,
       "put_strike": 753.1,
       "contracts": 1,
       "premium_per_share": 11.41,
@@ -98,14 +98,34 @@
       "exit_reason": "TAKE_PROFIT_50%",
       "pnl_usd": 1070.0,
       "exit_date": "2026-09-18 16:33:39"
+    },
+    {
+      "id": 1789760019328,
+      "symbol": "SPY",
+      "strategy": "NAKED_PUT_PANIC_SCALP_1DTE",
+      "entry_date": "2026-09-18 16:33:39",
+      "entry_rsi": 11.8,
+      "underlying_price": 760.71,
+      "put_strike": 753.1,
+      "contracts": 1,
+      "premium_per_share": 11.41,
+      "premium_collected_usd": 1141.0,
+      "take_profit_target_usd": 570.5,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 13.1,
+      "exit_price": 760.72,
+      "exit_reason": "TAKE_PROFIT_50%",
+      "pnl_usd": 1072.0,
+      "exit_date": "2026-09-18 16:34:42"
     }
   ],
-  "total_premiums_collected": 4197.0,
-  "total_pnl_usd": 3940.0,
+  "total_premiums_collected": 5338.0,
+  "total_pnl_usd": 5012.0,
   "last_rsi_scanned": {
-    "SPY": 11.8,
-    "QQQ": 28.5,
-    "DIA": 34.0
+    "SPY": 13.1,
+    "QQQ": 26.6,
+    "DIA": 29.5
   },
-  "last_update": "2026-09-18 16:33:39"
+  "last_update": "2026-09-18 16:34:42"
 }
