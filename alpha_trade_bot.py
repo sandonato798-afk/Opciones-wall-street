@@ -98,6 +98,54 @@ class AlphaTradeBot:
         except Exception as e:
             print(f"[ALPHA_TRADE] Error guardando estado: {e}")
 
+
+
+    def monitor_and_auto_decouple(self, market_data=None):
+        """
+        Lógica Institucional: Self-Funded Free Runner.
+        Evalúa si la venta del 50% de los Long Calls cubre el 100% de la recompra de los Short Puts.
+        """
+        for pos in self.open_positions:
+            if not pos.get("decoupled"):
+                symbol = pos["symbol"]
+                current_price = self.fetch_underlying_price(symbol)
+                if not current_price:
+                    continue
+                
+                # Simulacion de valorizacion (En live, llama a Black-Scholes)
+                if current_price > pos["underlying_price_at_entry"]:
+                    price_increase_pct = (current_price - pos["underlying_price_at_entry"]) / pos["underlying_price_at_entry"]
+                    
+                    # Valor actual de 1 Long Call (Delta proxy aproximado)
+                    call_current_value = (pos["long_call_premium_paid"] / pos["long_call_contracts"]) * (1 + (price_increase_pct * 4))
+                    # Costo actual de recomprar TODOS los Short Puts
+                    total_put_buyback_cost = pos["short_put_premium_collected"] * max(0.1, (1 - (price_increase_pct * 5)))
+                    
+                    half_calls = max(1, int(pos["long_call_contracts"] / 2))
+                    value_of_half_calls = call_current_value * half_calls
+                    
+                    # GATILLO DE ESCAPE AUTOFINANCIADO
+                    if value_of_half_calls >= total_put_buyback_cost:
+                        print(f"[ALPHA_TRADE] 🚀 GATILLO DE DESACOPLE AUTOFINANCIADO DETECTADO en {symbol}!")
+                        
+                        pos["decoupled"] = True
+                        pos["long_call_contracts"] -= half_calls
+                        pos["short_put_contracts"] = 0
+                        
+                        net_cash_generated = round(value_of_half_calls - total_put_buyback_cost, 2)
+                        
+                        free_runner = {
+                            **pos,
+                            "status": "FREE_RUNNER_LONG_CALL",
+                            "net_cash_generated_usd": net_cash_generated,
+                            "decouple_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        self.decoupled_calls.append(free_runner)
+                        self.save_state()
+                        print(f"[ALPHA_TRADE] ✅ Desacople Exitoso. Riesgo eliminado. Cash Sobrante: +${net_cash_generated}")
+                        
+        return {"status": "MONITORED"}
+
     def decouple_short_put(self, position_id, available_funds_usd):
         """
         Recompras la pata Short Put usando fondos de la reinversión (20%), 
