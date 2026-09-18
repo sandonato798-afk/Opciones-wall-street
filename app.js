@@ -423,9 +423,9 @@ async function loadRsi() {
             data.open_trades.forEach(p => {
                 tbodyPos.innerHTML += `<tr>
                     <td><strong>${p.symbol}</strong></td>
-                    <td>Short Put 1DTE (${p.contracts}x)</td>
+                    <td>${p.strategy === 'BULL_PUT_SPREAD_1DTE_SCALP' ? 'Bull Put Spread (Riesgo Bloqueado)' : 'Short Put'} (${p.contracts}x)</td>
                     <td><span style="color:var(--primary-red);font-weight:bold;">${p.entry_rsi} (Pánico)</span></td>
-                    <td>Strike $${p.put_strike}</td>
+                    <td>Vendido $${p.put_strike} <br><span style='font-size:0.8em;color:gray;'>Comprado $${p.long_strike||'N/A'} (Seguro)</span></td>
                     <td class="text-green">+${formatUSD(p.premium_collected_usd)}</td>
                     <td><span style="color:var(--accent-blue);">${p.dte || 1} día (1-DTE)</span></td>
                     <td><span class="text-green">🟢 ABIERTA</span></td>
@@ -447,7 +447,7 @@ async function loadRsi() {
                         <td>${p.entry_date || '-'} → ${p.exit_date || '-'}</td>
                         <td><strong>${p.symbol}</strong></td>
                         <td>Entrada: ${p.entry_rsi} → Salida: ${p.exit_rsi || '-'}</td>
-                        <td>Strike $${p.put_strike}</td>
+                        <td>Vendido $${p.put_strike} <br><span style='font-size:0.8em;color:gray;'>Comprado $${p.long_strike||'N/A'} (Seguro)</span></td>
                         <td class="text-green">+${formatUSD(p.premium_collected_usd || 0)}</td>
                         <td class="${colorClass(net)}"><strong>+${formatUSD(net)}</strong></td>
                         <td>${statusBadge}</td>

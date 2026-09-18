@@ -151,22 +151,37 @@ class RSIOpportunisticBot:
             for symbol, data in rsi_values.items():
                 if data["rsi"] < 30 and data["price"] > 0:
                     price = data["price"]
-                    put_strike = round(price * 0.985, 1)  # 1.5% OTM put
-                    # Estimate premium: ~0.3% of underlying for 1DTE
-                    premium_per_share = round(price * 0.003, 2)
-                    contracts = max(1, int(self.allocated_capital * 0.10 / (premium_per_share * 100)))
-                    premium_collected_usd = round(premium_per_share * 100 * contracts, 2)
+                    # LOGICA CHALECO ANTIBALAS: Bull Put Spread 0-DTE
+                    put_strike_short = round(price * 0.99, 1)  # Venta (1% OTM)
+                    put_strike_long = round(price * 0.98, 1)   # Compra Seguro (2% OTM)
+                    spread_width = round(put_strike_short - put_strike_long, 2)
+                    
+                    # Premium neto (aprox 15% del ancho por la alta volatilidad intradia)
+                    net_premium_per_share = round(spread_width * 0.15, 2)
+                    
+                    # Riesgo Maximo Congelado (Chaleco)
+                    max_loss_per_share = spread_width - net_premium_per_share
+                    max_loss_per_contract = max_loss_per_share * 100
+                    
+                    # Deployar 50% del presupuesto de la Capa usando riesgo definido
+                    risk_budget = self.allocated_capital * 0.50
+                    contracts = max(1, int(risk_budget / max_loss_per_contract))
+                    
+                    premium_collected_usd = round(net_premium_per_share * 100 * contracts, 2)
+                    
                     trade = {
                         "id": int(datetime.now().timestamp() * 1000),
                         "symbol": symbol,
-                        "strategy": "SHORT_PUT_1DTE_RSI_OVERSOLD",
+                        "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
                         "entry_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "entry_rsi": data["rsi"],
                         "underlying_price": price,
-                        "put_strike": put_strike,
+                        "put_strike": put_strike_short,
+                        "long_strike": put_strike_long,
                         "contracts": contracts,
-                        "premium_per_share": premium_per_share,
+                        "premium_per_share": net_premium_per_share,
                         "premium_collected_usd": premium_collected_usd,
+                        "max_loss_usd": round(max_loss_per_contract * contracts, 2),
                         "dte": 1,
                         "status": "OPEN"
                     }
