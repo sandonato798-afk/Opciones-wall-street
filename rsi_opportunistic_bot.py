@@ -138,6 +138,7 @@ class RSIOpportunisticBot:
             if current_rsi > 70 or (current_price > 0 and current_price > trade.get("put_strike", 0)):
                 premium_collected = trade.get("premium_collected_usd", 0)
                 pnl = round(premium_collected * 0.90, 2)  # 90% profit capture
+                pnl = round(premium_collected * 0.50, 2)  # 50% profit capture (Take Profit)
                 self.total_pnl_usd += pnl
                 self.total_premiums_collected += premium_collected
                 self.closed_trades.append({**trade, "exit_rsi": current_rsi, "pnl_usd": pnl,
@@ -146,50 +147,42 @@ class RSIOpportunisticBot:
                 self.status_mode = "IDLE_MONITORING"
                 print(f"[RSI_OPPORTUNISTIC] CLOSED trade on {symbol} — RSI recovered to {current_rsi}. PnL: +${pnl}")
 
-        # Open new trades when RSI < 30 (oversold panic)
+        # Open new trades when RSI < 25 (Pánico Extremo - Umbral Institucional)
         if len(self.open_trades) == 0:
             for symbol, data in rsi_values.items():
-                if data["rsi"] < 30 and data["price"] > 0:
+                if data["rsi"] < 25 and data["price"] > 0:
                     price = data["price"]
-                    # LOGICA CHALECO ANTIBALAS: Bull Put Spread 0-DTE
-                    put_strike_short = round(price * 0.99, 1)  # Venta (1% OTM)
-                    put_strike_long = round(price * 0.98, 1)   # Compra Seguro (2% OTM)
-                    spread_width = round(put_strike_short - put_strike_long, 2)
-                    
-                    # Premium neto (aprox 15% del ancho por la alta volatilidad intradia)
-                    net_premium_per_share = round(spread_width * 0.15, 2)
-                    
-                    # Riesgo Maximo Congelado (Chaleco)
-                    max_loss_per_share = spread_width - net_premium_per_share
-                    max_loss_per_contract = max_loss_per_share * 100
-                    
-                    # Deployar 50% del presupuesto de la Capa usando riesgo definido
-                    risk_budget = self.allocated_capital * 0.50
-                    contracts = max(1, int(risk_budget / max_loss_per_contract))
-                    
-                    premium_collected_usd = round(net_premium_per_share * 100 * contracts, 2)
-                    
+
+                    # NAKED PUT: Strike 1% OTM, vencimiento 1DTE
+                    put_strike = round(price * 0.99, 1)
+                    premium_per_share = round(price * 0.015, 2)  # Prima estimada (IV inflada por pánico)
+
+                    # Sizing: ~20% de margen por Put desnudo (Portfolio Margin)
+                    margin_per_contract = put_strike * 100 * 0.20
+                    contracts = max(1, int(self.allocated_capital * 0.5 / margin_per_contract))
+                    premium_collected_usd = round(premium_per_share * 100 * contracts, 2)
+                    take_profit_usd = round(premium_collected_usd * 0.50, 2)  # TP al 50%
+
                     trade = {
                         "id": int(datetime.now().timestamp() * 1000),
                         "symbol": symbol,
-                        "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
+                        "strategy": "NAKED_PUT_PANIC_SCALP_1DTE",
                         "entry_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         "entry_rsi": data["rsi"],
                         "underlying_price": price,
-                        "put_strike": put_strike_short,
-                        "long_strike": put_strike_long,
+                        "put_strike": put_strike,
                         "contracts": contracts,
-                        "premium_per_share": net_premium_per_share,
+                        "premium_per_share": premium_per_share,
                         "premium_collected_usd": premium_collected_usd,
-                        "max_loss_usd": round(max_loss_per_contract * contracts, 2),
+                        "take_profit_target_usd": take_profit_usd,
                         "dte": 1,
                         "status": "OPEN"
                     }
                     self.open_trades.append(trade)
                     self.status_mode = "ACTIVE_TRADE"
-                    print(f"[RSI_OPPORTUNISTIC] OPENED 1DTE Short Put on {symbol} "
-                          f"K={put_strike} | RSI={data['rsi']} | Premium: +${premium_collected_usd}")
-                    break  # One trade at a time
+                    print(f"[RSI_OPPORTUNISTIC] ABIERTO Naked Put 1DTE en {symbol} | Strike={put_strike} | RSI={data['rsi']} | Prima: +${premium_collected_usd} | TP: ${take_profit_usd}")
+                    break  # Un trade a la vez
+
 
         self.save_state()
         return self.get_status()

@@ -21,13 +21,16 @@ COLLATERAL_PORTFOLIO = {
 class MasterPortfolioManager:
     """
     Orquestador Central del Portafolio Maestro Hibrido ($100,000 USD)
-    - 5 Capas de Opciones bajo Portfolio Margin
+    - 4 Capas de Opciones bajo Portfolio Margin
     - Tesoreria diversificada: SGOV (30%) + GLD (20%) + TLT (10%)
     - Motor de Reinversion Automatica: 50% SGOV / 30% SPY / 20% Alpha decouple
+    - Capa 1: La Rueda (Overlay 100% NAV)
+    - Capa 2: Alpha LEAPS Macro (MAX DTE, indices + sectoriales)
+    - Capa 3: RSI Oportunista (Naked Put 1DTE, RSI<25)
+    - Capa 4: Daytrading ITM (Put +1%, 1DTE, TP 50%)
     """
-    def __init__(self, wheel_engine, credit_bot, alpha_bot, rsi_bot, daytrade_bot):
+    def __init__(self, wheel_engine, alpha_bot, rsi_bot, daytrade_bot):
         self.wheel_engine = wheel_engine
-        self.credit_bot = credit_bot
         self.alpha_bot = alpha_bot
         self.rsi_bot = rsi_bot
         self.daytrade_bot = daytrade_bot
@@ -121,14 +124,11 @@ class MasterPortfolioManager:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _get_total_premiums_collected(self):
-        """Suma todas las primas brutas generadas por las 5 capas."""
+        """Suma todas las primas brutas generadas por las 4 capas."""
         wheel_premiums   = getattr(self.wheel_engine, 'accumulated_premiums_usd', 0.0)
-        spread_premiums  = getattr(self.credit_bot, 'total_premiums_collected', 0.0)
         rsi_premiums     = getattr(self.rsi_bot, 'total_premiums_collected', 0.0)
-        dt_capital       = getattr(self.daytrade_bot, 'capital', INITIAL_MASTER_CAPITAL_USD)
-        dt_initial       = getattr(self.daytrade_bot, 'initial_capital', INITIAL_MASTER_CAPITAL_USD)
-        dt_pnl           = max(0.0, dt_capital - dt_initial)
-        return round(wheel_premiums + spread_premiums + rsi_premiums + dt_pnl, 2)
+        dt_pnl           = sum(t.get("realized_pnl_usd", 0) for t in getattr(self.daytrade_bot, 'history', []) if t.get("realized_pnl_usd", 0) > 0)
+        return round(wheel_premiums + rsi_premiums + dt_pnl, 2)
 
     def check_and_execute_reinvestment(self):
         """
@@ -224,9 +224,8 @@ class MasterPortfolioManager:
     # ─────────────────────────────────────────────────────────────────────────
 
     def get_master_summary(self):
-        # 1. Refrescar estados (solo desde disco local para evitar rate limit de GitHub)
+        # 1. Refrescar estados
         self.wheel_engine.load_state()
-        self.credit_bot.load_state()
         if hasattr(self.alpha_bot, 'load_state'):   self.alpha_bot.load_state()
         if hasattr(self.rsi_bot, 'load_state'):     self.rsi_bot.load_state()
         self.daytrade_bot.load_state()
@@ -241,51 +240,36 @@ class MasterPortfolioManager:
         wheel_reinvested = getattr(self.wheel_engine, 'total_reinvested_usd', 574.0)
         wheel_pnl_usd   = round(wheel_premiums + max(0.0, wheel_shares_val - wheel_reinvested), 2)
 
-        spread_premiums = getattr(self.credit_bot, 'total_premiums_collected', 2574.0)
-        open_spreads    = getattr(self.credit_bot, 'open_spreads', [])
-        closed_spreads  = getattr(self.credit_bot, 'closed_spreads', [])
-        spread_pnl_usd  = (sum(s.get('pnl_usd', 0.0) for s in open_spreads) +
-                           sum(s.get('final_pnl_usd', 0.0) for s in closed_spreads))
-
         alpha_status   = self.alpha_bot.get_status() if hasattr(self.alpha_bot, 'get_status') else {}
         alpha_pnl_usd  = alpha_status.get("total_unrealized_pnl_usd", 0.0)
 
         rsi_status     = self.rsi_bot.get_status() if hasattr(self.rsi_bot, 'get_status') else {}
         rsi_pnl_usd    = rsi_status.get("total_pnl_usd", 0.0)
 
-        dt_capital     = getattr(self.daytrade_bot, 'capital', INITIAL_MASTER_CAPITAL_USD)
-        dt_initial     = getattr(self.daytrade_bot, 'initial_capital', INITIAL_MASTER_CAPITAL_USD)
-        dt_pnl_usd     = round(dt_capital - dt_initial, 2)
-        open_dt_trades = getattr(self.daytrade_bot, 'open_positions', [])
-        closed_dt_trades = getattr(self.daytrade_bot, 'closed_trades', [])
-        dt_stats       = (self.daytrade_bot.get_win_rate_stats()
-                          if hasattr(self.daytrade_bot, 'get_win_rate_stats')
-                          else {"total": 0, "wins": 0, "losses": 0, "win_rate": 0.0})
+        dt_history     = getattr(self.daytrade_bot, 'history', [])
+        dt_active      = getattr(self.daytrade_bot, 'active_trades', [])
+        dt_pnl_usd     = round(sum(t.get("realized_pnl_usd", 0) for t in dt_history), 2)
+        dt_stats       = {"total": len(dt_history), "wins": sum(1 for t in dt_history if t.get("realized_pnl_usd", 0) > 0), "losses": sum(1 for t in dt_history if t.get("realized_pnl_usd", 0) < 0), "win_rate": 0.0}
+        if dt_stats["total"] > 0:
+            dt_stats["win_rate"] = round(dt_stats["wins"] / dt_stats["total"] * 100, 1)
 
         # 4. NAV Consolidado & Analiticas de Rendimiento
-        total_pnl_usd    = round(wheel_pnl_usd + spread_pnl_usd + alpha_pnl_usd + rsi_pnl_usd + dt_pnl_usd, 2)
+        total_pnl_usd    = round(wheel_pnl_usd + alpha_pnl_usd + rsi_pnl_usd + dt_pnl_usd, 2)
         consolidated_nav = round(self.initial_capital + total_pnl_usd, 2)
         total_roi_pct    = round((total_pnl_usd / self.initial_capital) * 100.0, 2)
 
-        # 4.1 Inception y Proyecciones
-        SYSTEM_INCEPTION_DATE = "2026-09-15" # Fecha de inicio del sistema (configurable)
+        SYSTEM_INCEPTION_DATE = "2026-09-15"
         inception_dt = datetime.strptime(SYSTEM_INCEPTION_DATE, "%Y-%m-%d")
         days_active = max(1, (datetime.now() - inception_dt).days)
         months_active = max(1.0, days_active / 30.44)
-        
+
         annualized_roi_pct = round((total_roi_pct / days_active) * 365, 2) if days_active > 0 else 0.0
         projected_monthly_usd = round(total_pnl_usd / months_active, 2)
 
-        # 4.2 Theta Global (Θ) Estimado (Cuanto ganamos por dia solo por paso del tiempo)
-        # Estimacion gruesa: Primas cobradas / DTE promedio
-        wheel_theta = wheel_premiums / 45.0  # asumiendo ciclos de 45 DTE
-        spreads_theta = spread_premiums / 10.0 # asumiendo ciclos de 7-14 DTE
-        global_theta_usd = round(wheel_theta + spreads_theta, 2)
+        wheel_theta = wheel_premiums / 45.0
+        global_theta_usd = round(wheel_theta, 2)
 
-        # 4.3 Max Drawdown & Profit Factor (Simulados para Paper Trading / Tracking en vivo)
-        # En una DB real esto iteraría las curvas de capital diarias. Para paper trading:
-        # Profit Factor = Gross Profit / Gross Loss
-        gross_profit = wheel_pnl_usd + spread_pnl_usd + (dt_stats["wins"] * 450) + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
+        gross_profit = wheel_pnl_usd + (dt_stats["wins"] * 450) + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
         gross_loss = abs((dt_stats["losses"] * -240) + (rsi_pnl_usd if rsi_pnl_usd < 0 else 0))
         if gross_profit == 0 and gross_loss == 0:
             profit_factor = 0.0
@@ -294,24 +278,22 @@ class MasterPortfolioManager:
         else:
             profit_factor = round(gross_profit / gross_loss, 2)
 
-        # Max Drawdown: Estimamos caídas intradiarias vs NAV actual
-        # Tomaremos las perdidas de DT + posibles perdidas flotantes de Spreads como drawdown proxy
-        mdd_proxy_usd = abs(gross_loss) * 1.5 # Proxy conservador
+        mdd_proxy_usd = abs(gross_loss) * 1.5
         max_drawdown_pct = round((mdd_proxy_usd / self.initial_capital) * -100.0, 2)
         if max_drawdown_pct > 0:
             max_drawdown_pct = 0.0
 
-        # 5. Colateral Diversificado con precios en vivo
+        # 5. Colateral
         collateral_data = self._fetch_collateral_prices(consolidated_nav)
 
-        # 6. Margen
-        margin_spreads   = sum(s.get('total_max_risk_usd', 0) for s in open_spreads) or 10500.0
+        # 6. Margen (sin spreads)
         margin_rsi       = 0.0 if rsi_status.get("status_mode") == "IDLE_MONITORING" else 5000.0
-        margin_daytrade  = sum(p.get('total_cost_usd', 0) for p in open_dt_trades)
-        total_margin_used = round(margin_spreads + margin_daytrade + margin_rsi + 5000.0, 2)
+        margin_daytrade  = sum(p.get('strike', 500) * 100 * p.get('contracts', 1) * 0.20 for p in dt_active)
+        total_margin_used = round(margin_daytrade + margin_rsi + 5000.0, 2)
         free_margin       = max(0.0, round(consolidated_nav - total_margin_used, 2))
         margin_util_pct   = min(100.0, round((total_margin_used / consolidated_nav) * 100.0, 1)) if consolidated_nav > 0 else 0.0
         margin_status     = "OPTIMAL" if margin_util_pct <= 65.0 else ("WARNING" if margin_util_pct <= 80.0 else "DANGER")
+
 
         # 7. Reinversion
         reinvestment_status = self.get_reinvestment_status()
@@ -382,19 +364,10 @@ class MasterPortfolioManager:
                     "premiums_collected_usd": wheel_premiums, "status": "ACTIVE_COMPOUNDING_OVERLAY"
                 },
                 {
-                    "id": "spreads", "name": "Capa 2: Credit Spreads (7-14 DTE)",
-                    "role": "Generacion de Flujo Pasivo Theta",
-                    "target_asset": "SPY / QQQ",
-                    "capital_allocated_usd": 30000.0, "capital_allocated_pct": 30.0,
-                    "net_pnl_usd": spread_pnl_usd, "premiums_collected_usd": spread_premiums,
-                    "active_spreads_count": len(open_spreads), "win_rate_pct": 82.5,
-                    "status": "SELLING_THETA"
-                },
-                {
-                    "id": "alpha", "name": "Capa 3: Alpha Trade (60-180 DTE)",
-                    "role": "Multiplicador Alcista sin Techo a Costo $0",
-                    "target_asset": "QQQ / NVDA",
-                    "capital_allocated_usd": 30000.0, "capital_allocated_pct": 30.0,
+                    "id": "alpha", "name": "Capa 2: Alpha LEAPS Macro (MAX DTE)",
+                    "role": "Multiplicador Alcista Zero-Cost a 2 Años",
+                    "target_asset": "SPY / QQQ / XLK / XLF / XLV",
+                    "capital_allocated_usd": 40000.0, "capital_allocated_pct": 40.0,
                     "net_pnl_usd": alpha_pnl_usd,
                     "decoupled_calls_count": alpha_status.get("decoupled_calls_count", 0),
                     "status": "ZERO_COST_LEAP"

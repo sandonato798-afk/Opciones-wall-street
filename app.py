@@ -12,9 +12,9 @@ import threading
 import time
 from datetime import datetime
 from options_engine import OptionsTradingEngine
-from daytrade_options_bot import DayTradeOptionsBot, CONFIG as DAYTRADE_CONFIG
+from daytrade_options_bot import DaytradeOptionsBot
 from wheel_compounding_engine import WheelCompoundingEngine, CONFIG as WHEEL_CONFIG
-from credit_spread_bot import CreditSpreadBot, CONFIG as SPREAD_CONFIG
+DAYTRADE_CONFIG = {"execution_mode": "PAPER_TRADING", "broker_name": "INTERACTIVE_BROKERS"}
 from alpha_trade_bot import AlphaTradeBot
 from rsi_opportunistic_bot import RSIOpportunisticBot
 from cloud_persistence import load_state_from_github
@@ -24,13 +24,12 @@ PORT = int(os.environ.get("PORT", 5050))
 DIRECTORY = os.path.dirname(__file__)
 
 engine = OptionsTradingEngine()
-daytrade_bot = DayTradeOptionsBot()
+daytrade_bot = DaytradeOptionsBot()
 wheel_engine = WheelCompoundingEngine()
-credit_bot = CreditSpreadBot()
 alpha_bot = AlphaTradeBot()
 rsi_bot = RSIOpportunisticBot()
 
-master_portfolio = MasterPortfolioManager(wheel_engine, credit_bot, alpha_bot, rsi_bot, daytrade_bot)
+master_portfolio = MasterPortfolioManager(wheel_engine, alpha_bot, rsi_bot, daytrade_bot)
 
 def is_market_open():
     # Use UTC-based Eastern time (EDT=UTC-4, EST=UTC-5)
@@ -53,36 +52,33 @@ SYSTEM_HEALTH_PINGS = {
 }
 
 def background_trading_loop():
-    print("Motor de Opciones Hibrido (5 Capas + Colateral SGOV/GLD/TLT + Reinversion Auto 50/30/20) iniciado.")
+    print("Motor de Opciones Hibrido (4 Capas + Colateral SGOV/GLD/TLT + Reinversion Auto) iniciado.")
     cycle = 0
     import time as builtin_time
     while True:
         try:
             cycle += 1
-            # 1. Chequeo automatico de Rueda & Compounding
+            # Capa 1: Rueda & Compounding
             wheel_engine.auto_check_and_run_cycle()
             SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
 
-            # 3. Alpha Trade: monitoreo automatico de posiciones sinteticas
+            # Capa 2: Alpha Trade - monitoreo de posiciones sinteticas
             alpha_bot.monitor_positions()
             SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
 
-            # 2 & 4 & 5. Escaneos intradiarios solo en horario de mercado
-            if is_market_open() or True: # Record pings even if market closed (or else UI goes red on weekends)
-                # We do the scan but the bots internally handle market closed. Wait, bots might not. 
+            if is_market_open() or True:
                 pass
-            
+
             if is_market_open():
-                daytrade_bot.run_intraday_scan()
+                # Capa 4: Daytrading ITM 1DTE
+                daytrade_bot.scan_market()
+                daytrade_bot.manage_open_position()
                 SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
-                credit_bot.scan_and_execute_spreads()
-                SYSTEM_HEALTH_PINGS["spreads"] = builtin_time.time()
+                # Capa 3: RSI Oportunista
                 rsi_bot.scan_market()
                 SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
             else:
-                # If market closed, we just ping to show they are alive and waiting
                 SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
-                SYSTEM_HEALTH_PINGS["spreads"] = builtin_time.time()
                 SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
 
             # Motor de Reinversion Automatica: verifica cada 10 ciclos (~10 min)
@@ -95,6 +91,7 @@ def background_trading_loop():
         except Exception as e:
             print(f"Error en bucle en segundo plano: {e}")
             time.sleep(30)
+
 
 
 def self_ping_loop():
@@ -189,47 +186,18 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/daytrade/status":
             daytrade_bot.load_state()
-            stats = daytrade_bot.get_win_rate_stats()
-            daily_pnl_pct = round((daytrade_bot.daily_pnl_usd / daytrade_bot.initial_capital) * 100.0, 2)
-            total_pnl_usd = round(daytrade_bot.capital - daytrade_bot.initial_capital, 2)
-            total_pnl_pct = round((total_pnl_usd / daytrade_bot.initial_capital) * 100.0, 2)
-
+            active = daytrade_bot.active_trades
+            history = daytrade_bot.history
+            total_pnl = sum(t.get("realized_pnl_usd", 0) for t in history)
             state = {
                 "config": DAYTRADE_CONFIG,
-                "system_start_time": daytrade_bot.system_start_time,
-                "uptime_hours": daytrade_bot.get_uptime_hours(),
-                "initial_capital_usd": daytrade_bot.initial_capital,
-                "capital": daytrade_bot.capital,
-                "daily_pnl_usd": daytrade_bot.daily_pnl_usd,
-                "daily_pnl_pct": daily_pnl_pct,
-                "total_pnl_usd": total_pnl_usd,
-                "total_pnl_pct": total_pnl_pct,
-                "total_commissions_paid": round(daytrade_bot.total_commissions_paid, 2),
-                "stats": stats,
-                "open_positions": daytrade_bot.open_positions,
-                "closed_trades": daytrade_bot.closed_trades
+                "allocated_capital": daytrade_bot.allocated_capital,
+                "total_pnl_usd": round(total_pnl, 2),
+                "active_trades": active,
+                "history": history
             }
             return self.send_json_response(state)
 
-        elif path == "/api/spreads/status":
-            credit_bot.load_state()
-            stats = credit_bot.get_stats()
-            total_pnl_usd = round(credit_bot.capital - credit_bot.initial_capital, 2)
-            total_pnl_pct = round((total_pnl_usd / credit_bot.initial_capital) * 100.0, 2)
-
-            state = {
-                "config": SPREAD_CONFIG,
-                "system_start_time": credit_bot.system_start_time,
-                "initial_capital_usd": credit_bot.initial_capital,
-                "capital": round(credit_bot.capital, 2),
-                "total_premiums_collected": round(credit_bot.total_premiums_collected, 2),
-                "total_pnl_usd": total_pnl_usd,
-                "total_pnl_pct": total_pnl_pct,
-                "stats": stats,
-                "open_spreads": credit_bot.open_spreads,
-                "closed_spreads": credit_bot.closed_spreads
-            }
-            return self.send_json_response(state)
 
         elif path == "/api/wheel/status":
             etf_price = wheel_engine.fetch_etf_live_price(WHEEL_CONFIG["etf_target"])
@@ -314,39 +282,12 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             return self.send_json_response({"status": "SUCCESS", "trade": trade})
 
         elif path == "/api/daytrade/scan":
-            daytrade_bot.run_intraday_scan()
+            daytrade_bot.scan_market()
+            daytrade_bot.manage_open_position()
             return self.send_json_response({
                 "status": "SUCCESS",
                 "message": "Escaneo intradiario completado.",
-                "open_positions": daytrade_bot.open_positions,
-                "daily_pnl_usd": daytrade_bot.daily_pnl_usd
-            })
-
-        elif path == "/api/daytrade/sync-force":
-            gh_data = load_state_from_github("daytrade_paper_state.json")
-            if gh_data:
-                daytrade_bot.system_start_time = gh_data.get("system_start_time", daytrade_bot.system_start_time)
-                daytrade_bot.capital = gh_data.get("capital", daytrade_bot.capital)
-                daytrade_bot.daily_pnl_usd = gh_data.get("daily_pnl_usd", daytrade_bot.daily_pnl_usd)
-                daytrade_bot.total_commissions_paid = gh_data.get("total_commissions_paid", daytrade_bot.total_commissions_paid)
-                daytrade_bot.open_positions = gh_data.get("open_positions", daytrade_bot.open_positions)
-                daytrade_bot.closed_trades = gh_data.get("closed_trades", daytrade_bot.closed_trades)
-                daytrade_bot.save_state()
-                return self.send_json_response({
-                    "status": "SUCCESS",
-                    "closed_trades_count": len(daytrade_bot.closed_trades),
-                    "capital": daytrade_bot.capital,
-                    "daily_pnl_usd": daytrade_bot.daily_pnl_usd
-                })
-            return self.send_json_response({"status": "ERROR", "message": "No se pudo obtener datos de GitHub"}, 500)
-
-        elif path == "/api/spreads/scan":
-            credit_bot.scan_and_execute_spreads()
-            return self.send_json_response({
-                "status": "SUCCESS",
-                "message": "Escaneo de venta de tiempo / credit spreads completado.",
-                "open_spreads": credit_bot.open_spreads,
-                "capital": credit_bot.capital
+                "active_trades": daytrade_bot.active_trades
             })
 
         elif path == "/api/daytrade/mode":
@@ -354,9 +295,9 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
             broker = payload.get("broker", "INTERACTIVE_BROKERS")
             DAYTRADE_CONFIG["execution_mode"] = mode
             DAYTRADE_CONFIG["broker_name"] = broker
-            SPREAD_CONFIG["execution_mode"] = mode
-            SPREAD_CONFIG["broker_name"] = broker
             return self.send_json_response({"status": "SUCCESS", "mode": mode, "broker": broker})
+
+
 
         elif path == "/api/wheel/run-cycle":
             cycle_result = wheel_engine.run_wheel_cycle()
