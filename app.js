@@ -24,7 +24,7 @@ async function refreshAllData() {
     await Promise.all([
         loadMaster(),
         loadWheel(),
-        loadSpreads(),
+        
         loadAlpha(),
         loadRsi(),
         loadDaytrade()
@@ -143,11 +143,6 @@ async function loadMaster() {
                     const el = document.getElementById('home-c1-pnl');
                     el.innerText = pnlTxt; el.className = pnlClass;
                 }
-                if(l.id === 'spreads') {
-                    document.getElementById('home-c2-nav').innerText = formatUSD(liveNav);
-                    const el = document.getElementById('home-c2-pnl');
-                    el.innerText = pnlTxt; el.className = pnlClass;
-                }
                 if(l.id === 'alpha') {
                     document.getElementById('home-c3-nav').innerText = formatUSD(liveNav);
                     const el = document.getElementById('home-c3-pnl');
@@ -188,7 +183,6 @@ async function loadMaster() {
             };
             
             updateHealth('wheel', data.health_pings.wheel || 0);
-            updateHealth('spreads', data.health_pings.spreads || 0);
             updateHealth('alpha', data.health_pings.alpha || 0);
             updateHealth('rsi', data.health_pings.rsi || 0);
             updateHealth('daytrade', data.health_pings.daytrade || 0);
@@ -251,64 +245,6 @@ async function loadWheel() {
     } catch(e) { console.error('Error loadWheel', e); }
 }
 
-async function loadSpreads() {
-    try {
-        const res = await fetch('/api/spreads/status');
-        if(!res.ok) return;
-        const data = await res.json();
-        document.getElementById('spreads-cap').innerText = formatUSD(20000 + (data.total_pnl_usd || 0));
-        document.getElementById('spreads-wr').innerText = formatPct(data.stats?.win_rate || 0);
-        
-        let totalTheta = 0;
-        // 1. Spreads Abiertos
-        const tbodyPos = document.getElementById('spreads-positions');
-        tbodyPos.innerHTML = '';
-        if(data.open_spreads && data.open_spreads.length > 0) {
-            data.open_spreads.forEach(s => {
-                totalTheta += s.theta_daily_decay_usd || 0;
-                const pnl = s.pnl_usd || 0;
-                tbodyPos.innerHTML += `<tr>
-                    <td><strong>${s.symbol}</strong></td>
-                    <td>${s.type || 'BULL_PUT_SPREAD'}</td>
-                    <td>Short Put $${s.short_strike} / Long Put $${s.long_strike}</td>
-                    <td class="text-green">+${formatUSD(s.total_credit_collected_usd)}</td>
-                    <td><span style="color:var(--accent-blue);">${s.dte || 7} días</span></td>
-                    <td class="${colorClass(pnl)}">${sign(pnl)}${formatUSD(pnl)}</td>
-                    <td><span class="text-green">🟢 ${s.status || 'ABIERTO'}</span></td>
-                </tr>`;
-            });
-        } else {
-            tbodyPos.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No hay credit spreads abiertos actualmente</td></tr>';
-        }
-        document.getElementById('spreads-theta').innerText = '+' + formatUSD(totalTheta) + '/d';
-        const pnlEl = document.getElementById('spreads-pnl');
-        pnlEl.innerText = sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd);
-        pnlEl.className = 'val ' + colorClass(data.total_pnl_usd);
-
-        // 2. Historial de Spreads Cerrados
-        const tbodyHist = document.getElementById('spreads-history');
-        if(tbodyHist) {
-            tbodyHist.innerHTML = '';
-            if(data.closed_spreads && data.closed_spreads.length > 0) {
-                data.closed_spreads.slice().reverse().forEach(s => {
-                    const net = s.final_pnl_usd || 0;
-                    const statusBadge = net > 0 ? '<span class="text-green">✅ GANADORA (TP 70%)</span>' : (net < 0 ? '<span class="text-red">❌ PÉRDIDA (SL)</span>' : '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>');
-                    tbodyHist.innerHTML += `<tr>
-                        <td>${s.entry_date || '-'} → ${s.exit_date || '-'}</td>
-                        <td><strong>${s.symbol}</strong></td>
-                        <td>${s.type || 'BULL_PUT_SPREAD'}</td>
-                        <td>$${s.short_strike}/$${s.long_strike}</td>
-                        <td>${s.exit_reason || 'TAKE_PROFIT_70%'}</td>
-                        <td class="${colorClass(net)}"><strong>${sign(net)}${formatUSD(net)}</strong></td>
-                        <td>${statusBadge}</td>
-                    </tr>`;
-                });
-            } else {
-                tbodyHist.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin spreads cerrados aún (2 spreads en curso).</td></tr>';
-            }
-        }
-    } catch(e) { console.error('Error loadSpreads', e); }
-}
 
 async function loadAlpha() {
     try {
@@ -547,9 +483,6 @@ async function loadDaytrade() {
 // API Actions
 async function runWheelCycle() {
     fetch('/api/wheel/run-cycle', { method:'POST' }).then(() => refreshAllData());
-}
-async function runSpreadsScan() {
-    fetch('/api/spreads/scan', { method:'POST' }).then(() => refreshAllData());
 }
 async function runAlphaDecouple() {
     fetch('/api/alpha/decouple', { method:'POST' }).then(() => refreshAllData());

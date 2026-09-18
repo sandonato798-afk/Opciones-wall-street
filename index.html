@@ -27,7 +27,6 @@
             <nav class="nav-tabs">
                 <button class="tab-btn active" data-tab="tab-home">HOME</button>
                 <button class="tab-btn" data-tab="tab-wheel">RUEDA</button>
-                <button class="tab-btn" data-tab="tab-spreads">SPREADS</button>
                 <button class="tab-btn" data-tab="tab-alpha">ALPHA</button>
                 <button class="tab-btn" data-tab="tab-rsi">RSI</button>
                 <button class="tab-btn" data-tab="tab-daytrade">DAYTRADING</button>
@@ -89,7 +88,7 @@
                         </div>
                     </div>
                     <div class="card">
-                        <div class="card-title">CAPA 5: DAYTRADING (10%)</div>
+                        <div class="card-title">CAPA 4: DAYTRADING (10%)</div>
                         <div class="val" id="home-c5-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c5-pnl" style="margin:0;">+$0.00</div>
@@ -190,38 +189,10 @@
                 </div>
             </section>
 
-            <!-- TAB: SPREADS -->
-            <section id="tab-spreads" class="tab-content">
-                <div class="header-section">
-                    <h2>CAPA 2: VENTA DE TIEMPO / CREDIT SPREADS (7-14 DTE)</h2>
-                    <button class="btn btn-primary" onclick="runSpreadsScan()">FORZAR ESCANEO</button>
-                </div>
-                <div class="grid-4">
-                    <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="spreads-cap">$0.00</div></div>
-                    <div class="card"><div class="card-title">WIN RATE</div><div class="val text-green" id="spreads-wr">0.00%</div></div>
-                    <div class="card"><div class="card-title">DECAIMIENTO THETA</div><div class="val text-green" id="spreads-theta">+$0.00/d</div></div>
-                    <div class="card"><div class="card-title">PnL TOTAL</div><div class="val" id="spreads-pnl">$0.00</div></div>
-                </div>
-                <div class="card">
-                    <div class="card-title">SPREADS ABIERTOS (POSICIONES ACTIVAS)</div>
-                    <table class="data-table">
-                        <thead><tr><th>SÍMBOLO</th><th>ESTRATEGIA</th><th>STRIKES (CORTO/LARGO)</th><th>PRIMA COBRADA</th><th>VENCIMIENTO (DTE)</th><th>PnL FLOTANTE</th><th>ESTADO</th></tr></thead>
-                        <tbody id="spreads-positions"></tbody>
-                    </table>
-                </div>
-                <div class="card" style="margin-top: 20px;">
-                    <div class="card-title">HISTORIAL DE SPREADS CERRADOS</div>
-                    <table class="data-table">
-                        <thead><tr><th>FECHA ENTRADA / SALIDA</th><th>SÍMBOLO</th><th>ESTRATEGIA</th><th>STRIKES</th><th>MOTIVO DE CIERRE</th><th>PnL NETO</th></tr></thead>
-                        <tbody id="spreads-history"></tbody>
-                    </table>
-                </div>
-            </section>
-
             <!-- TAB: ALPHA -->
             <section id="tab-alpha" class="tab-content">
                 <div class="header-section">
-                    <h2>CAPA 3: ALPHA TRADE (SINTÉTICOS LEAPS A COSTO CERO)</h2>
+                    <h2>CAPA 2: ALPHA TRADE (SINTÉTICOS LEAPS A COSTO CERO)</h2>
                     <button class="btn btn-primary" onclick="runAlphaDecouple()">DESACOPLAR PUT (RECOMPRA)</button>
                 </div>
                 <div class="grid-4">
@@ -249,7 +220,7 @@
             <!-- TAB: RSI -->
             <section id="tab-rsi" class="tab-content">
                 <div class="header-section">
-                    <h2>CAPA 4: RSI OPORTUNISTA (VENTA 1DTE EN PÁNICO RSI &lt; 30)</h2>
+                    <h2>CAPA 3: RSI OPORTUNISTA (VENTA 1DTE EN PÁNICO RSI &lt; 30)</h2>
                 </div>
                 <div class="grid-4">
                     <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="rsi-cap">$0.00</div></div>
