@@ -111,9 +111,22 @@ class AlphaTradeBot:
         if len(self.open_positions) >= 2:
             return {"status": "MAX_POSITIONS_REACHED"}
             
-        symbols_to_scan = ["QQQ", "SPY"]
+        # Universo de Inversión: Índices (hasta 33% de NAV) y Sectores (hasta 5% de NAV)
+        indices_core = ["SPY", "QQQ", "VOO"]
+        etfs_sectoriales = ["XLK", "XLF", "XLV", "XLE", "XLY"]
+        symbols_to_scan = indices_core + etfs_sectoriales
+        
+        total_nav = self.initial_capital
         
         for symbol in symbols_to_scan:
+            # Control Estricto de Exposición (Sizing)
+            is_sector = symbol in etfs_sectoriales
+            max_allocation_pct = 0.05 if is_sector else 0.333
+            max_capital_for_symbol = total_nav * max_allocation_pct
+            
+            # (En código de producción aquí se sumaría la exposición actual al símbolo para ver si hay margen)
+            # if current_exposure[symbol] >= max_capital_for_symbol: continue
+
             current_price = self.fetch_underlying_price(symbol)
             if not current_price:
                 continue

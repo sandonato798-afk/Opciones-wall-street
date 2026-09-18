@@ -269,22 +269,52 @@ class WheelCompoundingEngine:
                     needs_roll = False
                     roll_reason = ""
 
-                    # Gatillo 1: ATM Touch (El precio cae y cruza el Strike)
-                    if etf_price <= pos["strike"]:
-                        needs_roll = True
-                        roll_reason = "GATILLO_PRECIO_ATM"
+                    # --- MATRIZ INSTITUCIONAL DE CRISIS (DTE y Moneyness) ---
+                    drop_pct = (pos["strike"] - etf_price) / pos["strike"] if etf_price < pos["strike"] else 0
                     
-                    # Gatillo 2: Regla 21 DTE en Peligro
-                    elif dte_remaining <= 21 and etf_price < (pos["strike"] * 1.02):
-                        needs_roll = True
-                        roll_reason = "GATILLO_TIEMPO_21DTE"
+                    # Simular indicador de Día Verde (precio de hoy > precio de ayer)
+                    # Para el bot, asumimos acceso a price_history
+                    is_green_day = True # Placeholder algorítmico
+                    
+                    nuevo_strike = pos["strike"]
+                    dias_adelante = 30
+                    
+                    if drop_pct > 0:
+                        # 4. Cisne Negro (>20%)
+                        if drop_pct >= 0.20:
+                            needs_roll = True
+                            roll_reason = "CISNE_NEGRO_>20%"
+                            dias_adelante = 60
+                            nuevo_strike = round(etf_price, 1) # Bajar lo máximo posible
+                            
+                        # 3. Caída Fuerte (>15%) a 10 días
+                        elif drop_pct >= 0.15 and dte_remaining <= 10:
+                            needs_roll = True
+                            roll_reason = "CAIDA_FUERTE_>15%_10DTE"
+                            nuevo_strike = round(pos["strike"] * 0.90, 1) # Obligatorio bajar 10%
+                            
+                        # 2b. Caída Moderada (>5%) a 5 días
+                        elif drop_pct >= 0.05 and dte_remaining <= 5:
+                            needs_roll = True
+                            roll_reason = "CAIDA_MODERADA_>5%_5DTE"
+                            nuevo_strike = round(pos["strike"] * 0.98, 1) # Intenta bajar algo si da crédito
+                            
+                        # 2a. Caída Leve/Moderada (2% a 5%) a 5-3 días (Cazador de Días Verdes)
+                        elif 0.02 <= drop_pct < 0.05 and dte_remaining <= 5:
+                            if is_green_day or dte_remaining <= 3:
+                                needs_roll = True
+                                roll_reason = "CAIDA_2a5%_DIA_VERDE_O_DEADLINE_3DTE"
+                                
+                        # 1. Caída Leve (<2%) al Día 0
+                        elif 0 < drop_pct < 0.02 and dte_remaining <= 0:
+                            needs_roll = True
+                            roll_reason = "CAIDA_LEVE_<2%_DIA_CERO"
+                            # Se mantiene el mismo strike
 
                     if needs_roll:
-                        log_msg("AUTO_ROLL", f"⚠️ PELIGRO DETECTADO ({roll_reason}). Ejecutando maniobra Roll Down & Out...")
+                        log_msg("AUTO_ROLL", f"⚠️ GATILLO ACTIVADO: {roll_reason}. Ejecutando Roleo (DTE: {dte_remaining})...")
                         
-                        # Simular el cierre y apertura de un nuevo contrato a 45 días más barato
-                        nuevo_strike = round(etf_price * 0.96, 1) # Bajamos el Strike un 4% para dar respiro
-                        net_credit = round(etf_price * 0.015, 2)  # Crédito Neto estimado por la mayor volatilidad
+                        net_credit = round(etf_price * 0.01, 2)  # Proxy de Crédito Neto estimado
                         income_usd = round(net_credit * 100.0, 2)
                         
                         self.accumulated_premiums_usd += income_usd
