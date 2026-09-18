@@ -23,6 +23,8 @@ def get_token():
     return ""
 
 _last_synced_signatures = {}
+_last_sync_times = {}
+MIN_SYNC_INTERVAL_SEC = 300  # Máximo 1 sync a GitHub cada 5 minutos por archivo
 VOLATILE_KEYS = {"last_update", "last_rsi_scanned", "last_execution", "timestamp", "pings", "current_price", "scan_time"}
 
 def _get_signature(data_dict):
@@ -31,6 +33,23 @@ def _get_signature(data_dict):
     filtered = {k: v for k, v in data_dict.items() if k not in VOLATILE_KEYS}
     return json.dumps(filtered, sort_keys=True)
 
+def _init_local_signatures():
+    for f in ["rsi_opportunistic_state.json", "alpha_trade_state.json", "wheel_compounding_state.json", "reinvestment_state.json"]:
+        path = os.path.join(os.path.dirname(__file__), f)
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as fp:
+                    _last_synced_signatures[f] = _get_signature(json.load(fp))
+                    _last_sync_times[f] = time.time()
+            except Exception:
+                pass
+
+try:
+    import time
+    _init_local_signatures()
+except Exception:
+    pass
+
 def _async_sync(file_name, data_dict):
     token = get_token()
     if not token:
@@ -38,7 +57,11 @@ def _async_sync(file_name, data_dict):
 
     sig = _get_signature(data_dict)
     if _last_synced_signatures.get(file_name) == sig:
-        return  # No hay cambios reales en las operaciones/posiciones, evitar spam de commits a GitHub
+        return  # Sin cambios reales de trading, no commitear
+
+    now = time.time()
+    if now - _last_sync_times.get(file_name, 0) < MIN_SYNC_INTERVAL_SEC:
+        return  # Throttle: evitar builds continuos en la nube
 
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_name}"
     headers = {
