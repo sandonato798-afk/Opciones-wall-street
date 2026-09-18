@@ -131,9 +131,9 @@ class MasterPortfolioManager:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _fetch_collateral_prices(self, nav):
-        """Obtiene precios en vivo de GLD y TLT. SGOV ~ $100 estable."""
-        prices = {"SGOV": 100.0, "GLD": 230.0, "TLT": 95.0}
-        for symbol in ["GLD", "TLT"]:
+        """Obtiene precios en vivo de GLD, TLT y SPY. SGOV ~ $100 estable."""
+        prices = {"SGOV": 100.0, "GLD": 230.0, "TLT": 95.0, "SPY": 560.0}
+        for symbol in ["GLD", "TLT", "SPY"]:
             try:
                 price = self.wheel_engine.fetch_etf_live_price(symbol)
                 if price and price > 0:
@@ -440,7 +440,7 @@ class MasterPortfolioManager:
                     "target_asset": "SPY / QQQ",
                     "capital_allocated_usd": 15000.0, "capital_allocated_pct": 15.0,
                     "net_pnl_usd": dt_pnl_usd, "win_rate_pct": dt_stats.get("win_rate", 0.0),
-                    "closed_trades_count": len(closed_dt_trades), "status": "SCANNING_INTRADAY"
+                    "closed_trades_count": len(dt_history), "status": "SCANNING_INTRADAY"
                 }
             ],
             "wheel_allowed_universe": WHEEL_ALLOWED_UNIVERSE
