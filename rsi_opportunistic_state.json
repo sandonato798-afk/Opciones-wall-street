@@ -1956,14 +1956,33 @@
       "exit_rsi": 30.2,
       "pnl_usd": 1123.2,
       "exit_date": "2026-09-18 17:13:55"
+    },
+    {
+      "id": 1789751696233,
+      "symbol": "DIA",
+      "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
+      "entry_date": "2026-09-18 17:14:56",
+      "entry_rsi": 28.9,
+      "underlying_price": 514.78,
+      "put_strike": 509.6,
+      "long_strike": 504.5,
+      "contracts": 17,
+      "premium_per_share": 0.76,
+      "premium_collected_usd": 1292.0,
+      "max_loss_usd": 7378.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 35.6,
+      "pnl_usd": 1162.8,
+      "exit_date": "2026-09-18 17:15:26"
     }
   ],
-  "total_premiums_collected": 132654.0,
-  "total_pnl_usd": 119388.60000000012,
+  "total_premiums_collected": 133946.0,
+  "total_pnl_usd": 120551.40000000013,
   "last_rsi_scanned": {
-    "SPY": 45.0,
-    "QQQ": 61.9,
-    "DIA": 30.2
+    "SPY": 50.6,
+    "QQQ": 63.7,
+    "DIA": 32.6
   },
-  "last_update": "2026-09-18 17:13:55"
+  "last_update": "2026-09-18 17:16:27"
 }
