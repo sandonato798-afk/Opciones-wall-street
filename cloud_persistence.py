@@ -22,10 +22,23 @@ def get_token():
             pass
     return ""
 
+_last_synced_signatures = {}
+VOLATILE_KEYS = {"last_update", "last_rsi_scanned", "last_execution", "timestamp", "pings", "current_price", "scan_time"}
+
+def _get_signature(data_dict):
+    if not isinstance(data_dict, dict):
+        return str(data_dict)
+    filtered = {k: v for k, v in data_dict.items() if k not in VOLATILE_KEYS}
+    return json.dumps(filtered, sort_keys=True)
+
 def _async_sync(file_name, data_dict):
     token = get_token()
     if not token:
         return
+
+    sig = _get_signature(data_dict)
+    if _last_synced_signatures.get(file_name) == sig:
+        return  # No hay cambios reales en las operaciones/posiciones, evitar spam de commits a GitHub
 
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_name}"
     headers = {
@@ -57,7 +70,8 @@ def _async_sync(file_name, data_dict):
         req_put = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT")
         with urllib.request.urlopen(req_put, timeout=8) as resp:
             if resp.status in (200, 201):
-                print(f"[CLOUD_PERSISTENCE] Estado {file_name} respaldado en GitHub.")
+                _last_synced_signatures[file_name] = sig
+                print(f"[CLOUD_PERSISTENCE] Estado {file_name} respaldado en GitHub (Trade/Position change).")
     except Exception as e:
         print(f"[CLOUD_PERSISTENCE] Warning al respaldar {file_name}: {e}")
 
