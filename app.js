@@ -132,6 +132,34 @@ async function loadMaster() {
             }
         }
 
+        // Collateral Detailed Table
+        const tbodyCol = document.getElementById('home-collateral-table');
+        if (tbodyCol && data.collateral_portfolio && data.collateral_portfolio.breakdown) {
+            tbodyCol.innerHTML = '';
+            const breakdown = data.collateral_portfolio.breakdown;
+            Object.values(breakdown).forEach(item => {
+                const yieldTxt = item.annual_yield_usd > 0 ? `+${formatUSD(item.annual_yield_usd)}/año (${item.symbol === 'SGOV' ? '5.2%' : (item.symbol === 'GLD' ? '4.5%' : '4.3%')})` : 'Apreciación + Opciones';
+                tbodyCol.innerHTML += `<tr>
+                    <td><strong>${item.symbol}</strong></td>
+                    <td>${item.description || '-'}</td>
+                    <td><span style="color:var(--accent-blue);font-weight:bold;">${item.target_pct}%</span></td>
+                    <td>${formatUSD(item.actual_usd)}</td>
+                    <td>${item.margin_req_pct}%</td>
+                    <td class="text-green"><strong>${formatUSD(item.collateral_unlocked_usd)}</strong></td>
+                    <td class="text-green">${yieldTxt}</td>
+                </tr>`;
+            });
+            tbodyCol.innerHTML += `<tr style="background:rgba(255,255,255,0.05);font-weight:bold;">
+                <td>TOTAL COLATERAL</td>
+                <td>100% NAV Colateralizado</td>
+                <td><span style="color:var(--accent-blue);">100%</span></td>
+                <td>${formatUSD(data.collateral_portfolio.total_collateral_usd)}</td>
+                <td>~5.0% Prom.</td>
+                <td class="text-green">${formatUSD(data.collateral_portfolio.total_unlocked_buying_power_usd)}</td>
+                <td class="text-green">+${formatUSD(data.collateral_portfolio.total_annual_yield_usd)}/año</td>
+            </tr>`;
+        }
+
         if (data.strategies_ledger) {
             data.strategies_ledger.forEach(l => {
                 const liveNav = (l.capital_allocated_usd || 0) + (l.net_pnl_usd || 0);
@@ -200,6 +228,30 @@ async function loadWheel() {
         document.getElementById('wheel-prems').innerText = formatUSD(data.total_reinvested_usd);
         const yieldStackingCagr = Math.max(12.5, (data.cagr_pct || 0) + 5.2);
         document.getElementById('wheel-cagr').innerText = '+' + formatPct(yieldStackingCagr);
+
+        // Universe Table
+        const tbodyUniv = document.getElementById('wheel-universe-table');
+        if (tbodyUniv) {
+            tbodyUniv.innerHTML = '';
+            const universe = [
+                { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust (Índice Núcleo)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (1.5% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Ciclo Mensual)</span>' },
+                { symbol: 'QQQ', name: 'Invesco QQQ (Nasdaq 100 MegaCap)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (2.0% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Escaneo Abierto)</span>' },
+                { symbol: 'GLD', name: 'SPDR Gold Shares (Oro Físico)', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de GLD en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.5%)</span>' },
+                { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de TLT en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.3%)</span>' },
+                { symbol: 'IWM', name: 'iShares Russell 2000 (Small Caps)', mode: 'CASH_SECURED_PUT', delta: 'Δ 0.20 (3.0% OTM)', dte: '30 - 45 Días', backing: 'Margen Libre Disponible', status: '<span style="color:var(--text-muted)">⚪ LISTO PARA ENTRADA</span>' }
+            ];
+            universe.forEach(u => {
+                tbodyUniv.innerHTML += `<tr>
+                    <td><strong>${u.symbol}</strong></td>
+                    <td>${u.name}</td>
+                    <td><span style="color:var(--accent-blue);font-weight:600;">${u.mode}</span></td>
+                    <td>${u.delta}</td>
+                    <td>${u.dte}</td>
+                    <td>${u.backing}</td>
+                    <td>${u.status}</td>
+                </tr>`;
+            });
+        }
 
         // 1. Posiciones Abiertas
         const tbodyPos = document.getElementById('wheel-positions');

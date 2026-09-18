@@ -8,15 +8,70 @@ INITIAL_MASTER_CAPITAL_USD = 100000.0
 REINVESTMENT_THRESHOLD_USD = 500.0   # Auto-ejecuta reinversión cuando hay $500+ acumulados
 REINVESTMENT_STATE_FILE = "reinvestment_state.json"
 
-# Colateral diversificado: 60% del NAV distribuido en 3 activos descorrelacionados
+# Colateral diversificado: 100% del NAV distribuido en activos remunerados y descorrelacionados
 COLLATERAL_PORTFOLIO = {
-    "SGOV": {"pct": 0.30, "yield_apy": 0.052, "margin_req_pct": 2.0,
-             "description": "T-Bills 0-3M (5.2% APY)"},
-    "GLD":  {"pct": 0.20, "yield_apy": 0.0,   "margin_req_pct": 15.0,
-             "description": "Gold ETF (hedge inflacion/crisis)"},
-    "TLT":  {"pct": 0.10, "yield_apy": 0.043, "margin_req_pct": 10.0,
-             "description": "Bonos 20Y (hedge equity selloff)"},
+    "SGOV": {"pct": 0.50, "yield_apy": 0.052, "margin_req_pct": 2.0,
+             "description": "T-Bills 0-3M (5.2% APY Garantizado)"},
+    "GLD":  {"pct": 0.25, "yield_apy": 0.045, "margin_req_pct": 15.0,
+             "description": "Gold ETF + Covered Calls (4.5% APY)"},
+    "TLT":  {"pct": 0.15, "yield_apy": 0.043, "margin_req_pct": 10.0,
+             "description": "Bonos 20Y + Covered Calls (4.3% APY)"},
+    "SPY":  {"pct": 0.10, "yield_apy": 0.015, "margin_req_pct": 15.0,
+             "description": "S&P 500 Equity en Cartera + Dividendos"}
 }
+
+WHEEL_ALLOWED_UNIVERSE = [
+    {
+        "symbol": "SPY",
+        "name": "SPDR S&P 500 ETF Trust",
+        "asset_class": "Índice Núcleo (Core Equity)",
+        "strategy_mode": "CASH_SECURED_PUT / COVERED_CALL",
+        "target_delta": "Δ 0.20 - 0.25",
+        "target_dte": "30 - 45 Días",
+        "collateral_backing": "100% Respaldado por SGOV T-Bills",
+        "status": "ACTIVE_PRIMARY"
+    },
+    {
+        "symbol": "QQQ",
+        "name": "Invesco QQQ (Nasdaq 100)",
+        "asset_class": "MegaCap Tecnología",
+        "strategy_mode": "CASH_SECURED_PUT / COVERED_CALL",
+        "target_delta": "Δ 0.20 - 0.25",
+        "target_dte": "30 - 45 Días",
+        "collateral_backing": "100% Respaldado por SGOV T-Bills",
+        "status": "ACTIVE_SECONDARY"
+    },
+    {
+        "symbol": "GLD",
+        "name": "SPDR Gold Shares",
+        "asset_class": "Oro Físico (Hedge Inflación)",
+        "strategy_mode": "COVERED_CALL SOBRE TENENCIA",
+        "target_delta": "Δ 0.25 - 0.30",
+        "target_dte": "30 Días",
+        "collateral_backing": "Cuotas de GLD en Cartera",
+        "status": "ACTIVE_YIELD_BOOST"
+    },
+    {
+        "symbol": "TLT",
+        "name": "iShares 20+ Year Treasury Bond",
+        "asset_class": "Bonos del Tesoro 20Y",
+        "strategy_mode": "COVERED_CALL SOBRE TENENCIA",
+        "target_delta": "Δ 0.25 - 0.30",
+        "target_dte": "30 Días",
+        "collateral_backing": "Cuotas de TLT en Cartera",
+        "status": "ACTIVE_YIELD_BOOST"
+    },
+    {
+        "symbol": "IWM",
+        "name": "iShares Russell 2000 ETF",
+        "asset_class": "Small Caps EE.UU.",
+        "strategy_mode": "CASH_SECURED_PUT",
+        "target_delta": "Δ 0.20",
+        "target_dte": "30 - 45 Días",
+        "collateral_backing": "Margen Libre Disponible",
+        "status": "READY_STANDBY"
+    }
+]
 
 class MasterPortfolioManager:
     """
@@ -372,20 +427,21 @@ class MasterPortfolioManager:
                     "status": "ZERO_COST_LEAP"
                 },
                 {
-                    "id": "rsi_opportunistic", "name": "Capa 4: Oportunista 1DTE (RSI < 30)",
-                    "role": "Explotacion de Panico & Picos de IV",
+                    "id": "rsi_opportunistic", "name": "Capa 3: RSI Oportunista 1DTE",
+                    "role": "Explotacion de Panico & Picos de IV (RSI < 25)",
                     "target_asset": "SPY / QQQ / DIA",
                     "capital_allocated_usd": 25000.0, "capital_allocated_pct": 25.0,
                     "net_pnl_usd": rsi_pnl_usd,
                     "status": rsi_status.get("status_mode", "IDLE_MONITORING")
                 },
                 {
-                    "id": "daytrade", "name": "Capa 5: Day Trading 0-3 DTE",
-                    "role": "Alfa & Rupturas Intradiarias (Filtro VWAP)",
+                    "id": "daytrade", "name": "Capa 4: Day Trading ITM 1-DTE",
+                    "role": "Scalp ITM por Rebote & Ruptura",
                     "target_asset": "SPY / QQQ",
                     "capital_allocated_usd": 15000.0, "capital_allocated_pct": 15.0,
                     "net_pnl_usd": dt_pnl_usd, "win_rate_pct": dt_stats.get("win_rate", 0.0),
                     "closed_trades_count": len(closed_dt_trades), "status": "SCANNING_INTRADAY"
                 }
-            ]
+            ],
+            "wheel_allowed_universe": WHEEL_ALLOWED_UNIVERSE
         }
