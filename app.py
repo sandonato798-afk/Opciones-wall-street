@@ -95,7 +95,7 @@ def background_trading_loop():
 
 def self_ping_loop():
     time.sleep(15)
-    render_url = os.environ.get("RENDER_EXTERNAL_URL", "https://opciones-wall-street.onrender.com")
+    render_url = os.environ.get("RENDER_EXTERNAL_URL", "https://opciones-wall-street-xmz0.onrender.com")
     print(f"⏰ Hilo Keep-Alive activo. Auto-ping programado a: {render_url}")
     
     while True:
