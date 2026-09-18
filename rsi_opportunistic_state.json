@@ -1,23 +1,7 @@
 {
   "allocated_capital": 25000.0,
-  "status_mode": "ACTIVE_TRADE",
-  "open_trades": [
-    {
-      "id": 1789760145044,
-      "symbol": "SPY",
-      "strategy": "NAKED_PUT_PANIC_SCALP_1DTE",
-      "entry_date": "2026-09-18 16:35:45",
-      "entry_rsi": 16.0,
-      "underlying_price": 760.72,
-      "put_strike": 753.1,
-      "contracts": 1,
-      "premium_per_share": 11.41,
-      "premium_collected_usd": 1141.0,
-      "take_profit_target_usd": 570.5,
-      "dte": 1,
-      "status": "OPEN"
-    }
-  ],
+  "status_mode": "IDLE_MONITORING",
+  "open_trades": [],
   "closed_trades": [
     {
       "id": 1789759555193,
@@ -138,14 +122,34 @@
       "exit_reason": "TAKE_PROFIT_50%",
       "pnl_usd": 1072.0,
       "exit_date": "2026-09-18 16:35:45"
+    },
+    {
+      "id": 1789760145044,
+      "symbol": "SPY",
+      "strategy": "NAKED_PUT_PANIC_SCALP_1DTE",
+      "entry_date": "2026-09-18 16:35:45",
+      "entry_rsi": 16.0,
+      "underlying_price": 760.72,
+      "put_strike": 753.1,
+      "contracts": 1,
+      "premium_per_share": 11.41,
+      "premium_collected_usd": 1141.0,
+      "take_profit_target_usd": 570.5,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 34.1,
+      "exit_price": 760.87,
+      "exit_reason": "TAKE_PROFIT_50%",
+      "pnl_usd": 1075.0,
+      "exit_date": "2026-09-18 16:36:47"
     }
   ],
-  "total_premiums_collected": 6479.0,
-  "total_pnl_usd": 6084.0,
+  "total_premiums_collected": 7620.0,
+  "total_pnl_usd": 7159.0,
   "last_rsi_scanned": {
-    "SPY": 16.0,
-    "QQQ": 26.7,
-    "DIA": 37.9
+    "SPY": 34.1,
+    "QQQ": 32.3,
+    "DIA": 42.3
   },
-  "last_update": "2026-09-18 16:35:45"
+  "last_update": "2026-09-18 16:36:47"
 }
