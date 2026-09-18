@@ -1,0 +1,20 @@
+{
+  "total_reinvested_usd": 22189.1,
+  "sgov_accumulated_usd": 41094.55,
+  "gld_accumulated_usd": 20000.0,
+  "tlt_accumulated_usd": 10000.0,
+  "last_reinvestment_date": "2026-09-18 05:47:48",
+  "reinvestment_count": 1,
+  "reinvestment_history": [
+    {
+      "date": "2026-09-18 05:47:48",
+      "total_reinvested_usd": 22189.1,
+      "sgov_50_usd": 11094.55,
+      "spy_30_usd": 6656.73,
+      "alpha_20_usd": 4437.82,
+      "wheel_shares_bought": 8.729,
+      "alpha_decoupled": true
+    }
+  ],
+  "last_updated": "2026-09-18 05:47:48"
+}
