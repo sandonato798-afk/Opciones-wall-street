@@ -20,8 +20,8 @@ CONFIG = {
     "broker_fee_per_contract": 0.65,        # $0.65 USD fee per option contract (IBKR / E*Trade standard)
     "bid_ask_slippage_pct": 1.0,            # 1.0% bid-ask spread friction
     "max_daily_loss_usd": 3000.0,           # Daily drawdown limit circuit breaker (-3%)
-    "target_profit_pct": 35.0,              # TP: +35% option premium gain
-    "stop_loss_pct": 18.0,                  # SL: -18% option premium loss
+    "target_profit_pct": 150.0,             # TP: +150% (Jonron Asimetrico)              # TP: +35% option premium gain
+    "max_holding_time_minutes": 45,       # Salida por tiempo (Time-Stop) en vez de %                  # SL: -18% option premium loss
     "hard_eod_exit_time": "15:45",          # Close all positions at 15:45 EST
     "etf_watchlist": ["SPY", "QQQ"],
     "dte_target": 0                         # 0-DTE (Same day expiration)
@@ -311,10 +311,10 @@ class DayTradeOptionsBot:
             "total_cost_usd": round(total_cost, 2),
             "entry_time": timestamp(),
             "target_profit_price": round(entry_premium * (1.0 + CONFIG["target_profit_pct"] / 100.0), 2),
-            "stop_loss_price": round(entry_premium * (1.0 - CONFIG["stop_loss_pct"] / 100.0), 2),
+            "stop_loss_price": 0.01, # Stop-Loss desactivado (Reemplazado por Time-Stop)
             "status": "OPEN",
             "current_premium": entry_premium,
-            "pnl_usd": -open_fee,
+            "pnl_usd": 0.0,
             "pnl_pct": 0.0,
             "trailing_stop_active": False
         }
@@ -337,21 +337,32 @@ class DayTradeOptionsBot:
         pos["pnl_usd"] = round(pnl_usd, 2)
 
         # TRAILING STOP A BREAK-EVEN: Si la opción sube al +15%, mover SL al precio de entrada (+1%) para asegurar capital
-        if pnl_pct >= 15.0 and not pos.get("trailing_stop_active", False):
+        if pnl_pct >= 30.0 and not pos.get("trailing_stop_active", False):
             break_even_price = round(pos["entry_premium"] * 1.01, 2)
             pos["stop_loss_price"] = break_even_price
             pos["trailing_stop_active"] = True
-            log_msg("TRAILING_STOP", f"🛡️ Ganancia de +{pnl_pct:.1f}% alcanzada en [{pos['option_ticker']}]. Stop Loss subido a Break-Even (${break_even_price} USD) para blindar el capital.")
+            log_msg("TRAILING_STOP", f"🛡️ 🚀 Ganancia de +{pnl_pct:.1f}% alcanzada en [{pos['option_ticker']}]. Stop Loss subido a Break-Even (${break_even_price} USD) para blindar el capital.")
 
         log_msg("MONITOR", f"Posición [{pos['option_ticker']}]: Prima: ${curr_premium} USD | PnL Neto: {pnl_pct:+.2f}% (${pnl_usd:+.2f} USD) | SL: ${pos['stop_loss_price']}")
 
-        # Check Take Profit
+        # 1. Salida por Tiempo (Time-Stop 45 mins)
+        entry_time_dt = datetime.strptime(pos["entry_time"], "%Y-%m-%d %H:%M:%S")
+        elapsed_minutes = (datetime.now() - entry_time_dt).total_seconds() / 60.0
+        
+        if elapsed_minutes >= CONFIG.get("max_holding_time_minutes", 45):
+            log_msg("TIME_STOP", f"⏳ Límite de 45 mins alcanzado para [{pos['option_ticker']}]. Forzando salida.")
+            self.close_position(pos, "TIME_STOP_45M", curr_premium)
+            return
+
+        # 2. Salida por Jonrón (Take-Profit +150%)
         if curr_premium >= pos["target_profit_price"]:
-            self.close_position(pos, "TAKE_PROFIT", curr_premium)
-        # Check Stop Loss
-        elif curr_premium <= pos["stop_loss_price"]:
-            exit_reason = "TRAILING_BREAK_EVEN" if pos.get("trailing_stop_active") else "STOP_LOSS"
-            self.close_position(pos, exit_reason, curr_premium)
+            self.close_position(pos, "TAKE_PROFIT_HOMERUN", curr_premium)
+            return
+            
+        # 3. Trailing Stop (Break-Even)
+        if pos.get("trailing_stop_active") and curr_premium <= pos.get("stop_loss_price", 0):
+            self.close_position(pos, "TRAILING_BREAK_EVEN", curr_premium)
+            return
 
     def close_position(self, pos, reason, exit_premium):
         close_fee = pos["contracts"] * CONFIG["broker_fee_per_contract"]
