@@ -1,7 +1,8 @@
 {
   "allocated_capital": 25000.0,
-  "status_mode": "ACTIVE_TRADE",
-  "open_trades": [
+  "status_mode": "IDLE_MONITORING",
+  "open_trades": [],
+  "closed_trades": [
     {
       "id": 1789759555193,
       "symbol": "DIA",
@@ -15,16 +16,20 @@
       "premium_collected_usd": 774.0,
       "take_profit_target_usd": 387.0,
       "dte": 1,
-      "status": "OPEN"
+      "status": "OPEN",
+      "exit_rsi": 25.3,
+      "exit_price": 516.2,
+      "exit_reason": "TAKE_PROFIT_50%",
+      "pnl_usd": 728.0,
+      "exit_date": "2026-09-18 16:26:57"
     }
   ],
-  "closed_trades": [],
-  "total_premiums_collected": 0.0,
-  "total_pnl_usd": 0.0,
+  "total_premiums_collected": 774.0,
+  "total_pnl_usd": 728.0,
   "last_rsi_scanned": {
-    "SPY": 29.9,
-    "QQQ": 46.8,
-    "DIA": 24.3
+    "SPY": 25.6,
+    "QQQ": 28.8,
+    "DIA": 25.3
   },
-  "last_update": "2026-09-18 16:25:55"
+  "last_update": "2026-09-18 16:26:57"
 }
