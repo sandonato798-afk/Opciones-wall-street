@@ -252,20 +252,90 @@ class WheelCompoundingEngine:
             return cycle_record
 
     def auto_check_and_run_cycle(self):
-        """Verifica automáticamente si es momento de iniciar o renovar el ciclo de 30 días"""
+        """Verifica automáticamente el ciclo y aplica reglas institucionales de Auto-Roleo defensivo"""
         try:
             if not self.history:
                 log_msg("AUTO_WHEEL", "Iniciando primer ciclo automático de Rueda & Compuesto...")
                 return self.run_wheel_cycle()
 
+            # 1. VERIFICAR AUTO-ROLEO (Defensa de la posición actual)
+            if hasattr(self, 'wheel_positions') and len(self.wheel_positions) > 0:
+                pos = self.wheel_positions[0]
+                if pos["strategy_type"] == "CASH_SECURED_PUT":
+                    etf_price = self.fetch_etf_live_price(pos["symbol"])
+                    exp_date = datetime.strptime(pos["expiration_date"], "%Y-%m-%d")
+                    dte_remaining = (exp_date - datetime.now()).days
+
+                    needs_roll = False
+                    roll_reason = ""
+
+                    # Gatillo 1: ATM Touch (El precio cae y cruza el Strike)
+                    if etf_price <= pos["strike"]:
+                        needs_roll = True
+                        roll_reason = "GATILLO_PRECIO_ATM"
+                    
+                    # Gatillo 2: Regla 21 DTE en Peligro
+                    elif dte_remaining <= 21 and etf_price < (pos["strike"] * 1.02):
+                        needs_roll = True
+                        roll_reason = "GATILLO_TIEMPO_21DTE"
+
+                    if needs_roll:
+                        log_msg("AUTO_ROLL", f"⚠️ PELIGRO DETECTADO ({roll_reason}). Ejecutando maniobra Roll Down & Out...")
+                        
+                        # Simular el cierre y apertura de un nuevo contrato a 45 días más barato
+                        nuevo_strike = round(etf_price * 0.96, 1) # Bajamos el Strike un 4% para dar respiro
+                        net_credit = round(etf_price * 0.015, 2)  # Crédito Neto estimado por la mayor volatilidad
+                        income_usd = round(net_credit * 100.0, 2)
+                        
+                        self.accumulated_premiums_usd += income_usd
+                        self.total_reinvested_usd += income_usd
+                        # Re-invertir el credito extra en acciones
+                        shares_bought = round(income_usd / etf_price, 4)
+                        self.etf_shares += shares_bought
+
+                        exp_date_new = (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d")
+                        active_pos = {
+                            "id": f"WHEEL_CSP_ROLLED_{int(datetime.now().timestamp())}",
+                            "ticker": f"{pos['symbol']}_PUT_{nuevo_strike:.1f}_45DTE",
+                            "symbol": pos["symbol"],
+                            "strategy_type": "CASH_SECURED_PUT",
+                            "underlying_price": etf_price,
+                            "strike": nuevo_strike,
+                            "contracts": 1,
+                            "premium_collected_usd": income_usd,
+                            "issued_date": timestamp(),
+                            "expiration_date": exp_date_new,
+                            "target_dte": 45,
+                            "status": "ACTIVE_ROLLED"
+                        }
+                        self.wheel_positions = [active_pos]
+                        
+                        cycle_record = {
+                            "timestamp": timestamp(),
+                            "type": "ROLL_DOWN_AND_OUT",
+                            "symbol": pos["symbol"],
+                            "etf_price": etf_price,
+                            "old_strike": pos["strike"],
+                            "new_strike": nuevo_strike,
+                            "net_credit_usd": income_usd,
+                            "shares_bought": shares_bought,
+                            "total_shares_now": round(self.etf_shares, 4),
+                            "reason": roll_reason
+                        }
+                        self.history.append(cycle_record)
+                        self.save_state()
+                        log_msg("AUTO_ROLL", f"✅ Roleo Exitoso. Nuevo Strike: ${nuevo_strike}. Crédito Neto Cobrado: +${income_usd}")
+                        return cycle_record
+
+            # 2. VERIFICAR EXPIRACIÓN NORMAL (Si pasaron los 30 días sin problemas)
             last_cycle = self.history[-1]
             last_ts_str = last_cycle.get("timestamp")
             if last_ts_str:
                 last_dt = datetime.strptime(last_ts_str, "%Y-%m-%d %H:%M:%S")
-                # Si han pasado 30 días desde el último ciclo, renovar automáticamente
                 if datetime.now() - last_dt >= timedelta(days=CONFIG["target_dte"]):
-                    log_msg("AUTO_WHEEL", f"Ciclo de {CONFIG['target_dte']} días completado. Renovando nuevo ciclo...")
+                    log_msg("AUTO_WHEEL", f"Ciclo de {CONFIG['target_dte']} días completado con éxito. Renovando...")
                     return self.run_wheel_cycle()
+
         except Exception as e:
             log_msg("WARN", f"Error en verificación automática de Rueda: {e}")
         return None
