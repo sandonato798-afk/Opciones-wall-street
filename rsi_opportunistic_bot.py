@@ -31,23 +31,23 @@ class RSIOpportunisticBot:
         self.load_state()
 
     def load_state(self):
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self._apply_dict(data)
+                    print(f"[RSI_OPPORTUNISTIC] Estado cargado localmente ({len(self.open_trades)} activos | PnL: ${self.total_pnl_usd}).")
+                    return
+            except Exception as e:
+                print(f"[RSI_OPPORTUNISTIC] Error leyendo estado local: {e}")
+
         cloud_data = load_state_from_github(STATE_FILE)
         if cloud_data:
             self._apply_dict(cloud_data)
             print(f"[RSI_OPPORTUNISTIC] Estado restaurado desde Nube GitHub ({len(self.open_trades)} trades activos).")
             return
 
-        if os.path.exists(STATE_FILE):
-            try:
-                with open(STATE_FILE, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    self._apply_dict(data)
-                    print(f"[RSI_OPPORTUNISTIC] Estado cargado localmente.")
-            except Exception as e:
-                print(f"[RSI_OPPORTUNISTIC] Error leyendo estado local: {e}")
-                self._initialize_default_state()
-        else:
-            self._initialize_default_state()
+        self._initialize_default_state()
 
     def _initialize_default_state(self):
         # Default state: monitoring intraday RSI

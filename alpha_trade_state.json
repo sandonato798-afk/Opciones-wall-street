@@ -18,7 +18,11 @@
       "status": "RISK_FREE_LONG_CALL",
       "short_put_current_buyback_cost": 10.0,
       "decoupled": true,
+<<<<<<< HEAD
       "current_underlying_price": 717.84,
+=======
+      "current_underlying_price": 717.83,
+>>>>>>> 6d44bf4 (Clean: Update RSI state priority and verified 4-layer master ledger)
       "unrealized_pnl_usd": 2880.0,
       "decouple_date": "2026-09-18 13:38:57",
       "decouple_cost_paid_usd": 10.0
@@ -50,5 +54,9 @@
   ],
   "closed_positions": [],
   "total_decouple_funds_used": 10.0,
+<<<<<<< HEAD
   "last_update": "2026-09-18 18:38:18"
+=======
+  "last_update": "2026-09-18 15:38:31"
+>>>>>>> 6d44bf4 (Clean: Update RSI state priority and verified 4-layer master ledger)
 }
