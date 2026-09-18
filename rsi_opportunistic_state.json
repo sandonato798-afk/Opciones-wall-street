@@ -835,14 +835,71 @@
       "exit_rsi": 38.2,
       "pnl_usd": 1166.4,
       "exit_date": "2026-09-18 14:10:24"
+    },
+    {
+      "id": 1789742197940,
+      "symbol": "QQQ",
+      "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
+      "entry_date": "2026-09-18 14:36:37",
+      "entry_rsi": 29.8,
+      "underlying_price": 716.4,
+      "put_strike": 709.2,
+      "long_strike": 702.1,
+      "contracts": 12,
+      "premium_per_share": 1.06,
+      "premium_collected_usd": 1272.0,
+      "max_loss_usd": 7248.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 29.2,
+      "pnl_usd": 1144.8,
+      "exit_date": "2026-09-18 14:37:08"
+    },
+    {
+      "id": 1789742228407,
+      "symbol": "QQQ",
+      "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
+      "entry_date": "2026-09-18 14:37:08",
+      "entry_rsi": 29.2,
+      "underlying_price": 716.36,
+      "put_strike": 709.2,
+      "long_strike": 702.0,
+      "contracts": 12,
+      "premium_per_share": 1.08,
+      "premium_collected_usd": 1296.0,
+      "max_loss_usd": 7344.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 36.2,
+      "pnl_usd": 1166.4,
+      "exit_date": "2026-09-18 14:37:38"
+    },
+    {
+      "id": 1789742258921,
+      "symbol": "DIA",
+      "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
+      "entry_date": "2026-09-18 14:37:38",
+      "entry_rsi": 29.4,
+      "underlying_price": 514.75,
+      "put_strike": 509.6,
+      "long_strike": 504.5,
+      "contracts": 17,
+      "premium_per_share": 0.76,
+      "premium_collected_usd": 1292.0,
+      "max_loss_usd": 7378.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 37.1,
+      "pnl_usd": 1162.8,
+      "exit_date": "2026-09-18 14:38:09"
     }
   ],
-  "total_premiums_collected": 57948.0,
-  "total_pnl_usd": 52153.19999999997,
+  "total_premiums_collected": 61808.0,
+  "total_pnl_usd": 55627.199999999975,
   "last_rsi_scanned": {
-    "SPY": 48.0,
-    "QQQ": 49.7,
-    "DIA": 41.1
+    "SPY": 53.7,
+    "QQQ": 45.8,
+    "DIA": 37.1
   },
-  "last_update": "2026-09-18 14:35:37"
+  "last_update": "2026-09-18 14:38:09"
 }
