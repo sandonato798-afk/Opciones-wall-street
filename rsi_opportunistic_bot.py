@@ -12,6 +12,8 @@ import json
 from datetime import datetime, timedelta
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
 
+from options_engine import black_scholes
+
 STATE_FILE = "rsi_opportunistic_state.json"
 
 class RSIOpportunisticBot:
@@ -129,23 +131,64 @@ class RSIOpportunisticBot:
 
         self.last_rsi_scanned = {s: v["rsi"] for s, v in rsi_values.items()}
 
-        # Check and close profitable open trades
+        # Check and close profitable open trades using real Black-Scholes valuation & expiration
         for trade in list(self.open_trades):
             symbol = trade["symbol"]
             current_rsi = rsi_values.get(symbol, {}).get("rsi", 50.0)
             current_price = rsi_values.get(symbol, {}).get("price", 0)
-            # Close if RSI recovered above 70 or if 90% of premium captured
-            if current_rsi > 70 or (current_price > 0 and current_price > trade.get("put_strike", 0)):
-                premium_collected = trade.get("premium_collected_usd", 0)
-                pnl = round(premium_collected * 0.90, 2)  # 90% profit capture
-                pnl = round(premium_collected * 0.50, 2)  # 50% profit capture (Take Profit)
+            if current_price <= 0:
+                continue
+
+            try:
+                entry_dt = datetime.strptime(trade["entry_date"], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                entry_dt = datetime.now()
+            hours_elapsed = max(0.1, (datetime.now() - entry_dt).total_seconds() / 3600.0)
+            dte_remaining = max(0.01, 1.0 - (hours_elapsed / 24.0))
+            T = dte_remaining / 365.0
+
+            # Dynamic Black-Scholes valuation for Short Put
+            put_val = black_scholes("PUT", current_price, trade["put_strike"], T, 0.0525, 0.20)
+            curr_prem_per_share = round(put_val["price"], 2)
+            curr_put_cost = round(curr_prem_per_share * 100 * trade["contracts"], 2)
+            
+            initial_premium = trade.get("premium_collected_usd", 0)
+            unrealized_pnl = round(initial_premium - curr_put_cost, 2)
+            tp_target = trade.get("take_profit_target_usd", initial_premium * 0.50)
+
+            close_reason = None
+            if curr_put_cost <= tp_target:
+                close_reason = "TAKE_PROFIT_50%"
+                pnl = unrealized_pnl
+            elif current_rsi >= 60.0 and unrealized_pnl > 0:
+                close_reason = f"RSI_REBOUND_{current_rsi:.1f}"
+                pnl = unrealized_pnl
+            elif hours_elapsed >= 24.0:
+                if current_price >= trade["put_strike"]:
+                    close_reason = "EXPIRED_OTM_WORTHLESS"
+                    pnl = initial_premium
+                else:
+                    close_reason = "EXPIRED_ITM"
+                    loss_intrinsic = (trade["put_strike"] - current_price) * 100 * trade["contracts"]
+                    pnl = round(initial_premium - loss_intrinsic, 2)
+            elif curr_put_cost >= initial_premium * 2.0:
+                close_reason = "STOP_LOSS_200%"
+                pnl = unrealized_pnl
+
+            if close_reason:
                 self.total_pnl_usd += pnl
-                self.total_premiums_collected += premium_collected
-                self.closed_trades.append({**trade, "exit_rsi": current_rsi, "pnl_usd": pnl,
-                                           "exit_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+                self.total_premiums_collected += initial_premium
+                self.closed_trades.append({
+                    **trade,
+                    "exit_rsi": current_rsi,
+                    "exit_price": current_price,
+                    "exit_reason": close_reason,
+                    "pnl_usd": pnl,
+                    "exit_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
                 self.open_trades.remove(trade)
                 self.status_mode = "IDLE_MONITORING"
-                print(f"[RSI_OPPORTUNISTIC] CLOSED trade on {symbol} — RSI recovered to {current_rsi}. PnL: +${pnl}")
+                print(f"[RSI_OPPORTUNISTIC] ✅ CERRADO trade en {symbol} ({close_reason}) — PnL: ${pnl:+.2f} USD")
 
         # Open new trades when RSI < 25 (Pánico Extremo - Umbral Institucional)
         if len(self.open_trades) == 0:

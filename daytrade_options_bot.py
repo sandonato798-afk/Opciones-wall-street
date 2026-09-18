@@ -31,8 +31,53 @@ class DaytradeOptionsBot:
             }, f, indent=2)
 
     def fetch_market_data(self, symbol):
-        # MOCK API para simulacion tecnica
-        return {"current_price": 500.0, "previous_close": 510.0, "rsi": 32, "prev_rsi": 28}
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+                result = data["chart"]["result"][0]
+                meta = result["meta"]
+                quotes = result["indicators"]["quote"][0]
+                prices = [p for p in quotes.get("close", []) if p is not None]
+                if not prices or len(prices) < 15:
+                    return None
+                current_price = prices[-1]
+                prev_close = meta.get("chartPreviousClose", current_price)
+
+                gains, losses = 0.0, 0.0
+                for i in range(1, 15):
+                    diff = prices[-i] - prices[-i - 1]
+                    if diff >= 0:
+                        gains += diff
+                    else:
+                        losses -= diff
+                rs = (gains / 14) / (losses / 14) if losses > 0 else 1.0
+                rsi = 100.0 - (100.0 / (1.0 + rs)) if losses > 0 else 100.0
+
+                prev_gains, prev_losses = 0.0, 0.0
+                if len(prices) >= 16:
+                    for i in range(2, 16):
+                        diff = prices[-i] - prices[-i - 1]
+                        if diff >= 0:
+                            prev_gains += diff
+                        else:
+                            prev_losses -= diff
+                    prev_rs = (prev_gains / 14) / (prev_losses / 14) if prev_losses > 0 else 1.0
+                    prev_rsi = 100.0 - (100.0 / (1.0 + prev_rs)) if prev_losses > 0 else 100.0
+                else:
+                    prev_rsi = rsi
+
+                return {
+                    "current_price": round(current_price, 2),
+                    "previous_close": round(prev_close, 2),
+                    "rsi": round(rsi, 1),
+                    "prev_rsi": round(prev_rsi, 1)
+                }
+        except Exception as e:
+            print(f"[DAYTRADE] Error fetching market data for {symbol}: {e}")
+            return None
 
     def scan_market(self):
         if len(self.active_trades) > 0: return # Solo 1 trade activo a la vez para no saturar margen
