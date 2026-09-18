@@ -1,36 +1,15 @@
 {
   "system_start_time": "2026-09-16 10:30:00",
-  "last_update": "2026-09-17 14:20:38",
+  "last_update": "2026-09-18 17:59:54",
   "execution_mode": "PAPER_TRADING",
   "initial_capital": 100000.0,
-  "capital": 101245.1,
-  "daily_pnl_usd": 1245.1000000000001,
-  "daily_pnl_pct": 1.25,
-  "total_pnl_usd": 1245.1,
-  "total_pnl_pct": 1.25,
-  "total_commissions_paid": 513.5,
-  "open_positions": [
-    {
-      "id": 1789654838625,
-      "symbol": "QQQ",
-      "option_ticker": "QQQ_CALL_716_0DTE",
-      "option_type": "CALL",
-      "strike": 716.0,
-      "dte": 0,
-      "contracts": 25,
-      "entry_premium": 2.02,
-      "open_fee_usd": 16.25,
-      "total_cost_usd": 5066.25,
-      "entry_time": "2026-09-17 14:20:38",
-      "target_profit_price": 2.73,
-      "stop_loss_price": 1.66,
-      "status": "OPEN",
-      "current_premium": 2.02,
-      "pnl_usd": -16.25,
-      "pnl_pct": 0.0,
-      "trailing_stop_active": false
-    }
-  ],
+  "capital": 103762.6,
+  "daily_pnl_usd": 3762.6000000000004,
+  "daily_pnl_pct": 3.76,
+  "total_pnl_usd": 3762.6,
+  "total_pnl_pct": 3.76,
+  "total_commissions_paid": 529.75,
+  "open_positions": [],
   "closed_trades": [
     {
       "id": 178954001,
@@ -343,6 +322,33 @@
       "total_fees_usd": 32.5,
       "final_pnl_usd": -1107.5,
       "final_pnl_pct": -21.72
+    },
+    {
+      "id": 1789654838625,
+      "symbol": "QQQ",
+      "option_ticker": "QQQ_CALL_716_0DTE",
+      "option_type": "CALL",
+      "strike": 716.0,
+      "dte": 0,
+      "contracts": 25,
+      "entry_premium": 2.02,
+      "open_fee_usd": 16.25,
+      "total_cost_usd": 5066.25,
+      "entry_time": "2026-09-17 14:20:38",
+      "target_profit_price": 2.73,
+      "stop_loss_price": 2.04,
+      "status": "OPEN",
+      "current_premium": 3.04,
+      "pnl_usd": 2533.75,
+      "pnl_pct": 50.5,
+      "trailing_stop_active": true,
+      "exit_time": "2026-09-18 17:59:54",
+      "exit_premium": 3.04,
+      "exit_reason": "TIME_STOP_45M",
+      "close_fee_usd": 16.25,
+      "total_fees_usd": 32.5,
+      "final_pnl_usd": 2517.5,
+      "final_pnl_pct": 50.5
     }
   ]
 }
