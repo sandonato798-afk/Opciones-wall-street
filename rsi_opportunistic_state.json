@@ -1728,14 +1728,52 @@
       "exit_rsi": 43.3,
       "pnl_usd": 1162.8,
       "exit_date": "2026-09-18 16:00:06"
+    },
+    {
+      "id": 1789747449854,
+      "symbol": "QQQ",
+      "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
+      "entry_date": "2026-09-18 16:04:09",
+      "entry_rsi": 29.3,
+      "underlying_price": 716.22,
+      "put_strike": 709.1,
+      "long_strike": 701.9,
+      "contracts": 12,
+      "premium_per_share": 1.08,
+      "premium_collected_usd": 1296.0,
+      "max_loss_usd": 7344.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 28.1,
+      "pnl_usd": 1166.4,
+      "exit_date": "2026-09-18 16:04:40"
+    },
+    {
+      "id": 1789747480554,
+      "symbol": "QQQ",
+      "strategy": "BULL_PUT_SPREAD_1DTE_SCALP",
+      "entry_date": "2026-09-18 16:04:40",
+      "entry_rsi": 28.1,
+      "underlying_price": 716.17,
+      "put_strike": 709.0,
+      "long_strike": 701.8,
+      "contracts": 12,
+      "premium_per_share": 1.08,
+      "premium_collected_usd": 1296.0,
+      "max_loss_usd": 7344.0,
+      "dte": 1,
+      "status": "OPEN",
+      "exit_rsi": 37.7,
+      "pnl_usd": 1166.4,
+      "exit_date": "2026-09-18 16:05:11"
     }
   ],
-  "total_premiums_collected": 117540.0,
-  "total_pnl_usd": 105786.0000000001,
+  "total_premiums_collected": 120132.0,
+  "total_pnl_usd": 108118.80000000009,
   "last_rsi_scanned": {
-    "SPY": 38.6,
-    "QQQ": 39.9,
-    "DIA": 45.7
+    "SPY": 37.7,
+    "QQQ": 37.7,
+    "DIA": 48.1
   },
-  "last_update": "2026-09-18 16:03:09"
+  "last_update": "2026-09-18 16:05:11"
 }
