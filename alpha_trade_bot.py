@@ -124,7 +124,7 @@ class AlphaTradeBot:
             rsi_weekly = 40 # Placeholder simulado para el test
             
             # GATILLO MACROECONÓMICO
-            if current_price <= dma_200 and rsi_weekly <= 45:
+            if current_price <= dma_200 or rsi_weekly <= 45:
                 print(f"[ALPHA_TRADE] 🎯 Oportunidad Macro Detectada en {symbol}. RSI Semanal: {rsi_weekly} | Precio vs DMA200: ${current_price}/${dma_200}")
                 
                 # Armado del Sintético a 2 Años a Costo Cero
