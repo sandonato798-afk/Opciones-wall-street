@@ -45,7 +45,6 @@ def is_market_open():
 # Global Health Monitor
 SYSTEM_HEALTH_PINGS = {
     "wheel": 0,
-    "spreads": 0,
     "alpha": 0,
     "rsi": 0,
     "daytrade": 0

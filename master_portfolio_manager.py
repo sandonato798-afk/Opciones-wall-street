@@ -345,11 +345,10 @@ class MasterPortfolioManager:
                 "max_allowed_margin_pct": 65.0,
                 "status": margin_status,
                 "breakdown": {
-                    "wheel_core_usd": 35000.0,
-                    "spreads_collateral_usd": margin_spreads,
-                    "alpha_trade_usd": 12000.0,
-                    "rsi_opportunistic_usd": margin_rsi,
-                    "daytrade_intraday_usd": margin_daytrade,
+                    "wheel_overlay_nav_usd": consolidated_nav,
+                    "alpha_trade_margin_usd": 12000.0,
+                    "rsi_opportunistic_margin_usd": margin_rsi,
+                    "daytrade_intraday_margin_usd": margin_daytrade,
                     "free_buffer_usd": free_margin
                 }
             },
