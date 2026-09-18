@@ -1,4 +1,5 @@
 .github_token
+.render_hook
 __pycache__/
 *.pyc
 *.log

@@ -1,63 +1,83 @@
 # ============================================================
 # deploy.ps1 — Script de Deploy a Producción
 # Uso: .\deploy.ps1
-# Mergea dev → main y pushea UNA SOLA VEZ a GitHub/Render
+#
+# FLUJO:
+#   1. Valida que el código Python no tiene errores
+#   2. Commitea y pushea dev → GitHub (backup de código, sin build)
+#   3. Llama al Deploy Hook de Render → 1 solo build en la nube
 # ============================================================
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  DEPLOY A PRODUCCION (dev → main)" -ForegroundColor Cyan
+Write-Host "  DEPLOY A PRODUCCION" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # 1. Verificar que estamos en dev
 $branch = git rev-parse --abbrev-ref HEAD
-if ($branch -ne "dev") {
+if ($branch -eq "main") {
     Write-Host "  ERROR: Tenes que estar en la rama 'dev' para hacer deploy." -ForegroundColor Red
     Write-Host "  Corré: git checkout dev" -ForegroundColor Yellow
     exit 1
 }
 
-# 2. Verificar que el servidor local funciona
-Write-Host "  [1/4] Verificando que el codigo Python es valido..." -ForegroundColor Yellow
+# 2. Verificar que el código Python es válido antes de deployar
+Write-Host "  [1/4] Verificando codigo Python..." -ForegroundColor Yellow
 $check = python -c "import app; print('OK')" 2>&1
 if ($check -notmatch "OK") {
-    Write-Host "  ERROR: El codigo tiene errores de Python. Corregi los bugs antes de deployar." -ForegroundColor Red
+    Write-Host "  ERROR: El codigo tiene errores. Corregi los bugs antes de deployar:" -ForegroundColor Red
     Write-Host "  $check" -ForegroundColor Red
     exit 1
 }
 Write-Host "  ✅ Codigo Python valido" -ForegroundColor Green
 
-# 3. Commitear cualquier cambio pendiente en dev
+# 3. Commitear cambios pendientes en dev
 $status = git status --porcelain
 if ($status) {
-    Write-Host "  [2/4] Commiteando cambios pendientes en dev..." -ForegroundColor Yellow
+    Write-Host "  [2/4] Commiteando cambios en rama 'dev'..." -ForegroundColor Yellow
     git add .
-    $msg = Read-Host "  Descripcion del deploy (Enter para usar fecha)"
+    $msg = Read-Host "  Descripcion del deploy (Enter para fecha automatica)"
     if ([string]::IsNullOrWhiteSpace($msg)) {
         $msg = "deploy: $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
     }
     git commit -m $msg
 } else {
-    Write-Host "  [2/4] Sin cambios pendientes en dev" -ForegroundColor Green
+    Write-Host "  [2/4] Sin cambios pendientes" -ForegroundColor Green
 }
 
-# 4. Merge dev → main y push
-Write-Host "  [3/4] Mergeando dev → main..." -ForegroundColor Yellow
-git checkout main
-git pull --rebase origin main
-git merge dev --no-ff -m "deploy: merge dev → main ($(Get-Date -Format 'yyyy-MM-dd HH:mm'))"
+# 4. Pushear dev a GitHub (solo backup de código, NO dispara build en Render)
+Write-Host "  [3/4] Pusheando rama 'dev' a GitHub (sin build en Render)..." -ForegroundColor Yellow
+git push origin dev
+Write-Host "  ✅ Código respaldado en GitHub rama 'dev'" -ForegroundColor Green
 
-Write-Host "  [4/4] Pusheando a GitHub (1 solo deploy en Render)..." -ForegroundColor Yellow
-git push origin main
+# 5. Disparar el build en Render via Deploy Hook
+Write-Host "  [4/4] Disparando build en Render via Deploy Hook..." -ForegroundColor Yellow
+$hookFile = ".render_hook"
+if (-not (Test-Path $hookFile)) {
+    Write-Host "  ERROR: No se encontró el archivo '.render_hook'." -ForegroundColor Red
+    Write-Host "  Crealo con la URL del Deploy Hook de Render." -ForegroundColor Yellow
+    exit 1
+}
 
-# 5. Volver a dev para seguir trabajando
-git checkout dev
+$hookUrl = (Get-Content $hookFile -Raw).Trim()
+
+try {
+    $response = Invoke-WebRequest -Uri $hookUrl -Method POST -UseBasicParsing -TimeoutSec 15
+    if ($response.StatusCode -eq 200 -or $response.StatusCode -eq 201) {
+        Write-Host "  ✅ Deploy iniciado en Render correctamente" -ForegroundColor Green
+    } else {
+        Write-Host "  ⚠️  Render respondió con código $($response.StatusCode)" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "  ERROR llamando al Deploy Hook: $_" -ForegroundColor Red
+    exit 1
+}
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "  ✅ DEPLOY COMPLETADO EXITOSAMENTE" -ForegroundColor Green
+Write-Host "  ✅ DEPLOY COMPLETADO" -ForegroundColor Green
 Write-Host "  Render va a construir el nuevo deploy en ~3-5 minutos." -ForegroundColor Green
-Write-Host "  Ya estás de vuelta en la rama 'dev' para seguir." -ForegroundColor Green
+Write-Host "  El código en 'main' NO fue tocado — solo 'dev' se pusheó." -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host ""
