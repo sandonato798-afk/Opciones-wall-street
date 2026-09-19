@@ -84,6 +84,8 @@ class DaytradeOptionsBot:
         
         for symbol in ["SPY", "QQQ"]:
             data = self.fetch_market_data(symbol)
+            if not data:
+                continue
             cp = data["current_price"]
             pc = data["previous_close"]
             

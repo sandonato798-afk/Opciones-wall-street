@@ -22,6 +22,9 @@ def get_token():
             pass
     return ""
 
+import time
+
+_state_lock = threading.Lock()
 _last_synced_signatures = {}
 _last_sync_times = {}
 MIN_SYNC_INTERVAL_SEC = 300  # Máximo 1 sync a GitHub cada 5 minutos por archivo
@@ -34,21 +37,18 @@ def _get_signature(data_dict):
     return json.dumps(filtered, sort_keys=True)
 
 def _init_local_signatures():
-    for f in ["rsi_opportunistic_state.json", "alpha_trade_state.json", "wheel_compounding_state.json", "reinvestment_state.json"]:
+    for f in ["rsi_opportunistic_state.json", "alpha_trade_state.json", "wheel_compounding_state.json", "reinvestment_state.json", "daytrade_state.json"]:
         path = os.path.join(os.path.dirname(__file__), f)
         if os.path.exists(path):
             try:
                 with open(path, "r", encoding="utf-8") as fp:
-                    _last_synced_signatures[f] = _get_signature(json.load(fp))
-                    _last_sync_times[f] = time.time()
+                    with _state_lock:
+                        _last_synced_signatures[f] = _get_signature(json.load(fp))
+                        _last_sync_times[f] = time.time()
             except Exception:
                 pass
 
-try:
-    import time
-    _init_local_signatures()
-except Exception:
-    pass
+_init_local_signatures()
 
 def _async_sync(file_name, data_dict):
     token = get_token()
@@ -56,12 +56,17 @@ def _async_sync(file_name, data_dict):
         return
 
     sig = _get_signature(data_dict)
-    if _last_synced_signatures.get(file_name) == sig:
-        return  # Sin cambios reales de trading, no commitear
+    
+    with _state_lock:
+        if _last_synced_signatures.get(file_name) == sig:
+            return  # Sin cambios reales de trading, no commitear
 
-    now = time.time()
-    if now - _last_sync_times.get(file_name, 0) < MIN_SYNC_INTERVAL_SEC:
-        return  # Throttle: evitar builds continuos en la nube
+        now = time.time()
+        if now - _last_sync_times.get(file_name, 0) < MIN_SYNC_INTERVAL_SEC:
+            return  # Throttle: evitar ban de GitHub API
+        
+        # Reservar tiempo para evitar race conditions multiples
+        _last_sync_times[file_name] = now
 
     url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_name}"
     headers = {
@@ -93,7 +98,9 @@ def _async_sync(file_name, data_dict):
         req_put = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="PUT")
         with urllib.request.urlopen(req_put, timeout=8) as resp:
             if resp.status in (200, 201):
-                _last_synced_signatures[file_name] = sig
+                with _state_lock:
+                    _last_synced_signatures[file_name] = sig
+                    _last_sync_times[file_name] = time.time()
                 print(f"[CLOUD_PERSISTENCE] Estado {file_name} respaldado en GitHub (Trade/Position change).")
     except Exception as e:
         print(f"[CLOUD_PERSISTENCE] Warning al respaldar {file_name}: {e}")

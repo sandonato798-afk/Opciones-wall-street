@@ -50,6 +50,9 @@ SYSTEM_HEALTH_PINGS = {
     "daytrade": 0
 }
 
+# Candado Global para proteger la memoria concurrente
+trading_state_lock = threading.Lock()
+
 def background_trading_loop():
     print("Motor de Opciones Hibrido (4 Capas + Colateral SGOV/GLD/TLT + Reinversion Auto) iniciado.")
     cycle = 0
@@ -57,34 +60,33 @@ def background_trading_loop():
     while True:
         try:
             cycle += 1
-            # Capa 1: Rueda & Compounding
-            wheel_engine.auto_check_and_run_cycle()
-            SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
+            
+            with trading_state_lock:
+                # Capa 1: Rueda & Compounding
+                wheel_engine.auto_check_and_run_cycle()
+                SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
 
-            # Capa 2: Alpha Trade - monitoreo de posiciones sinteticas
-            alpha_bot.monitor_positions()
-            SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
+                # Capa 2: Alpha Trade - monitoreo de posiciones sinteticas
+                alpha_bot.monitor_positions()
+                SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
 
-            if is_market_open() or True:
-                pass
+                if is_market_open():
+                    # Capa 4: Daytrading ITM 1DTE
+                    daytrade_bot.scan_market()
+                    daytrade_bot.manage_open_position()
+                    SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
+                    # Capa 3: RSI Oportunista
+                    rsi_bot.scan_market()
+                    SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
+                else:
+                    SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
+                    SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
 
-            if is_market_open():
-                # Capa 4: Daytrading ITM 1DTE
-                daytrade_bot.scan_market()
-                daytrade_bot.manage_open_position()
-                SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
-                # Capa 3: RSI Oportunista
-                rsi_bot.scan_market()
-                SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
-            else:
-                SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
-                SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
-
-            # Motor de Reinversion Automatica: verifica cada 10 ciclos (~10 min)
-            if cycle % 10 == 0:
-                result = master_portfolio.check_and_execute_reinvestment()
-                if result and result.get("status") == "EXECUTED":
-                    print(f"[REINVESTMENT] Reinversion automatica ejecutada: ${result['record']['total_reinvested_usd']:.2f}")
+                # Motor de Reinversion Automatica: verifica cada 10 ciclos (~10 min)
+                if cycle % 10 == 0:
+                    result = master_portfolio.check_and_execute_reinvestment()
+                    if result and result.get("status") == "EXECUTED":
+                        print(f"[REINVESTMENT] Reinversion automatica ejecutada: ${result['record']['total_reinvested_usd']:.2f}")
 
             time.sleep(60)
         except Exception as e:
@@ -315,8 +317,8 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
         return self.send_json_response({"error": "Endpoint no encontrado"}, 404)
 
 def run_server():
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), OptionsAPIHandler) as httpd:
+    socketserver.ThreadingTCPServer.allow_reuse_address = True
+    with socketserver.ThreadingTCPServer(("", PORT), OptionsAPIHandler) as httpd:
         print("=" * 75)
         print(f"🚀 SISTEMA HÍBRIDO DE OPCIONES (5 CAPAS + PORTFOLIO MARGIN + SGOV)")
         print(f"🌐 Servidor Web Activo en Puerto: {PORT}")
