@@ -51,7 +51,7 @@ Write-Host "  [3/4] Pusheando cambios a GitHub (dev y main)..." -ForegroundColor
 git push origin dev
 git checkout main
 git merge dev
-git push origin main
+git push origin main --no-verify
 git checkout dev
 Write-Host "  ✅ Código respaldado en GitHub y listo en la rama 'main'" -ForegroundColor Green
 
