@@ -114,6 +114,38 @@ class RSIOpportunisticBot:
             print(f"[RSI_OPPORTUNISTIC] Error fetching {symbol}: {e}")
             return None, None
 
+    def _fetch_real_put_premium(self, symbol, target_strike):
+        """Busca la prima real en la cadena de opciones (bid/ask mid) usando yfinance. Fallback a ~0.4%."""
+        try:
+            import yfinance as yf
+            ticker = yf.Ticker(symbol)
+            exps = ticker.options
+            if not exps:
+                return round(target_strike * 0.004, 2)
+            
+            # Usar el vencimiento más cercano (0-1 DTE)
+            chain = ticker.option_chain(exps[0])
+            puts = chain.puts
+            if puts.empty:
+                return round(target_strike * 0.004, 2)
+            
+            # Encontrar el strike más cercano al target
+            put_row = puts.iloc[(puts['strike'] - target_strike).abs().argsort()[:1]]
+            if not put_row.empty:
+                bid = put_row['bid'].values[0]
+                ask = put_row['ask'].values[0]
+                mid = (bid + ask) / 2.0
+                # Si el mercado está cerrado, a veces bid/ask es 0, usamos lastPrice
+                if mid <= 0.01:
+                    mid = put_row['lastPrice'].values[0]
+                if mid > 0.01:
+                    return round(mid, 2)
+        except Exception as e:
+            print(f"[RSI_OPPORTUNISTIC] Error YF Option Chain {symbol}: {e}")
+            
+        # Fallback realista: ~0.4% del strike (típico para 1DTE OTM)
+        return round(target_strike * 0.004, 2)
+
     def scan_market(self, market_data=None):
         """
         Scans real intraday RSI for SPY, QQQ, DIA.
@@ -144,12 +176,9 @@ class RSIOpportunisticBot:
             except Exception:
                 entry_dt = datetime.now()
             hours_elapsed = max(0.1, (datetime.now() - entry_dt).total_seconds() / 3600.0)
-            dte_remaining = max(0.01, 1.0 - (hours_elapsed / 24.0))
-            T = dte_remaining / 365.0
 
-            # Dynamic Black-Scholes valuation for Short Put
-            put_val = black_scholes("PUT", current_price, trade["put_strike"], T, 0.0525, 0.20)
-            curr_prem_per_share = round(put_val["price"], 2)
+            # Valoración usando precios reales de la cadena de opciones
+            curr_prem_per_share = self._fetch_real_put_premium(symbol, trade["put_strike"])
             curr_put_cost = round(curr_prem_per_share * 100 * trade["contracts"], 2)
             
             initial_premium = trade.get("premium_collected_usd", 0)
@@ -198,7 +227,7 @@ class RSIOpportunisticBot:
 
                     # NAKED PUT: Strike 1% OTM, vencimiento 1DTE
                     put_strike = round(price * 0.99, 1)
-                    premium_per_share = round(price * 0.015, 2)  # Prima estimada (IV inflada por pánico)
+                    premium_per_share = self._fetch_real_put_premium(symbol, put_strike)
 
                     # Sizing: ~20% de margen por Put desnudo (Portfolio Margin)
                     margin_per_contract = put_strike * 100 * 0.20

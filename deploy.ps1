@@ -25,7 +25,7 @@ if ($branch -eq "main") {
 # 2. Verificar que el código Python es válido antes de deployar
 Write-Host "  [1/4] Verificando codigo Python..." -ForegroundColor Yellow
 $check = python -c "import app; print('OK')" 2>&1
-if ($check -notmatch "OK") {
+if ($check[-1] -notmatch "OK") {
     Write-Host "  ERROR: El codigo tiene errores. Corregi los bugs antes de deployar:" -ForegroundColor Red
     Write-Host "  $check" -ForegroundColor Red
     exit 1
@@ -76,8 +76,8 @@ try {
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "  ✅ DEPLOY COMPLETADO" -ForegroundColor Green
+Write-Host "  OK DEPLOY COMPLETADO" -ForegroundColor Green
 Write-Host "  Render va a construir el nuevo deploy en ~3-5 minutos." -ForegroundColor Green
-Write-Host "  El código en 'main' NO fue tocado — solo 'dev' se pusheó." -ForegroundColor Green
+Write-Host "  El codigo en 'main' NO fue tocado, solo 'dev' se pusheo." -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host ""
