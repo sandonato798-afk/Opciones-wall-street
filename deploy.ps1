@@ -46,10 +46,14 @@ if ($status) {
     Write-Host "  [2/4] Sin cambios pendientes" -ForegroundColor Green
 }
 
-# 4. Pushear dev a GitHub (solo backup de código, NO dispara build en Render)
-Write-Host "  [3/4] Pusheando rama 'dev' a GitHub (sin build en Render)..." -ForegroundColor Yellow
+# 4. Pushear a dev, mergear a main, y pushear main a GitHub (sin auto-deploy)
+Write-Host "  [3/4] Pusheando cambios a GitHub (dev y main)..." -ForegroundColor Yellow
 git push origin dev
-Write-Host "  ✅ Código respaldado en GitHub rama 'dev'" -ForegroundColor Green
+git checkout main
+git merge dev
+git push origin main
+git checkout dev
+Write-Host "  ✅ Código respaldado en GitHub y listo en la rama 'main'" -ForegroundColor Green
 
 # 5. Disparar el build en Render via Deploy Hook
 Write-Host "  [4/4] Disparando build en Render via Deploy Hook..." -ForegroundColor Yellow
