@@ -314,28 +314,37 @@ class WheelCompoundingEngine:
                     if needs_roll:
                         log_msg("AUTO_ROLL", f"⚠️ GATILLO ACTIVADO: {roll_reason}. Ejecutando Roleo (DTE: {dte_remaining})...")
                         
-                        net_credit = round(etf_price * 0.01, 2)  # Proxy de Crédito Neto estimado
-                        income_usd = round(net_credit * 100.0, 2)
+                        # Calculo Real de Roleo usando Black-Scholes
+                        old_put_val = black_scholes("PUT", etf_price, pos["strike"], max(0.01, dte_remaining)/365.0, 0.0525, 0.25)["price"]
+                        new_put_val = black_scholes("PUT", etf_price, nuevo_strike, dias_adelante/365.0, 0.0525, 0.22)["price"]
                         
+                        net_credit_per_share = round(new_put_val - old_put_val, 2)
+                        income_usd = round(net_credit_per_share * 100.0, 2)
+                        
+                        # Si es débito (income_usd negativo), se resta de la caja/reinversión
                         self.accumulated_premiums_usd += income_usd
-                        self.total_reinvested_usd += income_usd
-                        # Re-invertir el credito extra en acciones
-                        shares_bought = round(income_usd / etf_price, 4)
-                        self.etf_shares += shares_bought
+                        if income_usd > 0:
+                            self.total_reinvested_usd += income_usd
+                            shares_bought = round(income_usd / etf_price, 4)
+                            self.etf_shares += shares_bought
+                        else:
+                            shares_bought = 0.0
+                            # En la realidad, esto reduciría tu cash balance o requeriría vender acciones
+                            self.cash_balance += income_usd 
 
-                        exp_date_new = (datetime.now() + timedelta(days=45)).strftime("%Y-%m-%d")
+                        exp_date_new = (datetime.now() + timedelta(days=dias_adelante)).strftime("%Y-%m-%d")
                         active_pos = {
                             "id": f"WHEEL_CSP_ROLLED_{int(datetime.now().timestamp())}",
-                            "ticker": f"{pos['symbol']}_PUT_{nuevo_strike:.1f}_45DTE",
+                            "ticker": f"{pos['symbol']}_PUT_{nuevo_strike:.1f}_{dias_adelante}DTE",
                             "symbol": pos["symbol"],
                             "strategy_type": "CASH_SECURED_PUT",
                             "underlying_price": etf_price,
                             "strike": nuevo_strike,
-                            "contracts": 1,
+                            "contracts": pos.get("contracts", 1),
                             "premium_collected_usd": income_usd,
                             "issued_date": timestamp(),
                             "expiration_date": exp_date_new,
-                            "target_dte": 45,
+                            "target_dte": dias_adelante,
                             "status": "ACTIVE_ROLLED"
                         }
                         self.wheel_positions = [active_pos]
@@ -354,7 +363,10 @@ class WheelCompoundingEngine:
                         }
                         self.history.append(cycle_record)
                         self.save_state()
-                        log_msg("AUTO_ROLL", f"✅ Roleo Exitoso. Nuevo Strike: ${nuevo_strike}. Crédito Neto Cobrado: +${income_usd}")
+                        
+                        msg = f"✅ Roleo Exitoso. Nuevo Strike: ${nuevo_strike}. "
+                        msg += f"Crédito Neto: +${income_usd}" if income_usd >= 0 else f"Débito (Costo): -${abs(income_usd)}"
+                        log_msg("AUTO_ROLL", msg)
                         return cycle_record
 
             # 2. VERIFICAR EXPIRACIÓN NORMAL (Si pasaron los 30 días sin problemas)

@@ -154,7 +154,10 @@ class AlphaTradeBot:
                 put_strike = round(current_price * 0.85, 1)
                 call_strike = round(current_price * 1.05, 1)
                 premium_collected = round(current_price * 0.08 * 100, 2)
-                contracts = 2
+                # Dimensionamiento Dinámico de Contratos
+                # Se estima costo del margin requirement del put (aprox 20% del strike)
+                margin_req_per_contract = put_strike * 100 * 0.20
+                contracts = max(1, int(max_capital_for_symbol / margin_req_per_contract))
                 
                 new_position = {
                     "id": int(datetime.now().timestamp() * 1000),
@@ -179,7 +182,7 @@ class AlphaTradeBot:
                 
                 self.open_positions.append(new_position)
                 self.save_state()
-                print(f"[ALPHA_TRADE] ✅ Sintético LEAP 2 Años abierto exitosamente en {symbol}. Riesgo pareado.")
+                print(f"[ALPHA_TRADE] ✅ Sintético LEAP abierto en {symbol}. Contratos: {contracts}. Capital asignado respetado.")
                 return {"status": "OPENED", "position": new_position}
                 
         return {"status": "NO_OPPORTUNITY"}
@@ -196,37 +199,43 @@ class AlphaTradeBot:
                 if not current_price:
                     continue
                 
-                # Simulacion de valorizacion (En live, llama a Black-Scholes)
-                if current_price > pos["underlying_price_at_entry"]:
-                    price_increase_pct = (current_price - pos["underlying_price_at_entry"]) / pos["underlying_price_at_entry"]
+                # Obtener la valoracion real calculada en monitor_positions (BS)
+                total_put_buyback_cost = pos.get("short_put_current_buyback_cost", 999999.0)
+                
+                # Asumimos que net_pnl tiene el valor base, recalculamos el call
+                from options_engine import black_scholes
+                try:
+                    entry_dt = datetime.strptime(pos.get("entry_date", datetime.now().strftime("%Y-%m-%d %H:%M:%S")), "%Y-%m-%d %H:%M:%S")
+                    days_elapsed = max(1, (datetime.now() - entry_dt).days)
+                    dte = max(1.0, float(pos.get("dte", 730)) - days_elapsed)
+                except Exception:
+                    dte = 730.0
                     
-                    # Valor actual de 1 Long Call (Delta proxy aproximado)
-                    call_current_value = (pos["long_call_premium_paid"] / pos["long_call_contracts"]) * (1 + (price_increase_pct * 4))
-                    # Costo actual de recomprar TODOS los Short Puts
-                    total_put_buyback_cost = pos["short_put_premium_collected"] * max(0.1, (1 - (price_increase_pct * 5)))
+                call_val = black_scholes("CALL", current_price, pos["long_call_strike"], dte/365.0, 0.0525, 0.18)
+                call_current_value_total = call_val["price"] * 100 * pos["long_call_contracts"]
+                
+                half_calls = max(1, int(pos["long_call_contracts"] / 2))
+                value_of_half_calls = (call_current_value_total / pos["long_call_contracts"]) * half_calls
+                
+                # GATILLO DE ESCAPE AUTOFINANCIADO
+                if value_of_half_calls >= total_put_buyback_cost:
+                    print(f"[ALPHA_TRADE] 🚀 GATILLO DE DESACOPLE AUTOFINANCIADO DETECTADO en {symbol}!")
                     
-                    half_calls = max(1, int(pos["long_call_contracts"] / 2))
-                    value_of_half_calls = call_current_value * half_calls
+                    pos["decoupled"] = True
+                    pos["long_call_contracts"] -= half_calls
+                    pos["short_put_contracts"] = 0
                     
-                    # GATILLO DE ESCAPE AUTOFINANCIADO
-                    if value_of_half_calls >= total_put_buyback_cost:
-                        print(f"[ALPHA_TRADE] 🚀 GATILLO DE DESACOPLE AUTOFINANCIADO DETECTADO en {symbol}!")
-                        
-                        pos["decoupled"] = True
-                        pos["long_call_contracts"] -= half_calls
-                        pos["short_put_contracts"] = 0
-                        
-                        net_cash_generated = round(value_of_half_calls - total_put_buyback_cost, 2)
-                        
-                        free_runner = {
-                            **pos,
-                            "status": "FREE_RUNNER_LONG_CALL",
-                            "net_cash_generated_usd": net_cash_generated,
-                            "decouple_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
-                        self.decoupled_calls.append(free_runner)
-                        self.save_state()
-                        print(f"[ALPHA_TRADE] ✅ Desacople Exitoso. Riesgo eliminado. Cash Sobrante: +${net_cash_generated}")
+                    net_cash_generated = round(value_of_half_calls - total_put_buyback_cost, 2)
+                    
+                    free_runner = {
+                        **pos,
+                        "status": "FREE_RUNNER_LONG_CALL",
+                        "net_cash_generated_usd": net_cash_generated,
+                        "decouple_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    self.decoupled_calls.append(free_runner)
+                    self.save_state()
+                    print(f"[ALPHA_TRADE] ✅ Desacople Exitoso. Riesgo eliminado. Cash Sobrante: +${net_cash_generated}")
                         
         return {"status": "MONITORED"}
 
@@ -287,24 +296,38 @@ class AlphaTradeBot:
 
             pos["current_underlying_price"] = live_price
 
-            # Estimate call PnL: if underlying rose above long_call_strike, intrinsic value increases
+            # Calculo usando Black-Scholes Real (Motor matematico core)
+            from options_engine import black_scholes
+            
             call_strike = pos.get("long_call_strike", live_price)
-            call_premium_paid = pos.get("long_call_premium_paid", 0) / 100.0  # per share
-            intrinsic_call = max(0.0, live_price - call_strike)
-            estimated_call_value = max(call_premium_paid, intrinsic_call)
-
-            # Estimate put buyback: if underlying rose, short put loses value (good for us)
             put_strike = pos.get("short_put_strike", live_price * 0.97)
-            entry_price = pos.get("underlying_price_at_entry", live_price)
-            price_move_pct = (live_price - entry_price) / entry_price if entry_price > 0 else 0.0
-            original_buyback = pos.get("short_put_current_buyback_cost", 400.0)
-            # Put value decreases as underlying rises
-            adjusted_buyback = max(10.0, round(original_buyback * (1.0 - price_move_pct * 2), 2))
-            pos["short_put_current_buyback_cost"] = adjusted_buyback
+            
+            # Estimacion de DTE restante (2 años = 730 días al abrir)
+            try:
+                entry_dt = datetime.strptime(pos.get("entry_date", datetime.now().strftime("%Y-%m-%d %H:%M:%S")), "%Y-%m-%d %H:%M:%S")
+                days_elapsed = max(1, (datetime.now() - entry_dt).days)
+                dte = max(1.0, float(pos.get("dte", 730)) - days_elapsed)
+            except Exception:
+                dte = 730.0
+            
+            T = dte / 365.0
+            risk_free_rate = 0.0525  # 5.25%
+            iv = 0.18 # Volatilidad estimada
+            
+            # Valuación Long Call (Black-Scholes)
+            call_val = black_scholes("CALL", live_price, call_strike, T, risk_free_rate, iv)
+            estimated_call_value_per_share = round(call_val["price"], 2)
+            
+            # Valuación Short Put Buyback (Black-Scholes)
+            put_val = black_scholes("PUT", live_price, put_strike, T, risk_free_rate, iv)
+            adjusted_buyback_per_share = round(put_val["price"], 2)
+            adjusted_buyback_total = round(adjusted_buyback_per_share * 100 * pos.get("short_put_contracts", 2), 2)
+            
+            pos["short_put_current_buyback_cost"] = adjusted_buyback_total
 
-            # Unrealized PnL: call appreciation minus put obligation
-            net_pnl = round((estimated_call_value * 100 * pos.get("long_call_contracts", 2))
-                            - (adjusted_buyback * pos.get("short_put_contracts", 2)), 2)
+            # Unrealized PnL: Valor de mercado del Call - Costo de recompra del Put - Prima inicial pagada (0)
+            net_pnl = round((estimated_call_value_per_share * 100 * pos.get("long_call_contracts", 2))
+                            - adjusted_buyback_total, 2)
             pos["unrealized_pnl_usd"] = net_pnl
             changed = True
 

@@ -324,8 +324,13 @@ class MasterPortfolioManager:
         wheel_theta = wheel_premiums / 45.0
         global_theta_usd = round(wheel_theta, 2)
 
-        gross_profit = wheel_pnl_usd + (dt_stats["wins"] * 450) + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
-        gross_loss = abs((dt_stats["losses"] * -240) + (rsi_pnl_usd if rsi_pnl_usd < 0 else 0))
+        # PnL Real por componentes para profit factor (sin formulas inventadas)
+        dt_gross_profit = sum(t.get("realized_pnl_usd", 0) for t in dt_history if t.get("realized_pnl_usd", 0) > 0)
+        dt_gross_loss   = sum(t.get("realized_pnl_usd", 0) for t in dt_history if t.get("realized_pnl_usd", 0) < 0)
+        
+        gross_profit = wheel_pnl_usd + dt_gross_profit + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
+        gross_loss = abs(dt_gross_loss) + abs(rsi_pnl_usd if rsi_pnl_usd < 0 else 0)
+        
         if gross_profit == 0 and gross_loss == 0:
             profit_factor = 0.0
         elif gross_loss == 0:

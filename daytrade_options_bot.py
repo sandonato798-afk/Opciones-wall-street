@@ -79,6 +79,34 @@ class DaytradeOptionsBot:
             print(f"[DAYTRADE] Error fetching market data for {symbol}: {e}")
             return None
 
+    def _fetch_real_put_premium(self, symbol, target_strike):
+        """Busca la prima real en la cadena de opciones usando yfinance."""
+        try:
+            import yfinance as yf
+            ticker = yf.Ticker(symbol)
+            exps = ticker.options
+            if not exps:
+                return round(target_strike * 0.005, 2)
+            
+            chain = ticker.option_chain(exps[0])
+            puts = chain.puts
+            if puts.empty:
+                return round(target_strike * 0.005, 2)
+            
+            put_row = puts.iloc[(puts['strike'] - target_strike).abs().argsort()[:1]]
+            if not put_row.empty:
+                bid = put_row['bid'].values[0]
+                ask = put_row['ask'].values[0]
+                mid = (bid + ask) / 2.0
+                if mid <= 0.01:
+                    mid = put_row['lastPrice'].values[0]
+                if mid > 0.01:
+                    return round(mid, 2)
+        except Exception as e:
+            print(f"[DAYTRADE] Error YF Option Chain {symbol}: {e}")
+            
+        return round(target_strike * 0.005, 2)
+
     def scan_market(self):
         if len(self.active_trades) > 0: return # Solo 1 trade activo a la vez para no saturar margen
         
@@ -98,10 +126,10 @@ class DaytradeOptionsBot:
                 
                 # Venta Put ITM a 1DTE
                 strike = round(cp * 1.01, 1) # Strike + 1%
-                premium = round(cp * 0.015, 2) # Prima estimada
+                premium = self._fetch_real_put_premium(symbol, strike)
                 
                 contracts = max(1, int(self.allocated_capital / (strike * 100 * 0.20))) # Margen
-                income = premium * 100 * contracts
+                income = round(premium * 100 * contracts, 2)
                 
                 new_trade = {
                     "id": f"DAY_ITM_PUT_{int(datetime.now().timestamp())}",
@@ -111,7 +139,7 @@ class DaytradeOptionsBot:
                     "strike": strike,
                     "contracts": contracts,
                     "premium_collected_usd": income,
-                    "take_profit_target_usd": income * 0.50,
+                    "take_profit_target_usd": round(income * 0.50, 2),
                     "issued_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "expiration_date": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
                     "status": "ACTIVE"
@@ -121,42 +149,47 @@ class DaytradeOptionsBot:
                 return
 
     def manage_open_position(self):
-        for pos in self.active_trades:
+        # Usar list() para poder remover elementos sin afectar el loop
+        for pos in list(self.active_trades):
             if pos["status"] == "ACTIVE":
-                data = self.fetch_market_data(pos["symbol"])
+                symbol = pos["symbol"]
+                data = self.fetch_market_data(symbol)
+                if not data:
+                    continue
+                
                 cp = data["current_price"]
                 
-                # Check 50% Take Profit
-                current_put_value = max(0, pos["strike"] - cp) * 100 * pos["contracts"] # Aproximacion intrinseca
+                # Check 50% Take Profit usando valor real de mercado de la prima
+                current_premium = self._fetch_real_put_premium(symbol, pos["strike"])
+                current_put_value = round(current_premium * 100 * pos["contracts"], 2)
+                initial_premium = pos["premium_collected_usd"]
+                
+                # Si cuesta menos del 50% recomprarlo, cerramos ganando el resto
                 if current_put_value <= pos["take_profit_target_usd"]:
                     pos["status"] = "CLOSED_TAKE_PROFIT"
+                    pos["realized_pnl_usd"] = round(initial_premium - current_put_value, 2)
                     self.history.append(pos)
                     self.active_trades.remove(pos)
                     self.save_state()
-                    print(f"[DAYTRADE] ✅ Take Profit 50% alcanzado en {pos['symbol']}.")
-                    return
+                    print(f"[DAYTRADE] ✅ Take Profit alcanzado en {symbol}. PnL: ${pos['realized_pnl_usd']}")
+                    continue
                     
-                # Check Expiration & Roll Matrix (D+1, 5 mins to close -> simulated by date)
-                exp_date = datetime.strptime(pos["expiration_date"], "%Y-%m-%d")
+                # Check Expiration & Roll Matrix real (no mas falso cambio de fecha)
+                try:
+                    exp_date = datetime.strptime(pos["expiration_date"], "%Y-%m-%d")
+                except Exception:
+                    exp_date = datetime.now()
+                    
                 if datetime.now() >= exp_date:
-                    if current_put_value < pos["premium_collected_usd"]:
-                        # Beneficio neto
-                        pos["status"] = "CLOSED_NET_PROFIT"
-                        self.history.append(pos)
-                        self.active_trades.remove(pos)
-                    else:
-                        # Matriz de Roleo
-                        pct_above = (pos["strike"] - cp) / cp
-                        if pct_above <= 0.03:
-                            pos["expiration_date"] = (exp_date + timedelta(days=2)).strftime("%Y-%m-%d")
-                            print(f"[DAYTRADE] ⚠️ Roleo +2 Días aplicado en {pos['symbol']}.")
-                        elif pct_above <= 0.06:
-                            pos["expiration_date"] = (exp_date + timedelta(days=7)).strftime("%Y-%m-%d")
-                            print(f"[DAYTRADE] ⚠️ Roleo +1 Semana aplicado en {pos['symbol']}.")
-                        else:
-                            pos["expiration_date"] = (exp_date + timedelta(days=14)).strftime("%Y-%m-%d") # Prox viernes 3ro
-                            print(f"[DAYTRADE] ⚠️ Roleo al 3er Viernes aplicado en {pos['symbol']}.")
+                    # Cerrar y asimilar la pérdida o ganancia (Vencimiento)
+                    pos["status"] = "CLOSED_EXPIRED"
+                    pos["realized_pnl_usd"] = round(initial_premium - current_put_value, 2)
+                    self.history.append(pos)
+                    self.active_trades.remove(pos)
                     self.save_state()
+                    print(f"[DAYTRADE] ⏳ Trade cerrado por expiración en {symbol}. PnL: ${pos['realized_pnl_usd']}")
+                    # Ya no cambiamos la fecha "mágicamente". Un sistema automatizado real debería generar 
+                    # una nueva entrada de Roll calculando debitos. Esto cumple la Verdad Financiera.
 
     def get_status(self):
         return {"allocated_capital": self.allocated_capital, "active_trades": self.active_trades}
