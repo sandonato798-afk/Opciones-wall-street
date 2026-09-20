@@ -161,15 +161,6 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
         elif path == "/api/reinvestment/status":
             return self.send_json_response(master_portfolio.get_reinvestment_status())
 
-        elif path == "/api/wheel/status":
-            return self.send_json_response({
-                "initial_capital_usd": wheel_engine.initial_capital,
-                "cash_balance": wheel_engine.cash_balance,
-                "etf_shares": wheel_engine.etf_shares,
-                "total_reinvested_usd": wheel_engine.total_reinvested_usd,
-                "cagr_pct": round((((wheel_engine.cash_balance + (wheel_engine.etf_shares * 500)) / wheel_engine.initial_capital) ** (1/1)) - 1, 2) if wheel_engine.initial_capital else 0.0,
-                "wheel_positions": wheel_engine.wheel_positions
-            })
 
         elif path == "/api/option-chain":
             symbol = query.get("symbol", ["SPY"])[0]

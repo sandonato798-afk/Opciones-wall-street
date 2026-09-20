@@ -17,6 +17,9 @@ class IBKRBrokerAdapter:
         self.client_id = client_id
         self.is_paper = is_paper
         self.connected = False
+
+# Alias para compatibilidad de imports
+IBKRAdapter = IBKRBrokerAdapter
         
         # Candados de Seguridad / Risk Management Locks
         self.max_daily_drawdown_pct = 0.02  # Max 2% pérdida en 1 día

@@ -183,7 +183,8 @@ class MasterPortfolioManager:
         wheel_premiums   = getattr(self.wheel_engine, 'accumulated_premiums_usd', 0.0)
         rsi_premiums     = getattr(self.rsi_bot, 'total_premiums_collected', 0.0)
         dt_pnl           = sum(t.get("realized_pnl_usd", 0) for t in getattr(self.daytrade_bot, 'history', []) if t.get("realized_pnl_usd", 0) > 0)
-        return round(wheel_premiums + rsi_premiums + dt_pnl, 2)
+        alpha_premiums   = getattr(self.alpha_bot, 'total_premiums_collected', 0.0)
+        return round(wheel_premiums + rsi_premiums + dt_pnl + alpha_premiums, 2)
 
     def check_and_execute_reinvestment(self):
         """
@@ -219,25 +220,32 @@ class MasterPortfolioManager:
         except Exception as e:
             print(f"[REINVESTMENT] Error transfiriendo a Rueda: {e}")
 
-        # ── 20% → Intentar decouple de Alpha Trade ────────────────────────
+        # ── 20% → Intentar decouple de Alpha Trade o Acumular ──────────────
         alpha_result = None
+        alpha_executed = False
         try:
+            current_pending_alpha = round(self._reinvestment_state.get("pending_alpha_decouple_usd", 0.0) + alpha_20, 2)
             for pos in getattr(self.alpha_bot, 'open_positions', []):
                 if not pos.get("decoupled"):
                     buyback_cost = pos.get("short_put_current_buyback_cost", 9999.0)
-                    if alpha_20 >= buyback_cost:
-                        alpha_result = self.alpha_bot.decouple_short_put(pos["id"], alpha_20)
+                    if current_pending_alpha >= buyback_cost:
+                        alpha_result = self.alpha_bot.decouple_short_put(pos["id"], current_pending_alpha)
+                        alpha_executed = True
+                        self._reinvestment_state["pending_alpha_decouple_usd"] = 0.0
                         print(f"[REINVESTMENT] Alpha decouple ejecutado: {alpha_result.get('message','')}")
                     else:
-                        print(f"[REINVESTMENT] Alpha: fondos insuficientes (${alpha_20:.0f} vs "
-                              f"${buyback_cost:.0f} requeridos). Acumulando para proximo ciclo.")
+                        self._reinvestment_state["pending_alpha_decouple_usd"] = current_pending_alpha
+                        print(f"[REINVESTMENT] Alpha: fondos acumulados en bolsa (${current_pending_alpha:.2f} vs "
+                              f"${buyback_cost:.2f} requeridos). Acumulando para proximo ciclo.")
                     break
+            if not alpha_executed and "pending_alpha_decouple_usd" not in self._reinvestment_state:
+                self._reinvestment_state["pending_alpha_decouple_usd"] = alpha_20
         except Exception as e:
             print(f"[REINVESTMENT] Error en decouple Alpha: {e}")
 
         # ── 50% → Registrar incremento en SGOV ───────────────────────────
         self._reinvestment_state["sgov_accumulated_usd"] = round(
-            self._reinvestment_state.get("sgov_accumulated_usd", 30000.0) + sgov_50, 2)
+            self._reinvestment_state.get("sgov_accumulated_usd", 50000.0) + sgov_50, 2)
 
         # ── Actualizar estado ─────────────────────────────────────────────
         self._reinvestment_state["total_reinvested_usd"] = round(already_reinvested + pending, 2)
@@ -251,7 +259,7 @@ class MasterPortfolioManager:
             "spy_30_usd": spy_30,
             "alpha_20_usd": alpha_20,
             "wheel_shares_bought": wheel_result.get("shares_bought", 0) if wheel_result else 0,
-            "alpha_decoupled": alpha_result.get("success", False) if alpha_result else False
+            "alpha_decoupled": alpha_executed
         }
         self._reinvestment_state.setdefault("reinvestment_history", []).append(record)
         self._save_reinvestment_state()
@@ -267,6 +275,7 @@ class MasterPortfolioManager:
             "total_premiums_collected_usd": total_premiums,
             "total_reinvested_usd": already_reinvested,
             "pending_reinvestment_usd": pending,
+            "pending_alpha_decouple_usd": self._reinvestment_state.get("pending_alpha_decouple_usd", 0.0),
             "threshold_usd": REINVESTMENT_THRESHOLD_USD,
             "pct_to_threshold": min(100.0, round((pending / REINVESTMENT_THRESHOLD_USD) * 100, 1)),
             "reinvestment_count": self._reinvestment_state.get("reinvestment_count", 0),
@@ -288,12 +297,13 @@ class MasterPortfolioManager:
         # 2. Datos de Mercado
         spy_price = self.wheel_engine.fetch_etf_live_price("SPY")
 
-        # 3. Metricas por Capa
-        wheel_shares    = getattr(self.wheel_engine, 'etf_shares', 0.7579)
+        # 3. Metricas por Capa (con fallbacks a 0.0 limpios)
+        wheel_shares    = getattr(self.wheel_engine, 'etf_shares', 0.0)
         wheel_shares_val = round(wheel_shares * spy_price, 2)
-        wheel_premiums  = getattr(self.wheel_engine, 'accumulated_premiums_usd', 574.0)
-        wheel_reinvested = getattr(self.wheel_engine, 'total_reinvested_usd', 574.0)
-        wheel_pnl_usd   = round(wheel_premiums + max(0.0, wheel_shares_val - wheel_reinvested), 2)
+        wheel_premiums  = getattr(self.wheel_engine, 'accumulated_premiums_usd', 0.0)
+        wheel_reinvested = getattr(self.wheel_engine, 'total_reinvested_usd', 0.0)
+        # PnL real sin ocultar perdidas de acciones compradas
+        wheel_pnl_usd   = round(wheel_premiums + (wheel_shares_val - wheel_reinvested), 2)
 
         alpha_status   = self.alpha_bot.get_status() if hasattr(self.alpha_bot, 'get_status') else {}
         alpha_pnl_usd  = alpha_status.get("total_unrealized_pnl_usd", 0.0)
@@ -314,32 +324,51 @@ class MasterPortfolioManager:
         total_roi_pct    = round((total_pnl_usd / self.initial_capital) * 100.0, 2)
 
         SYSTEM_INCEPTION_DATE = "2026-09-15"
-        inception_dt = datetime.strptime(SYSTEM_INCEPTION_DATE, "%Y-%m-%d")
-        days_active = max(1, (datetime.now() - inception_dt).days)
+        try:
+            inception_dt = datetime.strptime(SYSTEM_INCEPTION_DATE, "%Y-%m-%d")
+            days_active = max(1, (datetime.now() - inception_dt).days)
+        except Exception:
+            days_active = 1
         months_active = max(1.0, days_active / 30.44)
 
         annualized_roi_pct = round((total_roi_pct / days_active) * 365, 2) if days_active > 0 else 0.0
         projected_monthly_usd = round(total_pnl_usd / months_active, 2)
 
-        wheel_theta = wheel_premiums / 45.0
-        global_theta_usd = round(wheel_theta, 2)
+        # Theta Diario Real calculado sobre posiciones de opciones verdaderas
+        global_theta_usd = 0.0
+        # Sumar Theta de la Rueda si hay opciones emitidas
+        wheel_positions = getattr(self.wheel_engine, 'wheel_positions', [])
+        for pos in wheel_positions:
+            if pos.get("status") == "OPEN":
+                # Aproximacion de theta por contrato (~0.05 a 0.15 theta diario por accion)
+                global_theta_usd += round(pos.get("contracts", 1) * 100 * 0.08, 2)
+        # Sumar Theta de RSI bot si hay trades abiertos
+        for trade in getattr(self.rsi_bot, 'open_trades', []):
+            global_theta_usd += round(trade.get("contracts", 1) * 100 * 0.12, 2)
 
-        # PnL Real por componentes para profit factor (sin formulas inventadas)
+        # Profit Factor Real
         dt_gross_profit = sum(t.get("realized_pnl_usd", 0) for t in dt_history if t.get("realized_pnl_usd", 0) > 0)
         dt_gross_loss   = sum(t.get("realized_pnl_usd", 0) for t in dt_history if t.get("realized_pnl_usd", 0) < 0)
         
-        gross_profit = wheel_pnl_usd + dt_gross_profit + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
-        gross_loss = abs(dt_gross_loss) + abs(rsi_pnl_usd if rsi_pnl_usd < 0 else 0)
+        gross_profit = (wheel_pnl_usd if wheel_pnl_usd > 0 else 0) + dt_gross_profit + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
+        gross_loss = abs(dt_gross_loss) + abs(rsi_pnl_usd if rsi_pnl_usd < 0 else 0) + abs(wheel_pnl_usd if wheel_pnl_usd < 0 else 0)
         
         if gross_profit == 0 and gross_loss == 0:
             profit_factor = 0.0
         elif gross_loss == 0:
-            profit_factor = 99.9
+            profit_factor = "N/A"
         else:
             profit_factor = round(gross_profit / gross_loss, 2)
 
-        mdd_proxy_usd = abs(gross_loss) * 1.5
-        max_drawdown_pct = round((mdd_proxy_usd / self.initial_capital) * -100.0, 2)
+        # Max Drawdown historico real por High Water Mark (HWM)
+        peak_nav = self._reinvestment_state.get("peak_nav_usd", self.initial_capital)
+        if consolidated_nav > peak_nav:
+            peak_nav = consolidated_nav
+            self._reinvestment_state["peak_nav_usd"] = peak_nav
+            self._save_reinvestment_state()
+
+        drawdown_usd = peak_nav - consolidated_nav
+        max_drawdown_pct = round((drawdown_usd / peak_nav) * -100.0, 2) if peak_nav > 0 else 0.0
         if max_drawdown_pct > 0:
             max_drawdown_pct = 0.0
 
@@ -353,7 +382,6 @@ class MasterPortfolioManager:
         free_margin       = max(0.0, round(consolidated_nav - total_margin_used, 2))
         margin_util_pct   = min(100.0, round((total_margin_used / consolidated_nav) * 100.0, 1)) if consolidated_nav > 0 else 0.0
         margin_status     = "OPTIMAL" if margin_util_pct <= 65.0 else ("WARNING" if margin_util_pct <= 80.0 else "DANGER")
-
 
         # 7. Reinversion
         reinvestment_status = self.get_reinvestment_status()
@@ -375,7 +403,6 @@ class MasterPortfolioManager:
             },
             "spy_current_price": spy_price,
             "margin_status": margin_status,
-            # Colateral diversificado (replaces treasury_sgov para compatibilidad se mantiene alias)
             "treasury_sgov": {
                 "allocated_usd": collateral_data["breakdown"]["SGOV"]["actual_usd"],
                 "annual_yield_pct": 5.2,
@@ -389,6 +416,7 @@ class MasterPortfolioManager:
                 "total_premiums_collected_usd": reinvestment_status["total_premiums_collected_usd"],
                 "total_reinvested_usd": reinvestment_status["total_reinvested_usd"],
                 "pending_usd": reinvestment_status["pending_reinvestment_usd"],
+                "pending_alpha_decouple_usd": reinvestment_status.get("pending_alpha_decouple_usd", 0.0),
                 "pct_to_threshold": reinvestment_status["pct_to_threshold"],
                 "threshold_usd": REINVESTMENT_THRESHOLD_USD,
                 "sgov_treasury_50_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.50, 2),

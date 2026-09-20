@@ -1,10 +1,10 @@
 {
-  "last_update": "2026-09-20 01:00:00",
+  "last_update": "2026-09-20 05:41:49",
   "initial_capital": 100000.0,
   "cash_balance": 100000.0,
-  "etf_shares": 0.0,
+  "etf_shares": 0.3048,
   "accumulated_premiums_usd": 0.0,
-  "total_reinvested_usd": 0.0,
+  "total_reinvested_usd": 232.2,
   "wheel_positions": [],
   "history": []
 }
