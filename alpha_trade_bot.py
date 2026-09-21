@@ -284,25 +284,25 @@ class AlphaTradeBot:
     def monitor_positions(self):
         """
         Called every 60s by the background loop.
-        Updates floating PnL on open synthetic positions using live prices.
-        Flags positions where the Short Put buyback cost has dropped enough to decouple.
+        Updates floating PnL on open synthetic positions and decoupled calls using live Black-Scholes.
         """
         changed = False
+        from options_engine import black_scholes
+        
+        # 1. Monitorear Sintéticos Activos (con Short Put pendiente de recompra)
         for pos in self.open_positions:
+            if pos.get("decoupled"):
+                continue
+                
             symbol = pos.get("symbol", "QQQ")
             live_price = self.fetch_underlying_price(symbol)
             if live_price is None:
                 continue
 
             pos["current_underlying_price"] = live_price
-
-            # Calculo usando Black-Scholes Real (Motor matematico core)
-            from options_engine import black_scholes
-            
             call_strike = pos.get("long_call_strike", live_price)
             put_strike = pos.get("short_put_strike", live_price * 0.97)
             
-            # Estimacion de DTE restante (2 años = 730 días al abrir)
             try:
                 entry_dt = datetime.strptime(pos.get("entry_date", datetime.now().strftime("%Y-%m-%d %H:%M:%S")), "%Y-%m-%d %H:%M:%S")
                 days_elapsed = max(1, (datetime.now() - entry_dt).days)
@@ -311,42 +311,63 @@ class AlphaTradeBot:
                 dte = 730.0
             
             T = dte / 365.0
-            risk_free_rate = 0.0525  # 5.25%
-            iv = 0.18 # Volatilidad estimada
+            risk_free_rate = 0.0525
+            iv = 0.18
             
-            # Valuación Long Call (Black-Scholes)
             call_val = black_scholes("CALL", live_price, call_strike, T, risk_free_rate, iv)
             estimated_call_value_per_share = round(call_val["price"], 2)
             
-            # Valuación Short Put Buyback (Black-Scholes)
             put_val = black_scholes("PUT", live_price, put_strike, T, risk_free_rate, iv)
             adjusted_buyback_per_share = round(put_val["price"], 2)
             adjusted_buyback_total = round(adjusted_buyback_per_share * 100 * pos.get("short_put_contracts", 2), 2)
             
             pos["short_put_current_buyback_cost"] = adjusted_buyback_total
-
-            # Unrealized PnL: Valor de mercado del Call - Costo de recompra del Put - Prima inicial pagada (0)
-            net_pnl = round((estimated_call_value_per_share * 100 * pos.get("long_call_contracts", 2))
-                            - adjusted_buyback_total, 2)
+            net_pnl = round((estimated_call_value_per_share * 100 * pos.get("long_call_contracts", 2)) - adjusted_buyback_total, 2)
             pos["unrealized_pnl_usd"] = net_pnl
             changed = True
 
-            print(f"[ALPHA_TRADE] Monitor: {symbol} @ ${live_price} | "
-                  f"Put Buyback: ${adjusted_buyback} | Unrealized PnL: ${net_pnl}")
+        # 2. Monitorear Calls Desacoplados (100% Risk-Free Long Calls, Buyback = $0.00)
+        for pos in self.decoupled_calls:
+            symbol = pos.get("symbol", "QQQ")
+            live_price = self.fetch_underlying_price(symbol)
+            if live_price is None:
+                continue
+            pos["current_underlying_price"] = live_price
+            call_strike = pos.get("long_call_strike", live_price)
+            try:
+                entry_dt = datetime.strptime(pos.get("entry_date", datetime.now().strftime("%Y-%m-%d %H:%M:%S")), "%Y-%m-%d %H:%M:%S")
+                days_elapsed = max(1, (datetime.now() - entry_dt).days)
+                dte = max(1.0, float(pos.get("dte", 730)) - days_elapsed)
+            except Exception:
+                dte = 730.0
+            
+            T = dte / 365.0
+            call_val = black_scholes("CALL", live_price, call_strike, T, 0.0525, 0.18)
+            estimated_call_value = round(call_val["price"] * 100 * pos.get("long_call_contracts", 2), 2)
+            pos["short_put_current_buyback_cost"] = 0.0
+            pos["unrealized_pnl_usd"] = estimated_call_value
+            changed = True
 
         if changed:
             self.save_state()
 
     def get_status(self):
-        total_unrealized_pnl = sum(p.get("unrealized_pnl_usd", 0.0) for p in self.open_positions)
+        active_synthetics = [p for p in self.open_positions if not p.get("decoupled")]
+        pnl_active = sum(p.get("unrealized_pnl_usd", 0.0) for p in active_synthetics)
+        pnl_decoupled = sum(p.get("unrealized_pnl_usd", 0.0) for p in self.decoupled_calls)
+        total_unrealized_pnl = round(pnl_active + pnl_decoupled, 2)
+        
+        short_put_risk = sum(p.get("short_put_current_buyback_cost", 0.0) for p in active_synthetics)
+        
         return {
             "allocated_capital": self.allocated_capital,
-            "active_synthetics_count": len([p for p in self.open_positions if not p.get("decoupled")]),
+            "active_synthetics_count": len(active_synthetics),
             "decoupled_calls_count": len(self.decoupled_calls),
-            "open_positions": self.open_positions,
+            "open_positions": active_synthetics,
             "decoupled_calls": self.decoupled_calls,
             "closed_positions": self.closed_positions,
             "total_unrealized_pnl_usd": total_unrealized_pnl,
+            "short_put_risk_usd": short_put_risk,
             "total_decouple_funds_used": self.total_decouple_funds_used,
             "last_update": self.last_update
         }
