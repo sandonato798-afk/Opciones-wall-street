@@ -2,12 +2,15 @@
 import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+import os
 import json
 import urllib.request
 from datetime import datetime, timedelta
 
 STATE_FILE = "daytrade_state.json"
 CONFIG = {"target_profit_pct": 50}
+
+from cloud_persistence import sync_state_to_github_async, load_state_from_github
 
 class DaytradeOptionsBot:
     def __init__(self, initial_capital=100000.0, allocated_capital=15000.0):
@@ -17,22 +20,40 @@ class DaytradeOptionsBot:
         self.load_state()
 
     def load_state(self):
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                self.active_trades = data.get("active_trades", [])
-                self.history = data.get("history", [])
-        except FileNotFoundError:
-            pass
+        local_data = {}
+        if os.path.exists(STATE_FILE):
+            try:
+                with open(STATE_FILE, "r", encoding="utf-8") as f:
+                    local_data = json.load(f)
+            except Exception:
+                pass
+
+        cloud_data = load_state_from_github(STATE_FILE)
+        source = local_data
+        if cloud_data:
+            cloud_hist = cloud_data.get("history", [])
+            local_hist = local_data.get("history", [])
+            if len(cloud_hist) >= len(local_hist):
+                source = cloud_data
+
+        if source:
+            self.allocated_capital = source.get("allocated_capital", 15000.0)
+            self.active_trades = source.get("active_trades", [])
+            self.history = source.get("history", [])
 
     def save_state(self):
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump({
-                "allocated_capital": self.allocated_capital,
-                "active_trades": self.active_trades,
-                "history": self.history,
-                "last_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }, f, indent=2)
+        data = {
+            "allocated_capital": self.allocated_capital,
+            "active_trades": self.active_trades,
+            "history": self.history,
+            "last_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        try:
+            with open(STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            sync_state_to_github_async(STATE_FILE, data)
+        except Exception as e:
+            print(f"[DAYTRADE] Error guardando estado: {e}")
 
     def fetch_market_data(self, symbol):
         headers = {'User-Agent': 'Mozilla/5.0'}
@@ -84,32 +105,35 @@ class DaytradeOptionsBot:
             return None
 
     def _fetch_real_put_premium(self, symbol, target_strike):
-        """Busca la prima real en la cadena de opciones usando yfinance."""
+        """Busca la prima real en la cadena de opciones o Black-Scholes."""
         try:
             import yfinance as yf
             ticker = yf.Ticker(symbol)
             exps = ticker.options
-            if not exps:
-                return round(target_strike * 0.005, 2)
+            if exps:
+                chain = ticker.option_chain(exps[0])
+                puts = chain.puts
+                if not puts.empty:
+                    put_row = puts.iloc[(puts['strike'] - target_strike).abs().argsort()[:1]]
+                    if not put_row.empty:
+                        bid = put_row['bid'].values[0]
+                        ask = put_row['ask'].values[0]
+                        mid = (bid + ask) / 2.0
+                        if mid <= 0.01:
+                            mid = put_row['lastPrice'].values[0]
+                        if mid > 0.01:
+                            return round(mid, 2)
+        except Exception:
+            pass
             
-            chain = ticker.option_chain(exps[0])
-            puts = chain.puts
-            if puts.empty:
-                return round(target_strike * 0.005, 2)
-            
-            put_row = puts.iloc[(puts['strike'] - target_strike).abs().argsort()[:1]]
-            if not put_row.empty:
-                bid = put_row['bid'].values[0]
-                ask = put_row['ask'].values[0]
-                mid = (bid + ask) / 2.0
-                if mid <= 0.01:
-                    mid = put_row['lastPrice'].values[0]
-                if mid > 0.01:
-                    return round(mid, 2)
-        except Exception as e:
-            print(f"[DAYTRADE] Error YF Option Chain {symbol}: {e}")
-            
-        return round(target_strike * 0.005, 2)
+        try:
+            from options_engine import black_scholes
+            mkt = self.fetch_market_data(symbol)
+            cp = mkt["current_price"] if mkt else target_strike
+            bs = black_scholes("PUT", cp, target_strike, 1.0 / 365.0, 0.0525, 0.18)
+            return round(max(0.50, bs["price"]), 2)
+        except Exception:
+            return round(target_strike * 0.005, 2)
 
     def scan_market(self):
         if len(self.active_trades) > 0: return # Solo 1 trade activo a la vez para no saturar margen
@@ -134,19 +158,27 @@ class DaytradeOptionsBot:
                 
                 contracts = max(1, int(self.allocated_capital / (strike * 100 * 0.20))) # Margen
                 income = round(premium * 100 * contracts, 2)
+                cost_usd = round(strike * 100 * contracts * 0.20, 2)
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 new_trade = {
                     "id": f"DAY_ITM_PUT_{int(datetime.now().timestamp())}",
                     "symbol": symbol,
+                    "option_ticker": f"{symbol} PUT ${strike} 1-DTE",
                     "strategy": "ITM_PUT_1DTE",
                     "entry_price": cp,
                     "strike": strike,
                     "contracts": contracts,
+                    "dte": 1,
+                    "entry_premium": premium,
                     "premium_collected_usd": income,
+                    "total_cost_usd": cost_usd,
                     "take_profit_target_usd": round(income * 0.50, 2),
-                    "issued_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "issued_date": now_str,
+                    "entry_time": now_str,
                     "expiration_date": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
-                    "status": "ACTIVE"
+                    "status": "ACTIVE",
+                    "pnl_usd": 0.0
                 }
                 self.active_trades.append(new_trade)
                 self.save_state()
@@ -167,36 +199,55 @@ class DaytradeOptionsBot:
                 current_premium = self._fetch_real_put_premium(symbol, pos["strike"])
                 current_put_value = round(current_premium * 100 * pos["contracts"], 2)
                 initial_premium = pos["premium_collected_usd"]
+                cost = pos.get("total_cost_usd", pos.get("strike", 500) * 100 * pos.get("contracts", 1) * 0.20)
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
                 # Si cuesta menos del 50% recomprarlo, cerramos ganando el resto
                 if current_put_value <= pos["take_profit_target_usd"]:
+                    net_pnl = round(initial_premium - current_put_value, 2)
                     pos["status"] = "CLOSED_TAKE_PROFIT"
-                    pos["realized_pnl_usd"] = round(initial_premium - current_put_value, 2)
+                    pos["realized_pnl_usd"] = net_pnl
+                    pos["final_pnl_usd"] = net_pnl
+                    pos["pnl_usd"] = net_pnl
+                    pos["exit_premium"] = current_premium
+                    pos["exit_time"] = now_str
+                    pos["final_pnl_pct"] = round((net_pnl / cost) * 100, 2) if cost > 0 else 0.0
+                    pos["roi_pct"] = pos["final_pnl_pct"]
                     self.history.append(pos)
                     self.active_trades.remove(pos)
                     self.save_state()
-                    print(f"[DAYTRADE] ✅ Take Profit alcanzado en {symbol}. PnL: ${pos['realized_pnl_usd']}")
+                    print(f"[DAYTRADE] ✅ Take Profit alcanzado en {symbol}. PnL: ${net_pnl}")
                     continue
                     
-                # Check Expiration & Roll Matrix real (no mas falso cambio de fecha)
+                # Check Expiration
                 try:
                     exp_date = datetime.strptime(pos["expiration_date"], "%Y-%m-%d")
                 except Exception:
                     exp_date = datetime.now()
                     
                 if datetime.now() >= exp_date:
-                    # Cerrar y asimilar la pérdida o ganancia (Vencimiento)
+                    net_pnl = round(initial_premium - current_put_value, 2)
                     pos["status"] = "CLOSED_EXPIRED"
-                    pos["realized_pnl_usd"] = round(initial_premium - current_put_value, 2)
+                    pos["realized_pnl_usd"] = net_pnl
+                    pos["final_pnl_usd"] = net_pnl
+                    pos["pnl_usd"] = net_pnl
+                    pos["exit_premium"] = current_premium
+                    pos["exit_time"] = now_str
+                    pos["final_pnl_pct"] = round((net_pnl / cost) * 100, 2) if cost > 0 else 0.0
+                    pos["roi_pct"] = pos["final_pnl_pct"]
                     self.history.append(pos)
                     self.active_trades.remove(pos)
                     self.save_state()
-                    print(f"[DAYTRADE] ⏳ Trade cerrado por expiración en {symbol}. PnL: ${pos['realized_pnl_usd']}")
-                    # Ya no cambiamos la fecha "mágicamente". Un sistema automatizado real debería generar 
-                    # una nueva entrada de Roll calculando debitos. Esto cumple la Verdad Financiera.
+                    print(f"[DAYTRADE] ⏳ Trade cerrado por expiración en {symbol}. PnL: ${net_pnl}")
 
     def get_status(self):
-        return {"allocated_capital": self.allocated_capital, "active_trades": self.active_trades}
+        return {
+            "allocated_capital": self.allocated_capital,
+            "active_trades": self.active_trades,
+            "open_positions": self.active_trades,
+            "history": self.history,
+            "closed_trades": self.history
+        }
 
 if __name__ == "__main__":
     bot = DaytradeOptionsBot()

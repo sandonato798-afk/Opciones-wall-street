@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Opportunistic 1DTE RSI < 30 Engine - Layer 4 (Andrés Model 1)
 - Opportunistic Short Puts (0-1 DTE) on SPY, QQQ, DIA.

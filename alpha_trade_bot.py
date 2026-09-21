@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 Alpha Trade Engine - Layer 3 (60-180 DTE Zero-Cost Risk-Free Synthetic LEAPS)
 - Arms 2 Short Puts x 2 Long Calls (Zero Net Premium Paid).
@@ -224,6 +227,7 @@ class AlphaTradeBot:
                     pos["decoupled"] = True
                     pos["long_call_contracts"] -= half_calls
                     pos["short_put_contracts"] = 0
+                    pos["short_put_current_buyback_cost"] = 0.0
                     
                     net_cash_generated = round(value_of_half_calls - total_put_buyback_cost, 2)
                     
@@ -233,7 +237,9 @@ class AlphaTradeBot:
                         "net_cash_generated_usd": net_cash_generated,
                         "decouple_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }
-                    self.decoupled_calls.append(free_runner)
+                    self.open_positions = [p for p in self.open_positions if p["id"] != pos["id"]]
+                    if not any(p["id"] == free_runner["id"] for p in self.decoupled_calls):
+                        self.decoupled_calls.append(free_runner)
                     self.save_state()
                     print(f"[ALPHA_TRADE] ✅ Desacople Exitoso. Riesgo eliminado. Cash Sobrante: +${net_cash_generated}")
                         
@@ -252,10 +258,13 @@ class AlphaTradeBot:
                     pos["status"] = "RISK_FREE_LONG_CALL"
                     pos["decouple_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     pos["decouple_cost_paid_usd"] = buyback_cost
+                    pos["short_put_current_buyback_cost"] = 0.0
                     self.total_decouple_funds_used += buyback_cost
                     
-                    # Move to decoupled calls list
-                    self.decoupled_calls.append(pos)
+                    # Move to decoupled calls list and remove from open_positions
+                    self.open_positions = [p for p in self.open_positions if p["id"] != pos["id"]]
+                    if not any(p["id"] == pos["id"] for p in self.decoupled_calls):
+                        self.decoupled_calls.append(pos)
                     self.save_state()
                     return {
                         "success": True,

@@ -1,3 +1,6 @@
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import json
 import os
 import math
@@ -26,9 +29,15 @@ def timestamp():
 
 def log_msg(tag, text):
     msg = f"[{timestamp()}] [{tag}] {text}"
-    print(msg)
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(msg + "\n")
+    try:
+        print(msg)
+    except Exception:
+        pass
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
+    except Exception:
+        pass
 
 class WheelCompoundingEngine:
     def __init__(self):
