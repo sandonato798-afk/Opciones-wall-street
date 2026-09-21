@@ -180,23 +180,46 @@ body {
 .dot { width: 6px; height: 6px; border-radius: 50%; }
 .dot.green { background: var(--accent-green); }
 
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .data-table {
     width: 100%;
     border-collapse: collapse;
     font-family: var(--font-mono);
     font-size: 12px;
     text-align: left;
+    white-space: nowrap;
 }
 
 .data-table th {
     color: var(--ice-blue);
-    padding: 8px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--card-border);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 .data-table td {
-    padding: 8px;
+    padding: 10px 12px;
     border-bottom: 1px solid var(--card-border);
+}
+
+.data-table tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.data-table-15 th {
+    background: rgba(0, 0, 0, 0.2);
+    font-size: 10px;
+}
+
+.data-table-15 td {
+    font-size: 11px;
 }
 
 .btn {
@@ -210,3 +233,4 @@ body {
 
 .btn-primary { background: var(--primary-red); color: white; }
 .btn-secondary { background: var(--steel-blue); color: white; }
+

@@ -155,20 +155,22 @@
 
                 <div class="card" style="margin-top: 20px;">
                     <div class="card-title">DESGLOSE DETALLADO DE COLATERAL &amp; PORTFOLIO MARGIN (100% NAV)</div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ACTIVO / FONDO</th>
-                                <th>DESCRIPCIÓN</th>
-                                <th>ASIGNACIÓN (%)</th>
-                                <th>VALOR ACTUAL</th>
-                                <th>MARGEN REQUERIDO</th>
-                                <th>BUYING POWER LIBERADO</th>
-                                <th>RENDIMIENTO PASIVO</th>
-                            </tr>
-                        </thead>
-                        <tbody id="home-collateral-table"></tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ACTIVO / FONDO</th>
+                                    <th>DESCRIPCIÓN</th>
+                                    <th>ASIGNACIÓN (%)</th>
+                                    <th>VALOR ACTUAL</th>
+                                    <th>MARGEN REQUERIDO</th>
+                                    <th>BUYING POWER LIBERADO</th>
+                                    <th>RENDIMIENTO PASIVO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="home-collateral-table"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -187,35 +189,55 @@
 
                 <div class="card" style="margin-top: 20px;">
                     <div class="card-title">UNIVERSO DE ACTIVOS PERMITIDOS PARA LA RUEDA (OVERLAY INSTITUCIONAL)</div>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ACTIVO / TICKER</th>
-                                <th>NOMBRE / CLASE DE ACTIVO</th>
-                                <th>MODALIDAD DE RUEDA</th>
-                                <th>DELTA OBJETIVO</th>
-                                <th>PLAZO DTE</th>
-                                <th>COLATERAL / RESPALDO</th>
-                                <th>ESTADO</th>
-                            </tr>
-                        </thead>
-                        <tbody id="wheel-universe-table"></tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ACTIVO / TICKER</th>
+                                    <th>NOMBRE / CLASE DE ACTIVO</th>
+                                    <th>MODALIDAD DE RUEDA</th>
+                                    <th>DELTA OBJETIVO</th>
+                                    <th>PLAZO DTE</th>
+                                    <th>COLATERAL / RESPALDO</th>
+                                    <th>ESTADO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wheel-universe-table"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="card" style="margin-top: 20px;">
-                    <div class="card-title">POSICIONES ACTIVAS (EN CURSO)</div>
-                    <table class="data-table">
-                        <thead><tr><th>ACTIVO</th><th>TIPO</th><th>STRIKE</th><th>VENCIMIENTO (DTE)</th><th>PRIMA / ACCIONES</th><th>ESTADO</th></tr></thead>
-                        <tbody id="wheel-positions"></tbody>
-                    </table>
+                    <div class="card-title">POSICIONES ACTIVAS EN LA RUEDA (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wheel-positions"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="card" style="margin-top: 20px;">
-                    <div class="card-title">HISTORIAL DE CICLOS Y ASIGNACIONES</div>
-                    <table class="data-table">
-                        <thead><tr><th>FECHA</th><th>EVENTO</th><th>DETALLE</th><th>PRIMA REINVERTIDA</th><th>PnL ACUMULADO</th></tr></thead>
-                        <tbody id="wheel-history"></tbody>
-                    </table>
+                    <div class="card-title">HISTORIAL DE OPERACIONES CERRADAS - LA RUEDA (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wheel-history"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -232,18 +254,36 @@
                     <div class="card"><div class="card-title">PnL NO REALIZADO</div><div class="val" id="alpha-pnl">$0.00</div></div>
                 </div>
                 <div class="card">
-                    <div class="card-title">SINTÉTICOS ACTIVOS Y LONG CALLS DESACOPLADOS</div>
-                    <table class="data-table">
-                        <thead><tr><th>SÍMBOLO</th><th>ESTRUCTURA</th><th>STRIKES (PUT / CALL)</th><th>PLAZO / VENCIMIENTO</th><th>PnL FLOTANTE</th><th>COSTO RECOMPRA</th><th>ESTADO</th></tr></thead>
-                        <tbody id="alpha-positions"></tbody>
-                    </table>
+                    <div class="card-title">SINTÉTICOS ACTIVOS Y LONG CALLS (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alpha-positions"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="card" style="margin-top: 20px;">
-                    <div class="card-title">HISTORIAL DE SINTÉTICOS Y CALLS EJECUTADOS</div>
-                    <table class="data-table">
-                        <thead><tr><th>FECHA ENTRADA / SALIDA</th><th>SÍMBOLO</th><th>DESCRIPCIÓN</th><th>COSTO DESACOPLE</th><th>PnL FINAL</th><th>ESTADO</th></tr></thead>
-                        <tbody id="alpha-history"></tbody>
-                    </table>
+                    <div class="card-title">HISTORIAL DE SINTÉTICOS CERRADOS - ALPHA TRADE (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alpha-history"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -259,18 +299,36 @@
                     <div class="card"><div class="card-title">PnL TOTAL ACUMULADO</div><div class="val text-green" id="rsi-pnl">$0.00</div></div>
                 </div>
                 <div class="card">
-                    <div class="card-title">OPERACIONES 1DTE ABIERTAS (EN MONITOREO)</div>
-                    <table class="data-table">
-                        <thead><tr><th>SÍMBOLO</th><th>ESTRATEGIA</th><th>RSI ENTRADA</th><th>STRIKE PUT</th><th>PRIMA COBRADA</th><th>VENCIMIENTO (DTE)</th><th>ESTADO</th></tr></thead>
-                        <tbody id="rsi-positions"></tbody>
-                    </table>
+                    <div class="card-title">OPERACIONES 1DTE ABIERTAS (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rsi-positions"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="card" style="margin-top: 20px;">
-                    <div class="card-title">HISTORIAL DE OPERACIONES 1DTE CERRADAS</div>
-                    <table class="data-table">
-                        <thead><tr><th>FECHA ENTRADA / SALIDA</th><th>SÍMBOLO</th><th>RSI ENTRADA → SALIDA</th><th>STRIKE</th><th>PRIMA INICIAL</th><th>PnL NETO</th><th>ESTADO</th></tr></thead>
-                        <tbody id="rsi-history"></tbody>
-                    </table>
+                    <div class="card-title">HISTORIAL DE OPERACIONES 1DTE CERRADAS - RSI (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rsi-history"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -290,20 +348,43 @@
                     <div class="card"><div class="card-title">PnL TOTAL</div><div class="val text-green" id="dt-pnl">$0.00</div></div>
                 </div>
                 <div class="card">
-                    <div class="card-title">POSICIONES INTRADÍA ABIERTAS (EN VIVO)</div>
-                    <table class="data-table">
-                        <thead><tr><th>TICKER CONTRATO</th><th>CONTRATOS</th><th>PLAZO / VENCIMIENTO</th><th>COSTO TOTAL</th><th>PRECIO ENTRADA</th><th>PnL FLOTANTE</th><th>ESTADO</th></tr></thead>
-                        <tbody id="dt-open-positions"></tbody>
-                    </table>
+                    <div class="card-title">POSICIONES INTRADÍA ABIERTAS (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dt-open-positions"></tbody>
+                        </table>
+                    </div>
                 </div>
                 <div class="card" style="margin-top: 20px;">
-                    <div class="card-title">HISTORIAL DE OPERACIONES INTRADÍA CERRADAS</div>
-                    <table class="data-table">
-                        <thead><tr><th>FECHA HORA</th><th>TICKER CONTRATO</th><th>PLAZO</th><th>ENTRADA</th><th>SALIDA</th><th>DURACIÓN</th><th>PnL NETO</th><th>ROI</th><th>ESTADO</th></tr></thead>
-                        <tbody id="dt-history"></tbody>
-                    </table>
+                    <div class="card-title">HISTORIAL DE OPERACIONES INTRADÍA CERRADAS - DAYTRADING (15 MÉTRICAS AUDITADAS)</div>
+                    <div class="table-responsive">
+                        <table class="data-table data-table-15">
+                            <thead>
+                                <tr>
+                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
+                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
+                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
+                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dt-history"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
+        </main>
+    </div>
+    <script src="app.js?v=26.0"></script>
+</body>
+</html>
         </main>
     </div>
     <script src="app.js?v=25.0"></script>

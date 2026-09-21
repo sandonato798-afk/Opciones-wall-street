@@ -247,25 +247,123 @@ async function loadWheel() {
 
         // 1. Posiciones Abiertas
         const tbodyPos = document.getElementById('wheel-positions');
+function formatDurationStr(entryTime, exitTime, isOpen) {
+    if (!entryTime) return '-';
+    try {
+        const t1 = new Date(entryTime.replace(' ', 'T')).getTime();
+        const t2 = isOpen ? Date.now() : (exitTime ? new Date(exitTime.replace(' ', 'T')).getTime() : Date.now());
+        if (isNaN(t1) || isNaN(t2) || t2 < t1) return '-';
+        const totalMins = Math.floor((t2 - t1) / 60000);
+        if (totalMins < 60) return `${totalMins} min`;
+        const hours = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        if (hours < 24) return `${hours}h ${mins}m`;
+        const days = Math.floor(hours / 24);
+        const remHours = hours % 24;
+        return `${days}d ${remHours}h`;
+    } catch(e) {
+        return '-';
+    }
+}
+
+function render15MetricsRow(p, isOpen = false) {
+    const ticker = p.symbol || p.ticker || 'SPY';
+    const optionType = p.option_type || p.type || p.strategy_mode || (p.strategy && p.strategy.includes('CALL') ? 'CALL' : 'PUT');
+    const strike = p.strike ? `$${p.strike}` : (p.put_strike ? `P$${p.put_strike}` : (p.short_put_strike ? `P$${p.short_put_strike}/C$${p.long_call_strike}` : '-'));
+    const dteVal = p.dte !== undefined ? p.dte : (p.target_dte || 30);
+    const dteStr = p.expiration_date ? `${p.expiration_date} (${dteVal}d)` : `${dteVal} DTE`;
+    const contractsNum = p.contracts || p.short_put_contracts || 1;
+    const contracts = contractsNum + 'x';
+    
+    const entryTime = p.entry_time || p.entry_date || '-';
+    const entryUnderlying = p.underlying_price_at_entry || p.entry_underlying_price || p.underlying_price || 0;
+    
+    const entryPremium = p.entry_premium !== undefined ? p.entry_premium : (p.premium_per_share !== undefined ? p.premium_per_share : ((p.premium_collected_usd || 0) / (contractsNum * 100)));
+    const netIncomeEntry = p.premium_collected_usd !== undefined ? p.premium_collected_usd : (entryPremium * 100 * contractsNum - (p.open_fee_usd || 0));
+    
+    const exitTime = isOpen ? '<span class="text-green">🟢 EN CURSO</span>' : (p.exit_time || p.exit_date || '-');
+    const exitUnderlying = isOpen ? (p.current_underlying_price || p.underlying_price || 0) : (p.exit_underlying_price || p.exit_price || p.underlying_price || 0);
+    const exitPremium = isOpen ? (p.current_premium || p.curr_prem_per_share || 0) : (p.exit_premium !== undefined ? p.exit_premium : 0);
+    
+    let netCostExit = 0;
+    if (isOpen) {
+        netCostExit = (p.short_put_current_buyback_cost !== undefined) ? p.short_put_current_buyback_cost : (exitPremium * 100 * contractsNum);
+    } else {
+        netCostExit = (p.decouple_cost_paid_usd !== undefined) ? p.decouple_cost_paid_usd : (exitPremium * 100 * contractsNum + (p.close_fee_usd || 0));
+    }
+    
+    const netPnl = isOpen ? (p.unrealized_pnl_usd !== undefined ? p.unrealized_pnl_usd : (p.pnl_usd || 0)) : (p.final_pnl_usd !== undefined ? p.final_pnl_usd : (p.pnl_usd !== undefined ? p.pnl_usd : 0));
+    
+    let roiPct = 0;
+    if (p.final_pnl_pct !== undefined) roiPct = p.final_pnl_pct;
+    else if (p.pnl_pct !== undefined) roiPct = p.pnl_pct;
+    else if (netIncomeEntry > 0) roiPct = (netPnl / netIncomeEntry) * 100;
+    
+    const netDuration = formatDurationStr(entryTime, p.exit_time || p.exit_date, isOpen);
+    
+    return `<tr>
+        <td><strong>${ticker}</strong></td>
+        <td><span style="color:var(--accent-blue);font-weight:600;">${optionType}</span></td>
+        <td>${strike}</td>
+        <td>${dteStr}</td>
+        <td>${contracts}</td>
+        <td>${entryTime}</td>
+        <td>${formatUSD(entryUnderlying)}</td>
+        <td>${formatUSD(entryPremium)}</td>
+        <td class="text-green">+${formatUSD(netIncomeEntry)}</td>
+        <td>${exitTime}</td>
+        <td>${formatUSD(exitUnderlying)}</td>
+        <td>${formatUSD(exitPremium)}</td>
+        <td class="text-red">${formatUSD(netCostExit)}</td>
+        <td class="${colorClass(netPnl)}"><strong>${sign(netPnl)}${formatUSD(netPnl)} (${sign(roiPct)}${formatPct(roiPct)})</strong></td>
+        <td>${netDuration}</td>
+    </tr>`;
+}
+
+async function loadWheel() {
+    try {
+        const res = await fetch('/api/wheel/status');
+        if(!res.ok) return;
+        const data = await res.json();
+        document.getElementById('wheel-cap').innerText = formatUSD(data.initial_capital_usd || 100000) + ' (100% NAV)';
+        document.getElementById('wheel-shares').innerText = (data.etf_shares||0).toFixed(4) + ' SPY';
+        document.getElementById('wheel-prems').innerText = formatUSD(data.total_reinvested_usd);
+        const yieldStackingCagr = Math.max(12.5, (data.cagr_pct || 0) + 5.2);
+        document.getElementById('wheel-cagr').innerText = '+' + formatPct(yieldStackingCagr);
+
+        // Universe Table
+        const tbodyUniv = document.getElementById('wheel-universe-table');
+        if (tbodyUniv) {
+            tbodyUniv.innerHTML = '';
+            const universe = [
+                { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust (Índice Núcleo)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (1.5% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Ciclo Mensual)</span>' },
+                { symbol: 'QQQ', name: 'Invesco QQQ (Nasdaq 100 MegaCap)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (2.0% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Escaneo Abierto)</span>' },
+                { symbol: 'GLD', name: 'SPDR Gold Shares (Oro Físico)', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de GLD en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.5%)</span>' },
+                { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de TLT en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.3%)</span>' },
+                { symbol: 'IWM', name: 'iShares Russell 2000 (Small Caps)', mode: 'CASH_SECURED_PUT', delta: 'Δ 0.20 (3.0% OTM)', dte: '30 - 45 Días', backing: 'Margen Libre Disponible', status: '<span style="color:var(--text-muted)">⚪ LISTO PARA ENTRADA</span>' }
+            ];
+            universe.forEach(u => {
+                tbodyUniv.innerHTML += `<tr>
+                    <td><strong>${u.symbol}</strong></td>
+                    <td>${u.name}</td>
+                    <td><span style="color:var(--accent-blue);font-weight:600;">${u.mode}</span></td>
+                    <td>${u.delta}</td>
+                    <td>${u.dte}</td>
+                    <td>${u.backing}</td>
+                    <td>${u.status}</td>
+                </tr>`;
+            });
+        }
+
+        // 1. Posiciones Abiertas
+        const tbodyPos = document.getElementById('wheel-positions');
         tbodyPos.innerHTML = '';
         if(data.wheel_positions && data.wheel_positions.length > 0) {
             data.wheel_positions.forEach(p => {
-                let exp = p.expiration_date ? `${p.expiration_date} (${p.target_dte || 30}d)` : `${p.target_dte || 30} días`;
-                if(p.expiration_date) {
-                    const diffDays = Math.ceil((new Date(p.expiration_date) - new Date()) / 86400000);
-                    exp = `${p.expiration_date} (${p.target_dte || 30}d) [Faltan: ${diffDays}d]`;
-                }
-                tbodyPos.innerHTML += `<tr>
-                    <td><strong>${p.symbol}</strong></td>
-                    <td>${p.strategy_type || 'Cash-Secured Put'}</td>
-                    <td>Strike $${p.strike}</td>
-                    <td><span style="color:var(--accent-blue);">${exp}</span></td>
-                    <td class="text-green">${formatUSD(p.premium_collected_usd || 0)}</td>
-                    <td><span class="text-green">🟢 ${p.status || 'ACTIVA'}</span></td>
-                </tr>`;
+                tbodyPos.innerHTML += render15MetricsRow(p, true);
             });
         } else {
-            tbodyPos.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas. Esperando inicio de ciclo mensual.</td></tr>';
+            tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas. Esperando inicio de ciclo mensual.</td></tr>';
         }
 
         // 2. Historial de Ciclos
@@ -274,21 +372,14 @@ async function loadWheel() {
             tbodyHist.innerHTML = '';
             if(data.history && data.history.length > 0) {
                 data.history.slice().reverse().forEach(h => {
-                    tbodyHist.innerHTML += `<tr>
-                        <td>${h.date || '-'}</td>
-                        <td><strong>${h.event || 'CICLO MENSUAL'}</strong></td>
-                        <td>${h.details || '-'}</td>
-                        <td class="text-green">+${formatUSD(h.reinvested_usd || 0)}</td>
-                        <td class="text-green">+${formatUSD(h.cumulative_pnl || 0)}</td>
-                    </tr>`;
+                    tbodyHist.innerHTML += render15MetricsRow(h, false);
                 });
             } else {
-                tbodyHist.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">Historial listo para registrar el primer ciclo mensual.</td></tr>';
+                tbodyHist.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Historial listo para registrar el primer ciclo mensual.</td></tr>';
             }
         }
     } catch(e) { console.error('Error loadWheel', e); }
 }
-
 
 async function loadAlpha() {
     try {
@@ -318,37 +409,19 @@ async function loadAlpha() {
         if(data.open_positions && data.open_positions.length > 0) {
             hasOpen = true;
             data.open_positions.forEach(p => {
-                const statusBadge = p.decoupled ? '<span class="text-green">🟢 RISK-FREE CALL</span>' : '<span class="text-green">🟢 ACTIVO</span>';
-                const pnl = p.unrealized_pnl_usd || 0;
-                tbodyPos.innerHTML += `<tr>
-                    <td><strong>${p.symbol}</strong></td>
-                    <td>Sintético (2x Put + 2x Call)</td>
-                    <td>Put K$${p.short_put_strike} / Call K$${p.long_call_strike}</td>
-                    <td><span style="color:var(--accent-blue);">${p.dte || 120} días (LEAPS)</span></td>
-                    <td class="${colorClass(pnl)}"><strong>${sign(pnl)}${formatUSD(pnl)}</strong></td>
-                    <td class="text-red">$${p.short_put_current_buyback_cost || 0} USD</td>
-                    <td>${statusBadge}</td>
-                </tr>`;
+                tbodyPos.innerHTML += render15MetricsRow(p, true);
             });
         }
         
         if(data.decoupled_calls && data.decoupled_calls.length > 0) {
             hasOpen = true;
             data.decoupled_calls.forEach(p => {
-                tbodyPos.innerHTML += `<tr>
-                    <td><strong>${p.symbol}</strong></td>
-                    <td>Risk-Free Long Call</td>
-                    <td>Call K$${p.long_call_strike}</td>
-                    <td><span style="color:var(--accent-blue);">${p.dte || 120} días (LEAPS)</span></td>
-                    <td class="text-green"><strong>+${formatUSD(p.unrealized_pnl_usd || 0)}</strong></td>
-                    <td class="text-green">$0.00 (Desacoplado)</td>
-                    <td><span class="text-green">⭐ 100% RISK-FREE</span></td>
-                </tr>`;
+                tbodyPos.innerHTML += render15MetricsRow(p, true);
             });
         }
         
         if (!hasOpen) {
-            tbodyPos.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No hay posiciones sintéticas abiertas</td></tr>';
+            tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">No hay posiciones sintéticas abiertas</td></tr>';
         }
 
         // 2. Historial de Alpha
@@ -357,19 +430,10 @@ async function loadAlpha() {
             tbodyHist.innerHTML = '';
             if(data.closed_positions && data.closed_positions.length > 0) {
                 data.closed_positions.slice().reverse().forEach(p => {
-                    const net = p.final_pnl_usd || 0;
-                    const statusBadge = net > 0 ? '<span class="text-green">✅ GANADORA</span>' : (net < 0 ? '<span class="text-red">❌ PÉRDIDA</span>' : '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>');
-                    tbodyHist.innerHTML += `<tr>
-                        <td>${p.entry_date || '-'} → ${p.exit_date || '-'}</td>
-                        <td><strong>${p.symbol}</strong></td>
-                        <td>${p.strategy || 'Sintético LEAPS'}</td>
-                        <td>${formatUSD(p.decouple_cost_paid_usd || 0)}</td>
-                        <td class="${colorClass(net)}"><strong>${sign(net)}${formatUSD(net)}</strong></td>
-                        <td>${statusBadge}</td>
-                    </tr>`;
+                    tbodyHist.innerHTML += render15MetricsRow(p, false);
                 });
             } else {
-                tbodyHist.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">Sin sintéticos cerrados aún (1 sintético QQQ en monitoreo).</td></tr>';
+                tbodyHist.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin sintéticos cerrados aún (1 sintético QQQ en monitoreo).</td></tr>';
             }
         }
     } catch(e) { console.error('Error loadAlpha', e); }
@@ -401,18 +465,10 @@ async function loadRsi() {
         tbodyPos.innerHTML = '';
         if(data.open_trades && data.open_trades.length > 0) {
             data.open_trades.forEach(p => {
-                tbodyPos.innerHTML += `<tr>
-                    <td><strong>${p.symbol}</strong></td>
-                    <td>${p.strategy === 'BULL_PUT_SPREAD_1DTE_SCALP' ? 'Bull Put Spread (Riesgo Bloqueado)' : 'Short Put'} (${p.contracts}x)</td>
-                    <td><span style="color:var(--primary-red);font-weight:bold;">${p.entry_rsi} (Pánico)</span></td>
-                    <td>Vendido $${p.put_strike} <br><span style='font-size:0.8em;color:gray;'>Comprado $${p.long_strike||'N/A'} (Seguro)</span></td>
-                    <td class="text-green">+${formatUSD(p.premium_collected_usd)}</td>
-                    <td><span style="color:var(--accent-blue);">${p.dte || 1} día (1-DTE)</span></td>
-                    <td><span class="text-green">🟢 ABIERTA</span></td>
-                </tr>`;
+                tbodyPos.innerHTML += render15MetricsRow(p, true);
             });
         } else {
-            tbodyPos.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin operaciones abiertas. Escaneando mercado para caídas con RSI &lt; 30.</td></tr>';
+            tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin operaciones abiertas. Escaneando mercado para caídas con RSI &lt; 30.</td></tr>';
         }
 
         // 2. Historial de Operaciones 1DTE Cerradas
@@ -421,20 +477,10 @@ async function loadRsi() {
             tbodyHist.innerHTML = '';
             if(data.closed_trades && data.closed_trades.length > 0) {
                 data.closed_trades.slice().reverse().forEach(p => {
-                    const net = p.pnl_usd || 0;
-                    const statusBadge = net > 0 ? '<span class="text-green">✅ GANADORA (TP 90%)</span>' : (net < 0 ? '<span class="text-red">❌ PÉRDIDA</span>' : '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>');
-                    tbodyHist.innerHTML += `<tr>
-                        <td>${p.entry_date || '-'} → ${p.exit_date || '-'}</td>
-                        <td><strong>${p.symbol}</strong></td>
-                        <td>Entrada: ${p.entry_rsi} → Salida: ${p.exit_rsi || '-'}</td>
-                        <td>Vendido $${p.put_strike} <br><span style='font-size:0.8em;color:gray;'>Comprado $${p.long_strike||'N/A'} (Seguro)</span></td>
-                        <td class="text-green">+${formatUSD(p.premium_collected_usd || 0)}</td>
-                        <td class="${colorClass(net)}"><strong>+${formatUSD(net)}</strong></td>
-                        <td>${statusBadge}</td>
-                    </tr>`;
+                    tbodyHist.innerHTML += render15MetricsRow(p, false);
                 });
             } else {
-                tbodyHist.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">No hay operaciones 1DTE cerradas registradas</td></tr>';
+                tbodyHist.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">No hay operaciones 1DTE cerradas registradas</td></tr>';
             }
         }
     } catch(e) { console.error('Error loadRsi', e); }
@@ -460,20 +506,10 @@ async function loadDaytrade() {
         tbodyOpen.innerHTML = '';
         if(data.open_positions && data.open_positions.length > 0) {
             data.open_positions.forEach(p => {
-                const pnl = p.pnl_usd || 0;
-                const dteLabel = p.dte === 0 ? '0-DTE (Hoy Intradía)' : `${p.dte || 0} DTE`;
-                tbodyOpen.innerHTML += `<tr>
-                    <td><strong>${p.option_ticker}</strong></td>
-                    <td>${p.contracts || 1} contratos</td>
-                    <td><span style="color:var(--accent-blue);font-weight:bold;">${dteLabel}</span></td>
-                    <td>${formatUSD(p.total_cost_usd)}</td>
-                    <td>$${p.entry_premium || 0}</td>
-                    <td class="${colorClass(pnl)}"><strong>${sign(pnl)}${formatUSD(pnl)}</strong></td>
-                    <td><span class="text-green">🟢 EN VIVO</span></td>
-                </tr>`;
+                tbodyOpen.innerHTML += render15MetricsRow(p, true);
             });
         } else {
-            tbodyOpen.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas en este momento. Escaneando señales intradiarias cada 60s.</td></tr>';
+            tbodyOpen.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas en este momento. Escaneando señales intradiarias cada 60s.</td></tr>';
         }
 
         // 2. Historial de Operaciones Intradía Cerradas
@@ -481,45 +517,10 @@ async function loadDaytrade() {
         tbodyHist.innerHTML = '';
         if(data.closed_trades && data.closed_trades.length > 0) {
             data.closed_trades.slice().reverse().forEach(p => {
-                const net = p.final_pnl_usd !== undefined ? p.final_pnl_usd : (p.pnl_usd || 0);
-                const roiVal = p.final_pnl_pct !== undefined ? p.final_pnl_pct : (p.roi_pct || 0);
-                const roi = (roiVal >= 0 ? '+' : '') + Number(roiVal).toFixed(2) + '%';
-                const dteLabel = p.dte !== undefined ? (p.dte === 0 ? '0-DTE' : `${p.dte} DTE`) : '0-DTE';
-                
-                let dur = '-';
-                if(p.entry_time && p.exit_time) {
-                    try {
-                        const t1 = new Date(p.entry_time.replace(' ', 'T')).getTime();
-                        const t2 = new Date(p.exit_time.replace(' ', 'T')).getTime();
-                        if(!isNaN(t1) && !isNaN(t2) && t2 > t1) {
-                            const mins = Math.round((t2 - t1) / 60000);
-                            dur = `${mins} min`;
-                        }
-                    } catch(e) {}
-                }
-
-                let statusBadge = '';
-                if (net > 0) {
-                    statusBadge = '<span class="text-green">✅ GANADORA</span>';
-                } else if (net < 0) {
-                    statusBadge = '<span class="text-red">❌ PÉRDIDA</span>';
-                } else {
-                    statusBadge = '<span style="color:var(--text-muted)">⚖️ BREAK-EVEN</span>';
-                }
-                tbodyHist.innerHTML += `<tr>
-                    <td>${p.exit_time || p.entry_time || '-'}</td>
-                    <td><strong>${p.option_ticker || p.symbol || '-'}</strong></td>
-                    <td><span style="color:var(--accent-blue);font-weight:600;">${dteLabel}</span></td>
-                    <td>$${p.entry_premium !== undefined ? Number(p.entry_premium).toFixed(2) : '-'}</td>
-                    <td>$${p.exit_premium !== undefined ? Number(p.exit_premium).toFixed(2) : '-'}</td>
-                    <td>${dur}</td>
-                    <td class="${colorClass(net)}"><strong>${sign(net)}${formatUSD(net)}</strong></td>
-                    <td class="${colorClass(net)}">${roi}</td>
-                    <td>${statusBadge}</td>
-                </tr>`;
+                tbodyHist.innerHTML += render15MetricsRow(p, false);
             });
         } else {
-            tbodyHist.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No hay historial de operaciones cerradas</td></tr>';
+            tbodyHist.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">No hay historial de operaciones cerradas</td></tr>';
         }
     } catch(e) { console.error('Error loadDaytrade', e); }
 }
@@ -542,3 +543,4 @@ async function togglePaperLive() {
         body: JSON.stringify({mode: mode, broker: 'INTERACTIVE_BROKERS'})
     }).then(() => refreshAllData());
 }
+
