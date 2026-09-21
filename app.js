@@ -1,3 +1,6 @@
+// State
+let appData = {};
+
 // Helper seguro para asignar texto a elementos sin crash
 function setTxt(id, txt) {
     const el = document.getElementById(id);
@@ -20,18 +23,26 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(refreshAllData, 10000);
 });
 
+function showTab(tabId) {
+    if (!tabId) return;
+    document.querySelectorAll('.tab-btn').forEach(t => {
+        if (t.dataset.tab === tabId) t.classList.add('active');
+        else t.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-content').forEach(c => {
+        if (c.id === tabId) c.classList.add('active');
+        else c.classList.remove('active');
+    });
+}
+window.showTab = showTab;
+
 function initTabs() {
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(tab => {
         tab.addEventListener('click', (e) => {
             e.preventDefault();
             const target = tab.dataset.tab;
-            if (!target) return;
-            document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            tab.classList.add('active');
-            const targetEl = document.getElementById(target);
-            if (targetEl) targetEl.classList.add('active');
+            if (target) showTab(target);
         });
     });
 }
@@ -53,14 +64,110 @@ function formatUSD(num) {
     const formatted = absVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     return (isNeg ? '-$' : '$') + formatted;
 }
+
 function formatPct(num) {
     return (num || 0).toFixed(2) + '%';
 }
+
 function colorClass(num) {
     return num >= 0 ? 'text-green' : 'text-red';
 }
+
 function sign(num) {
     return num > 0 ? '+' : '';
+}
+
+function formatDurationStr(entryTime, exitTime, isOpen) {
+    if (!entryTime) return '-';
+    try {
+        const t1 = new Date(entryTime.replace(' ', 'T')).getTime();
+        const t2 = isOpen ? Date.now() : (exitTime ? new Date(exitTime.replace(' ', 'T')).getTime() : Date.now());
+        if (isNaN(t1) || isNaN(t2) || t2 < t1) return '-';
+        const totalMins = Math.floor((t2 - t1) / 60000);
+        if (totalMins < 60) return `${totalMins} min`;
+        const hours = Math.floor(totalMins / 60);
+        const mins = totalMins % 60;
+        if (hours < 24) return `${hours}h ${mins}m`;
+        const days = Math.floor(hours / 24);
+        const remHours = hours % 24;
+        return `${days}d ${remHours}h`;
+    } catch(e) {
+        return '-';
+    }
+}
+
+function render15MetricsRow(p, isOpen = false) {
+    const ticker = p.symbol || p.ticker || 'SPY';
+    const optionType = p.option_type || p.type || p.strategy_mode || p.strategy_type || (p.strategy && p.strategy.includes('CALL') ? 'CALL' : (p.strategy && p.strategy.includes('PUT') ? 'PUT' : 'SINTÉTICO'));
+    
+    let strike = '-';
+    if (p.strike !== undefined && p.strike !== null) strike = `$${p.strike}`;
+    else if (p.put_strike !== undefined && p.put_strike !== null) strike = `P$${p.put_strike}`;
+    else if (p.short_put_strike !== undefined || p.long_call_strike !== undefined) {
+        strike = `P$${p.short_put_strike || '-'}/C$${p.long_call_strike || '-'}`;
+    }
+    
+    const dteVal = p.dte !== undefined ? p.dte : (p.target_dte || 30);
+    const dteStr = p.expiration_date ? `${p.expiration_date} (${dteVal}d)` : `${dteVal} DTE`;
+    const contractsNum = p.contracts || p.short_put_contracts || p.long_call_contracts || 1;
+    const contracts = contractsNum + 'x';
+    
+    const entryTime = p.entry_time || p.entry_date || p.issued_date || p.timestamp || '-';
+    const entryUnderlying = p.underlying_price_at_entry || p.entry_underlying_price || p.underlying_price || p.etf_price || p.entry_price || 0;
+    
+    let entryPremium = 0;
+    if (p.entry_premium !== undefined) entryPremium = p.entry_premium;
+    else if (p.premium_per_share !== undefined) entryPremium = p.premium_per_share;
+    else if (p.short_put_premium_collected) entryPremium = p.short_put_premium_collected / (contractsNum * 100);
+    else if (p.premium_collected_usd) entryPremium = p.premium_collected_usd / (contractsNum * 100);
+    
+    let netIncomeEntry = 0;
+    if (p.premium_collected_usd !== undefined) netIncomeEntry = p.premium_collected_usd;
+    else if (p.short_put_premium_collected !== undefined) netIncomeEntry = p.short_put_premium_collected;
+    else netIncomeEntry = entryPremium * 100 * contractsNum;
+    
+    const exitTime = isOpen ? '<span class="text-green">🟢 EN CURSO</span>' : (p.exit_time || p.exit_date || p.timestamp || '-');
+    const exitUnderlying = isOpen ? (p.current_underlying_price || p.underlying_price || p.etf_price || 0) : (p.exit_underlying_price || p.exit_price || p.underlying_price || p.etf_price || 0);
+    const exitPremium = isOpen ? (p.current_premium || p.curr_prem_per_share || 0) : (p.exit_premium !== undefined ? p.exit_premium : 0);
+    
+    let netCostExit = 0;
+    if (isOpen) {
+        netCostExit = (p.short_put_current_buyback_cost !== undefined) ? p.short_put_current_buyback_cost : (exitPremium * 100 * contractsNum);
+    } else {
+        netCostExit = (p.decouple_cost_paid_usd !== undefined) ? p.decouple_cost_paid_usd : (p.exit_cost_usd !== undefined ? p.exit_cost_usd : (exitPremium * 100 * contractsNum));
+    }
+    
+    let netPnl = 0;
+    if (p.final_pnl_usd !== undefined) netPnl = p.final_pnl_usd;
+    else if (p.unrealized_pnl_usd !== undefined) netPnl = p.unrealized_pnl_usd;
+    else if (p.pnl_usd !== undefined) netPnl = p.pnl_usd;
+    else if (p.realized_pnl_usd !== undefined) netPnl = p.realized_pnl_usd;
+    
+    let roiPct = 0;
+    if (p.final_pnl_pct !== undefined) roiPct = p.final_pnl_pct;
+    else if (p.roi_pct !== undefined) roiPct = p.roi_pct;
+    else if (p.pnl_pct !== undefined) roiPct = p.pnl_pct;
+    else if (netIncomeEntry > 0) roiPct = (netPnl / netIncomeEntry) * 100;
+    
+    const netDuration = formatDurationStr(entryTime, p.exit_time || p.exit_date, isOpen);
+    
+    return `<tr>
+        <td><strong>${ticker}</strong></td>
+        <td><span style="color:var(--accent-blue);font-weight:600;">${optionType}</span></td>
+        <td>${strike}</td>
+        <td>${dteStr}</td>
+        <td>${contracts}</td>
+        <td>${entryTime}</td>
+        <td>${formatUSD(entryUnderlying)}</td>
+        <td>${formatUSD(entryPremium)}</td>
+        <td class="text-green">+${formatUSD(netIncomeEntry)}</td>
+        <td>${exitTime}</td>
+        <td>${formatUSD(exitUnderlying)}</td>
+        <td>${formatUSD(exitPremium)}</td>
+        <td class="text-red">${formatUSD(netCostExit)}</td>
+        <td class="${colorClass(netPnl)}"><strong>${sign(netPnl)}${formatUSD(netPnl)} (${sign(roiPct)}${formatPct(roiPct)})</strong></td>
+        <td>${netDuration}</td>
+    </tr>`;
 }
 
 async function loadMaster() {
@@ -215,17 +322,16 @@ async function loadMaster() {
     } catch(e) { console.error('Error loadMaster', e); }
 }
 
-
 async function loadWheel() {
     try {
         const res = await fetch('/api/wheel/status');
         if(!res.ok) return;
         const data = await res.json();
-        document.getElementById('wheel-cap').innerText = formatUSD(data.initial_capital_usd || 100000) + ' (100% NAV)';
-        document.getElementById('wheel-shares').innerText = (data.etf_shares||0).toFixed(4) + ' SPY';
-        document.getElementById('wheel-prems').innerText = formatUSD(data.total_reinvested_usd);
+        setTxt('wheel-cap', formatUSD(data.initial_capital_usd || 100000) + ' (100% NAV)');
+        setTxt('wheel-shares', (data.etf_shares||0).toFixed(4) + ' SPY');
+        setTxt('wheel-prems', formatUSD(data.total_reinvested_usd));
         const yieldStackingCagr = Math.max(12.5, (data.cagr_pct || 0) + 5.2);
-        document.getElementById('wheel-cagr').innerText = '+' + formatPct(yieldStackingCagr);
+        setTxt('wheel-cagr', '+' + formatPct(yieldStackingCagr));
 
         // Universe Table
         const tbodyUniv = document.getElementById('wheel-universe-table');
@@ -253,123 +359,15 @@ async function loadWheel() {
 
         // 1. Posiciones Abiertas
         const tbodyPos = document.getElementById('wheel-positions');
-function formatDurationStr(entryTime, exitTime, isOpen) {
-    if (!entryTime) return '-';
-    try {
-        const t1 = new Date(entryTime.replace(' ', 'T')).getTime();
-        const t2 = isOpen ? Date.now() : (exitTime ? new Date(exitTime.replace(' ', 'T')).getTime() : Date.now());
-        if (isNaN(t1) || isNaN(t2) || t2 < t1) return '-';
-        const totalMins = Math.floor((t2 - t1) / 60000);
-        if (totalMins < 60) return `${totalMins} min`;
-        const hours = Math.floor(totalMins / 60);
-        const mins = totalMins % 60;
-        if (hours < 24) return `${hours}h ${mins}m`;
-        const days = Math.floor(hours / 24);
-        const remHours = hours % 24;
-        return `${days}d ${remHours}h`;
-    } catch(e) {
-        return '-';
-    }
-}
-
-function render15MetricsRow(p, isOpen = false) {
-    const ticker = p.symbol || p.ticker || 'SPY';
-    const optionType = p.option_type || p.type || p.strategy_mode || (p.strategy && p.strategy.includes('CALL') ? 'CALL' : 'PUT');
-    const strike = p.strike ? `$${p.strike}` : (p.put_strike ? `P$${p.put_strike}` : (p.short_put_strike ? `P$${p.short_put_strike}/C$${p.long_call_strike}` : '-'));
-    const dteVal = p.dte !== undefined ? p.dte : (p.target_dte || 30);
-    const dteStr = p.expiration_date ? `${p.expiration_date} (${dteVal}d)` : `${dteVal} DTE`;
-    const contractsNum = p.contracts || p.short_put_contracts || 1;
-    const contracts = contractsNum + 'x';
-    
-    const entryTime = p.entry_time || p.entry_date || '-';
-    const entryUnderlying = p.underlying_price_at_entry || p.entry_underlying_price || p.underlying_price || 0;
-    
-    const entryPremium = p.entry_premium !== undefined ? p.entry_premium : (p.premium_per_share !== undefined ? p.premium_per_share : ((p.premium_collected_usd || 0) / (contractsNum * 100)));
-    const netIncomeEntry = p.premium_collected_usd !== undefined ? p.premium_collected_usd : (entryPremium * 100 * contractsNum - (p.open_fee_usd || 0));
-    
-    const exitTime = isOpen ? '<span class="text-green">🟢 EN CURSO</span>' : (p.exit_time || p.exit_date || '-');
-    const exitUnderlying = isOpen ? (p.current_underlying_price || p.underlying_price || 0) : (p.exit_underlying_price || p.exit_price || p.underlying_price || 0);
-    const exitPremium = isOpen ? (p.current_premium || p.curr_prem_per_share || 0) : (p.exit_premium !== undefined ? p.exit_premium : 0);
-    
-    let netCostExit = 0;
-    if (isOpen) {
-        netCostExit = (p.short_put_current_buyback_cost !== undefined) ? p.short_put_current_buyback_cost : (exitPremium * 100 * contractsNum);
-    } else {
-        netCostExit = (p.decouple_cost_paid_usd !== undefined) ? p.decouple_cost_paid_usd : (exitPremium * 100 * contractsNum + (p.close_fee_usd || 0));
-    }
-    
-    const netPnl = isOpen ? (p.unrealized_pnl_usd !== undefined ? p.unrealized_pnl_usd : (p.pnl_usd || 0)) : (p.final_pnl_usd !== undefined ? p.final_pnl_usd : (p.pnl_usd !== undefined ? p.pnl_usd : 0));
-    
-    let roiPct = 0;
-    if (p.final_pnl_pct !== undefined) roiPct = p.final_pnl_pct;
-    else if (p.pnl_pct !== undefined) roiPct = p.pnl_pct;
-    else if (netIncomeEntry > 0) roiPct = (netPnl / netIncomeEntry) * 100;
-    
-    const netDuration = formatDurationStr(entryTime, p.exit_time || p.exit_date, isOpen);
-    
-    return `<tr>
-        <td><strong>${ticker}</strong></td>
-        <td><span style="color:var(--accent-blue);font-weight:600;">${optionType}</span></td>
-        <td>${strike}</td>
-        <td>${dteStr}</td>
-        <td>${contracts}</td>
-        <td>${entryTime}</td>
-        <td>${formatUSD(entryUnderlying)}</td>
-        <td>${formatUSD(entryPremium)}</td>
-        <td class="text-green">+${formatUSD(netIncomeEntry)}</td>
-        <td>${exitTime}</td>
-        <td>${formatUSD(exitUnderlying)}</td>
-        <td>${formatUSD(exitPremium)}</td>
-        <td class="text-red">${formatUSD(netCostExit)}</td>
-        <td class="${colorClass(netPnl)}"><strong>${sign(netPnl)}${formatUSD(netPnl)} (${sign(roiPct)}${formatPct(roiPct)})</strong></td>
-        <td>${netDuration}</td>
-    </tr>`;
-}
-
-async function loadWheel() {
-    try {
-        const res = await fetch('/api/wheel/status');
-        if(!res.ok) return;
-        const data = await res.json();
-        document.getElementById('wheel-cap').innerText = formatUSD(data.initial_capital_usd || 100000) + ' (100% NAV)';
-        document.getElementById('wheel-shares').innerText = (data.etf_shares||0).toFixed(4) + ' SPY';
-        document.getElementById('wheel-prems').innerText = formatUSD(data.total_reinvested_usd);
-        const yieldStackingCagr = Math.max(12.5, (data.cagr_pct || 0) + 5.2);
-        document.getElementById('wheel-cagr').innerText = '+' + formatPct(yieldStackingCagr);
-
-        // Universe Table
-        const tbodyUniv = document.getElementById('wheel-universe-table');
-        if (tbodyUniv) {
-            tbodyUniv.innerHTML = '';
-            const universe = [
-                { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust (Índice Núcleo)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (1.5% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Ciclo Mensual)</span>' },
-                { symbol: 'QQQ', name: 'Invesco QQQ (Nasdaq 100 MegaCap)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (2.0% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Escaneo Abierto)</span>' },
-                { symbol: 'GLD', name: 'SPDR Gold Shares (Oro Físico)', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de GLD en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.5%)</span>' },
-                { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de TLT en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.3%)</span>' },
-                { symbol: 'IWM', name: 'iShares Russell 2000 (Small Caps)', mode: 'CASH_SECURED_PUT', delta: 'Δ 0.20 (3.0% OTM)', dte: '30 - 45 Días', backing: 'Margen Libre Disponible', status: '<span style="color:var(--text-muted)">⚪ LISTO PARA ENTRADA</span>' }
-            ];
-            universe.forEach(u => {
-                tbodyUniv.innerHTML += `<tr>
-                    <td><strong>${u.symbol}</strong></td>
-                    <td>${u.name}</td>
-                    <td><span style="color:var(--accent-blue);font-weight:600;">${u.mode}</span></td>
-                    <td>${u.delta}</td>
-                    <td>${u.dte}</td>
-                    <td>${u.backing}</td>
-                    <td>${u.status}</td>
-                </tr>`;
-            });
-        }
-
-        // 1. Posiciones Abiertas
-        const tbodyPos = document.getElementById('wheel-positions');
-        tbodyPos.innerHTML = '';
-        if(data.wheel_positions && data.wheel_positions.length > 0) {
-            data.wheel_positions.forEach(p => {
-                tbodyPos.innerHTML += render15MetricsRow(p, true);
-            });
-        } else {
-            tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas. Esperando inicio de ciclo mensual.</td></tr>';
+        if (tbodyPos) {
+            tbodyPos.innerHTML = '';
+            if(data.wheel_positions && data.wheel_positions.length > 0) {
+                data.wheel_positions.forEach(p => {
+                    tbodyPos.innerHTML += render15MetricsRow(p, true);
+                });
+            } else {
+                tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas. Esperando inicio de ciclo mensual.</td></tr>';
+            }
         }
 
         // 2. Historial de Ciclos
@@ -394,40 +392,38 @@ async function loadAlpha() {
         const data = await res.json();
         const allocCap = data.allocated_capital || 20000;
         const unrealizedPnl = data.total_unrealized_pnl_usd || 0;
-        document.getElementById('alpha-cap').innerText = formatUSD(allocCap + unrealizedPnl);
-        document.getElementById('alpha-leaps').innerText = formatUSD(unrealizedPnl);
+        setTxt('alpha-cap', formatUSD(allocCap + unrealizedPnl));
+        setTxt('alpha-leaps', formatUSD(unrealizedPnl));
         
         let putRisk = 0;
         if (data.open_positions && data.open_positions.length > 0) {
             putRisk = data.open_positions.reduce((acc, p) => acc + (p.short_put_current_buyback_cost || 0), 0);
         }
-        document.getElementById('alpha-risk').innerText = formatUSD(putRisk);
+        setTxt('alpha-risk', formatUSD(putRisk));
         
-        const pnlEl = document.getElementById('alpha-pnl');
-        pnlEl.innerText = sign(unrealizedPnl) + formatUSD(unrealizedPnl);
-        pnlEl.className = 'val ' + colorClass(unrealizedPnl);
+        setTxt('alpha-pnl', sign(unrealizedPnl) + formatUSD(unrealizedPnl));
+        setClass('alpha-pnl', 'val ' + colorClass(unrealizedPnl));
 
         // 1. Posiciones Sintéticas Abiertas y Long Calls
         const tbodyPos = document.getElementById('alpha-positions');
-        tbodyPos.innerHTML = '';
-        
-        let hasOpen = false;
-        if(data.open_positions && data.open_positions.length > 0) {
-            hasOpen = true;
-            data.open_positions.forEach(p => {
-                tbodyPos.innerHTML += render15MetricsRow(p, true);
-            });
-        }
-        
-        if(data.decoupled_calls && data.decoupled_calls.length > 0) {
-            hasOpen = true;
-            data.decoupled_calls.forEach(p => {
-                tbodyPos.innerHTML += render15MetricsRow(p, true);
-            });
-        }
-        
-        if (!hasOpen) {
-            tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">No hay posiciones sintéticas abiertas</td></tr>';
+        if (tbodyPos) {
+            tbodyPos.innerHTML = '';
+            let hasOpen = false;
+            if(data.open_positions && data.open_positions.length > 0) {
+                hasOpen = true;
+                data.open_positions.forEach(p => {
+                    tbodyPos.innerHTML += render15MetricsRow(p, true);
+                });
+            }
+            if(data.decoupled_calls && data.decoupled_calls.length > 0) {
+                hasOpen = true;
+                data.decoupled_calls.forEach(p => {
+                    tbodyPos.innerHTML += render15MetricsRow(p, true);
+                });
+            }
+            if (!hasOpen) {
+                tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">No hay posiciones sintéticas abiertas</td></tr>';
+            }
         }
 
         // 2. Historial de Alpha
@@ -452,29 +448,29 @@ async function loadRsi() {
         const data = await res.json();
         const allocCap = data.allocated_capital || 15000;
         const totalPnl = data.total_pnl_usd || 0;
-        document.getElementById('rsi-cap').innerText = formatUSD(allocCap + totalPnl);
+        setTxt('rsi-cap', formatUSD(allocCap + totalPnl));
         
         const rsiVal = data.current_market_indicators?.SPY?.rsi || 30.0;
-        const rsiEl = document.getElementById('rsi-val');
-        rsiEl.innerText = Number(rsiVal).toFixed(1);
-        rsiEl.className = 'val ' + (rsiVal < 30 ? 'text-red' : (rsiVal > 70 ? 'text-green' : ''));
+        setTxt('rsi-val', Number(rsiVal).toFixed(1));
+        setClass('rsi-val', 'val ' + (rsiVal < 30 ? 'text-red' : (rsiVal > 70 ? 'text-green' : '')));
         
         const totalOpps = (data.open_trades?.length || 0) + (data.closed_trades?.length || 0);
-        document.getElementById('rsi-opps').innerText = totalOpps;
+        setTxt('rsi-opps', totalOpps);
         
-        const pnlEl = document.getElementById('rsi-pnl');
-        pnlEl.innerText = sign(totalPnl) + formatUSD(totalPnl);
-        pnlEl.className = 'val ' + colorClass(totalPnl);
+        setTxt('rsi-pnl', sign(totalPnl) + formatUSD(totalPnl));
+        setClass('rsi-pnl', 'val ' + colorClass(totalPnl));
 
         // 1. Operaciones 1DTE Abiertas
         const tbodyPos = document.getElementById('rsi-positions');
-        tbodyPos.innerHTML = '';
-        if(data.open_trades && data.open_trades.length > 0) {
-            data.open_trades.forEach(p => {
-                tbodyPos.innerHTML += render15MetricsRow(p, true);
-            });
-        } else {
-            tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin operaciones abiertas. Escaneando mercado para caídas con RSI &lt; 30.</td></tr>';
+        if (tbodyPos) {
+            tbodyPos.innerHTML = '';
+            if(data.open_trades && data.open_trades.length > 0) {
+                data.open_trades.forEach(p => {
+                    tbodyPos.innerHTML += render15MetricsRow(p, true);
+                });
+            } else {
+                tbodyPos.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin operaciones abiertas. Escaneando mercado para caídas con RSI &lt; 30.</td></tr>';
+            }
         }
 
         // 2. Historial de Operaciones 1DTE Cerradas
@@ -497,36 +493,39 @@ async function loadDaytrade() {
         const res = await fetch('/api/daytrade/status');
         if(!res.ok) return;
         const data = await res.json();
-        document.getElementById('dt-cap').innerText = formatUSD(10000 + (data.total_pnl_usd || 0));
+        setTxt('dt-cap', formatUSD(10000 + (data.total_pnl_usd || 0)));
         
         let wr = data.stats?.win_rate || 0;
-        document.getElementById('dt-wr').innerText = formatPct(wr);
+        setTxt('dt-wr', formatPct(wr));
         
-        document.getElementById('dt-mode').innerText = data.config?.execution_mode || 'PAPER';
-        const pnlEl = document.getElementById('dt-pnl');
-        pnlEl.innerText = sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd);
-        pnlEl.className = 'val ' + colorClass(data.total_pnl_usd);
+        setTxt('dt-mode', data.config?.execution_mode || 'PAPER');
+        setTxt('dt-pnl', sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd));
+        setClass('dt-pnl', 'val ' + colorClass(data.total_pnl_usd));
 
         // 1. Posiciones Intradía Abiertas
         const tbodyOpen = document.getElementById('dt-open-positions');
-        tbodyOpen.innerHTML = '';
-        if(data.open_positions && data.open_positions.length > 0) {
-            data.open_positions.forEach(p => {
-                tbodyOpen.innerHTML += render15MetricsRow(p, true);
-            });
-        } else {
-            tbodyOpen.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas en este momento. Escaneando señales intradiarias cada 60s.</td></tr>';
+        if (tbodyOpen) {
+            tbodyOpen.innerHTML = '';
+            if(data.open_positions && data.open_positions.length > 0) {
+                data.open_positions.forEach(p => {
+                    tbodyOpen.innerHTML += render15MetricsRow(p, true);
+                });
+            } else {
+                tbodyOpen.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">Sin posiciones abiertas en este momento. Escaneando señales intradiarias cada 60s.</td></tr>';
+            }
         }
 
         // 2. Historial de Operaciones Intradía Cerradas
         const tbodyHist = document.getElementById('dt-history');
-        tbodyHist.innerHTML = '';
-        if(data.closed_trades && data.closed_trades.length > 0) {
-            data.closed_trades.slice().reverse().forEach(p => {
-                tbodyHist.innerHTML += render15MetricsRow(p, false);
-            });
-        } else {
-            tbodyHist.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">No hay historial de operaciones cerradas</td></tr>';
+        if (tbodyHist) {
+            tbodyHist.innerHTML = '';
+            if(data.closed_trades && data.closed_trades.length > 0) {
+                data.closed_trades.slice().reverse().forEach(p => {
+                    tbodyHist.innerHTML += render15MetricsRow(p, false);
+                });
+            } else {
+                tbodyHist.innerHTML = '<tr><td colspan="15" style="text-align:center;color:var(--text-muted);">No hay historial de operaciones cerradas</td></tr>';
+            }
         }
     } catch(e) { console.error('Error loadDaytrade', e); }
 }
@@ -549,4 +548,3 @@ async function togglePaperLive() {
         body: JSON.stringify({mode: mode, broker: 'INTERACTIVE_BROKERS'})
     }).then(() => refreshAllData());
 }
-
