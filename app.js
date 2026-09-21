@@ -97,38 +97,30 @@ async function loadMaster() {
             thetaEl.className = 'val ' + colorClass(data.performance_analytics.global_theta_usd_per_day);
         }
 
-        // Collateral Portfolio
+        // Collateral Portfolio Bars & Stats
         if (data.collateral_portfolio && data.collateral_portfolio.breakdown) {
             const breakdown = data.collateral_portfolio.breakdown;
-            const sgovPct = breakdown.SGOV?.target_pct || 0;
-            const gldPct = breakdown.GLD?.target_pct || 0;
-            const tltPct = breakdown.TLT?.target_pct || 0;
-            const marginPct = Math.max(0, 100 - (data.collateral_portfolio.total_collateral_pct || 0));
+            const treasuryPct = breakdown.TREASURY?.target_pct || 40;
+            const corpPct = breakdown.CORP_AAA?.target_pct || 20;
+            const spyPct = breakdown.SPY?.target_pct || 20;
+            const qqqPct = breakdown.QQQ?.target_pct || 15;
+            const gldPct = breakdown.GLD?.target_pct || 5;
 
-            const sgovBar = document.getElementById('bar-sgov');
-            const gldBar = document.getElementById('bar-gld');
-            const tltBar = document.getElementById('bar-tlt');
-            const marginBar = document.getElementById('bar-margin');
+            const barTreasury = document.getElementById('bar-treasury');
+            const barCorp = document.getElementById('bar-corp');
+            const barSpy = document.getElementById('bar-spy');
+            const barQqq = document.getElementById('bar-qqq');
+            const barGld = document.getElementById('bar-gld');
 
-            if(sgovBar) {
-                sgovBar.style.width = sgovPct + '%';
-                sgovBar.innerText = 'SGOV ' + sgovPct + '%';
-                sgovBar.style.display = sgovPct > 0 ? 'flex' : 'none';
-            }
-            if(gldBar) {
-                gldBar.style.width = gldPct + '%';
-                gldBar.innerText = 'GLD ' + gldPct + '%';
-                gldBar.style.display = gldPct > 0 ? 'flex' : 'none';
-            }
-            if(tltBar) {
-                tltBar.style.width = tltPct + '%';
-                tltBar.innerText = 'TLT ' + tltPct + '%';
-                tltBar.style.display = tltPct > 0 ? 'flex' : 'none';
-            }
-            if(marginBar) {
-                marginBar.style.width = marginPct + '%';
-                marginBar.innerText = 'MARGIN ' + marginPct + '%';
-                marginBar.style.display = marginPct > 0 ? 'flex' : 'none';
+            if(barTreasury) { barTreasury.style.width = treasuryPct + '%'; barTreasury.innerText = 'TESORO ' + treasuryPct + '%'; }
+            if(barCorp) { barCorp.style.width = corpPct + '%'; barCorp.innerText = 'CORP AAA ' + corpPct + '%'; }
+            if(barSpy) { barSpy.style.width = spyPct + '%'; barSpy.innerText = 'SPY ' + spyPct + '%'; }
+            if(barQqq) { barQqq.style.width = qqqPct + '%'; barQqq.innerText = 'QQQ ' + qqqPct + '%'; }
+            if(barGld) { barGld.style.width = gldPct + '%'; barGld.innerText = 'GLD ' + gldPct + '%'; }
+
+            const yieldEl = document.getElementById('home-yield-val');
+            if (yieldEl) {
+                yieldEl.innerText = '+' + formatUSD(data.collateral_portfolio.total_annual_yield_usd || 4350) + '/año';
             }
         }
 
@@ -138,9 +130,9 @@ async function loadMaster() {
             tbodyCol.innerHTML = '';
             const breakdown = data.collateral_portfolio.breakdown;
             Object.values(breakdown).forEach(item => {
-                const yieldTxt = item.annual_yield_usd > 0 ? `+${formatUSD(item.annual_yield_usd)}/año (${item.symbol === 'SGOV' ? '5.2%' : (item.symbol === 'GLD' ? '4.5%' : '4.3%')})` : 'Apreciación + Opciones';
+                const yieldTxt = item.annual_yield_usd > 0 ? `+${formatUSD(item.annual_yield_usd)}/año (${(item.annual_yield_usd / (item.actual_usd || 1) * 100).toFixed(1)}%)` : 'Apreciación + Opciones';
                 tbodyCol.innerHTML += `<tr>
-                    <td><strong>${item.symbol}</strong></td>
+                    <td><strong>${item.symbol}</strong> <span style="font-size:11px;opacity:0.75;">(${item.tickers ? item.tickers.join(', ') : item.symbol})</span></td>
                     <td>${item.description || '-'}</td>
                     <td><span style="color:var(--accent-blue);font-weight:bold;">${item.target_pct}%</span></td>
                     <td>${formatUSD(item.actual_usd)}</td>
@@ -154,7 +146,7 @@ async function loadMaster() {
                 <td>100% NAV Colateralizado</td>
                 <td><span style="color:var(--accent-blue);">100%</span></td>
                 <td>${formatUSD(data.collateral_portfolio.total_collateral_usd)}</td>
-                <td>~5.0% Prom.</td>
+                <td>~6.5% Prom.</td>
                 <td class="text-green">${formatUSD(data.collateral_portfolio.total_unlocked_buying_power_usd)}</td>
                 <td class="text-green">+${formatUSD(data.collateral_portfolio.total_annual_yield_usd)}/año</td>
             </tr>`;

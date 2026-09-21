@@ -8,57 +8,69 @@ INITIAL_MASTER_CAPITAL_USD = 100000.0
 REINVESTMENT_THRESHOLD_USD = 500.0   # Auto-ejecuta reinversión cuando hay $500+ acumulados
 REINVESTMENT_STATE_FILE = "reinvestment_state.json"
 
-# Colateral diversificado: 100% del NAV distribuido en activos remunerados y descorrelacionados
+# Colateral diversificado institucional: 100% del NAV distribuido en 5 bloques de activos
 COLLATERAL_PORTFOLIO = {
-    "SGOV": {"pct": 0.50, "yield_apy": 0.052, "margin_req_pct": 2.0,
-             "description": "T-Bills 0-3M (5.2% APY Garantizado)"},
-    "GLD":  {"pct": 0.25, "yield_apy": 0.045, "margin_req_pct": 15.0,
-             "description": "Gold ETF + Covered Calls (4.5% APY)"},
-    "TLT":  {"pct": 0.15, "yield_apy": 0.043, "margin_req_pct": 10.0,
-             "description": "Bonos 20Y + Covered Calls (4.3% APY)"},
-    "SPY":  {"pct": 0.10, "yield_apy": 0.015, "margin_req_pct": 15.0,
-             "description": "S&P 500 Equity en Cartera + Dividendos"}
+    "TREASURY": {
+        "pct": 0.40, "yield_apy": 0.051, "margin_req_pct": 2.0,
+        "primary": "SGOV",
+        "tickers": ["SGOV", "BOXX", "TBIL", "CSHI", "VTIP", "IBTG"],
+        "description": "Bonos Tesoro 0-3M / BOXX (5.1% APY)"
+    },
+    "CORP_AAA": {
+        "pct": 0.20, "yield_apy": 0.058, "margin_req_pct": 7.5,
+        "primary": "IGSB",
+        "tickers": ["IGSB", "VCSH", "PFF"],
+        "description": "Bonos Corporativos AAA / Preferidas (5.8% APY)"
+    },
+    "SPY": {
+        "pct": 0.20, "yield_apy": 0.015, "margin_req_pct": 15.0,
+        "primary": "SPY",
+        "tickers": ["SPY", "VOO"],
+        "description": "S&P 500 Core Equity + Covered Calls"
+    },
+    "QQQ": {
+        "pct": 0.15, "yield_apy": 0.008, "margin_req_pct": 15.0,
+        "primary": "QQQ",
+        "tickers": ["QQQ"],
+        "description": "Nasdaq 100 Growth + LEAPS Overlay"
+    },
+    "GLD": {
+        "pct": 0.05, "yield_apy": 0.045, "margin_req_pct": 15.0,
+        "primary": "GLD",
+        "tickers": ["GLD"],
+        "description": "Oro Físico (Cobertura Inflación)"
+    }
 }
 
 WHEEL_ALLOWED_UNIVERSE = [
     {
         "symbol": "SPY",
         "name": "SPDR S&P 500 ETF Trust",
-        "asset_class": "Índice Núcleo (Core Equity)",
+        "asset_class": "Índice Núcleo (Core Equity - 20% Cartera)",
         "strategy_mode": "CASH_SECURED_PUT / COVERED_CALL",
         "target_delta": "Δ 0.20 - 0.25",
         "target_dte": "30 - 45 Días",
-        "collateral_backing": "100% Respaldado por SGOV T-Bills",
+        "collateral_backing": "100% Respaldado por Bonos Tesoro / Tenencia",
         "status": "ACTIVE_PRIMARY"
     },
     {
         "symbol": "QQQ",
         "name": "Invesco QQQ (Nasdaq 100)",
-        "asset_class": "MegaCap Tecnología",
+        "asset_class": "MegaCap Tecnología (15% Cartera)",
         "strategy_mode": "CASH_SECURED_PUT / COVERED_CALL",
         "target_delta": "Δ 0.20 - 0.25",
         "target_dte": "30 - 45 Días",
-        "collateral_backing": "100% Respaldado por SGOV T-Bills",
+        "collateral_backing": "100% Respaldado por Bonos Tesoro / Tenencia",
         "status": "ACTIVE_SECONDARY"
     },
     {
         "symbol": "GLD",
         "name": "SPDR Gold Shares",
-        "asset_class": "Oro Físico (Hedge Inflación)",
+        "asset_class": "Oro Físico (5% Cartera)",
         "strategy_mode": "COVERED_CALL SOBRE TENENCIA",
         "target_delta": "Δ 0.25 - 0.30",
         "target_dte": "30 Días",
         "collateral_backing": "Cuotas de GLD en Cartera",
-        "status": "ACTIVE_YIELD_BOOST"
-    },
-    {
-        "symbol": "TLT",
-        "name": "iShares 20+ Year Treasury Bond",
-        "asset_class": "Bonos del Tesoro 20Y",
-        "strategy_mode": "COVERED_CALL SOBRE TENENCIA",
-        "target_delta": "Δ 0.25 - 0.30",
-        "target_dte": "30 Días",
-        "collateral_backing": "Cuotas de TLT en Cartera",
         "status": "ACTIVE_YIELD_BOOST"
     },
     {
@@ -77,12 +89,13 @@ class MasterPortfolioManager:
     """
     Orquestador Central del Portafolio Maestro Hibrido ($100,000 USD)
     - 4 Capas de Opciones bajo Portfolio Margin
-    - Tesoreria diversificada: SGOV (30%) + GLD (20%) + TLT (10%)
+    - Tesoreria diversificada institucional:
+      * 40% Bonos Tesoro (SGOV, BOXX, TBIL, CSHI, VTIP, IBTG)
+      * 20% Bonos Corporativos AAA / Preferidas (IGSB, VCSH, PFF)
+      * 20% SPY / VOO Core Equity
+      * 15% QQQ Nasdaq Tech Growth
+      * 5% GLD Oro Físico
     - Motor de Reinversion Automatica: 50% SGOV / 30% SPY / 20% Alpha decouple
-    - Capa 1: La Rueda (Overlay 100% NAV)
-    - Capa 2: Alpha LEAPS Macro (MAX DTE, indices + sectoriales)
-    - Capa 3: RSI Oportunista (Naked Put 1DTE, RSI<25)
-    - Capa 4: Daytrading ITM (Put +1%, 1DTE, TP 50%)
     """
     def __init__(self, wheel_engine, alpha_bot, rsi_bot, daytrade_bot):
         self.wheel_engine = wheel_engine
@@ -109,9 +122,11 @@ class MasterPortfolioManager:
                 pass
         return {
             "total_reinvested_usd": 0.0,
-            "sgov_accumulated_usd": INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["SGOV"]["pct"],
-            "gld_accumulated_usd":  INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["GLD"]["pct"],
-            "tlt_accumulated_usd":  INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["TLT"]["pct"],
+            "treasury_accumulated_usd": INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["TREASURY"]["pct"],
+            "corp_aaa_accumulated_usd": INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["CORP_AAA"]["pct"],
+            "spy_accumulated_usd":      INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["SPY"]["pct"],
+            "qqq_accumulated_usd":      INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["QQQ"]["pct"],
+            "gld_accumulated_usd":      INITIAL_MASTER_CAPITAL_USD * COLLATERAL_PORTFOLIO["GLD"]["pct"],
             "last_reinvestment_date": None,
             "reinvestment_count": 0,
             "reinvestment_history": []
@@ -131,9 +146,9 @@ class MasterPortfolioManager:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _fetch_collateral_prices(self, nav):
-        """Obtiene precios en vivo de GLD, TLT y SPY. SGOV ~ $100 estable."""
-        prices = {"SGOV": 100.0, "GLD": 230.0, "TLT": 95.0, "SPY": 560.0}
-        for symbol in ["GLD", "TLT", "SPY"]:
+        """Obtiene precios en vivo de SGOV, IGSB, SPY, QQQ y GLD."""
+        prices = {"SGOV": 100.5, "IGSB": 53.0, "SPY": 560.0, "QQQ": 485.0, "GLD": 235.0}
+        for symbol in ["SGOV", "IGSB", "SPY", "QQQ", "GLD"]:
             try:
                 price = self.wheel_engine.fetch_etf_live_price(symbol)
                 if price and price > 0:
@@ -143,18 +158,21 @@ class MasterPortfolioManager:
 
         state = self._reinvestment_state
         collateral = {}
-        for sym, cfg in COLLATERAL_PORTFOLIO.items():
+        for block_key, cfg in COLLATERAL_PORTFOLIO.items():
+            primary_sym = cfg["primary"]
             target_usd = round(nav * cfg["pct"], 2)
-            actual_usd = round(state.get(f"{sym.lower()}_accumulated_usd", target_usd), 2)
+            actual_usd = round(state.get(f"{block_key.lower()}_accumulated_usd", target_usd), 2)
             annual_yield = round(actual_usd * cfg["yield_apy"], 2)
-            collateral[sym] = {
-                "symbol": sym,
+            collateral[block_key] = {
+                "block_key": block_key,
+                "symbol": primary_sym,
+                "tickers": cfg["tickers"],
                 "description": cfg["description"],
                 "target_pct": round(cfg["pct"] * 100, 0),
                 "target_usd": target_usd,
                 "actual_usd": actual_usd,
-                "price": prices[sym],
-                "shares_equiv": round(actual_usd / prices[sym], 4),
+                "price": prices.get(primary_sym, 100.0),
+                "shares_equiv": round(actual_usd / prices.get(primary_sym, 100.0), 4),
                 "annual_yield_usd": annual_yield,
                 "monthly_yield_usd": round(annual_yield / 12, 2),
                 "margin_req_pct": cfg["margin_req_pct"],
@@ -168,7 +186,7 @@ class MasterPortfolioManager:
         return {
             "breakdown": collateral,
             "total_collateral_usd": round(total_collateral_usd, 2),
-            "total_collateral_pct": round((total_collateral_usd / nav) * 100, 1) if nav > 0 else 60.0,
+            "total_collateral_pct": round((total_collateral_usd / nav) * 100, 1) if nav > 0 else 100.0,
             "total_unlocked_buying_power_usd": round(total_unlocked_usd, 2),
             "total_annual_yield_usd": round(total_yield_annual, 2),
             "total_monthly_yield_usd": round(total_yield_annual / 12, 2),
@@ -404,12 +422,12 @@ class MasterPortfolioManager:
             "spy_current_price": spy_price,
             "margin_status": margin_status,
             "treasury_sgov": {
-                "allocated_usd": collateral_data["breakdown"]["SGOV"]["actual_usd"],
-                "annual_yield_pct": 5.2,
-                "annual_yield_usd": collateral_data["breakdown"]["SGOV"]["annual_yield_usd"],
-                "monthly_yield_usd": collateral_data["breakdown"]["SGOV"]["monthly_yield_usd"],
+                "allocated_usd": collateral_data["breakdown"].get("TREASURY", {}).get("actual_usd", 40000.0),
+                "annual_yield_pct": 5.1,
+                "annual_yield_usd": collateral_data["breakdown"].get("TREASURY", {}).get("annual_yield_usd", 2040.0),
+                "monthly_yield_usd": collateral_data["breakdown"].get("TREASURY", {}).get("monthly_yield_usd", 170.0),
                 "margin_requirement_pct": 2.0,
-                "available_collateral_unlocked_usd": collateral_data["breakdown"]["SGOV"]["collateral_unlocked_usd"]
+                "available_collateral_unlocked_usd": collateral_data["breakdown"].get("TREASURY", {}).get("collateral_unlocked_usd", 39200.0)
             },
             "collateral_portfolio": collateral_data,
             "reinvestment_matrix_50_30_20": {

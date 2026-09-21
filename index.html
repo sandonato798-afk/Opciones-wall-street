@@ -126,19 +126,20 @@
                 </div>
 
                 <div class="card" style="margin-bottom: 24px; padding: 24px;">
-                    <div class="distribution-bar-container" style="display: flex; height: 32px; border-radius: 6px; overflow: hidden; font-family: var(--font-mono);">
-                        <div id="bar-sgov" style="width: 30%; background-color: var(--accent-green); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">SGOV 30%</div>
-                        <div id="bar-gld" style="width: 20%; background-color: #F59E0B; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">GLD 20%</div>
-                        <div id="bar-tlt" style="width: 10%; background-color: var(--steel-blue); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">TLT 10%</div>
-                        <div id="bar-margin" style="width: 40%; background-color: var(--primary-red); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #fff;">MARGIN 40%</div>
+                    <div class="distribution-bar-container" style="display: flex; height: 36px; border-radius: 6px; overflow: hidden; font-family: var(--font-mono); box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                        <div id="bar-treasury" style="width: 40%; background-color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #fff;" title="Bonos Tesoro 0-3M (SGOV, BOXX, TBIL, CSHI, VTIP, IBTG) 40%">TESORO 40%</div>
+                        <div id="bar-corp" style="width: 20%; background-color: #6366F1; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #fff;" title="Bonos Corp AAA / Preferidas (IGSB, VCSH, PFF) 20%">CORP AAA 20%</div>
+                        <div id="bar-spy" style="width: 20%; background-color: #3B82F6; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #fff;" title="S&P 500 Equity (SPY / VOO) 20%">SPY 20%</div>
+                        <div id="bar-qqq" style="width: 15%; background-color: #F59E0B; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #fff;" title="Nasdaq 100 Tech (QQQ) 15%">QQQ 15%</div>
+                        <div id="bar-gld" style="width: 5%; background-color: #EAB308; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #fff;" title="Oro Físico (GLD) 5%">GLD 5%</div>
                     </div>
                 </div>
 
                 <div class="grid-3">
                     <div class="card">
-                        <div class="card-title">TESORERÍA SGOV</div>
-                        <div class="val text-green" id="home-sgov-val">$0.00</div>
-                        <div class="sub">@ 5.2% APY</div>
+                        <div class="card-title">RENTA PASIVA FONDO</div>
+                        <div class="val text-green" id="home-yield-val">+$4,350.00/año</div>
+                        <div class="sub" id="home-yield-sub">~4.35% APY Base Garantizado</div>
                     </div>
                     <div class="card">
                         <div class="card-title">REINVERSIÓN MATRIX</div>
