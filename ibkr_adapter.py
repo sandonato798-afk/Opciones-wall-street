@@ -1,6 +1,6 @@
 """
 Módulo de Integración Institucional para Interactive Brokers (IBKR)
-Soporta Paper Trading (Puerto 4002) y Live Trading (Puerto 4001) vía IB Gateway / TWS API.
+Soporta Paper Trading (Puerto 4002 / 7497) y Live Trading (Puerto 4001 / 7496) vía IB Gateway / TWS API.
 Incluye candados de gestión de riesgo automáticos (Server-Side Bracket Orders).
 """
 
@@ -17,9 +17,6 @@ class IBKRBrokerAdapter:
         self.client_id = client_id
         self.is_paper = is_paper
         self.connected = False
-
-# Alias para compatibilidad de imports
-IBKRAdapter = IBKRBrokerAdapter
         
         # Candados de Seguridad / Risk Management Locks
         self.max_daily_drawdown_pct = 0.02  # Max 2% pérdida en 1 día
@@ -43,12 +40,12 @@ IBKRAdapter = IBKRBrokerAdapter
             self.connect()
         # Estructura de respuesta de IBKR API
         return {
-            "NetLiquidation": 200000.0,
+            "NetLiquidation": 100000.0,
             "TotalCashValue": 60000.0,
             "SettledCash": 60000.0,
             "BuyingPower": 280000.0,
             "UnrealizedPnL": 0.0,
-            "RealizedPnL": 1250.50
+            "RealizedPnL": 0.0
         }
 
     def place_bracket_option_order(self, symbol: str, option_type: str, strike: float, expiry: str, 
@@ -101,6 +98,9 @@ IBKRAdapter = IBKRBrokerAdapter
             logging.warning(f"🛑 [CANDADO ACTIVADO] Límite de posiciones concurrentes alcanzado ({current_open_positions}/{self.max_concurrent_trades}).")
             return False
         return True
+
+# Alias para compatibilidad de imports
+IBKRAdapter = IBKRBrokerAdapter
 
 if __name__ == "__main__":
     adapter = IBKRBrokerAdapter(is_paper=True)
