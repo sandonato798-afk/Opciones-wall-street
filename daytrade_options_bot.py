@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+import sys
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import json
 import urllib.request
 from datetime import datetime, timedelta
@@ -193,3 +197,10 @@ class DaytradeOptionsBot:
 
     def get_status(self):
         return {"allocated_capital": self.allocated_capital, "active_trades": self.active_trades}
+
+if __name__ == "__main__":
+    bot = DaytradeOptionsBot()
+    print(f"[DAYTRADE] Ejecutando escaneo intradiario de opciones...")
+    bot.manage_open_position()
+    bot.scan_market()
+    print(f"[DAYTRADE] Escaneo finalizado. Trades activos: {len(bot.active_trades)}")
