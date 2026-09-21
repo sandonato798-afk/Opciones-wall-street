@@ -1,21 +1,37 @@
-// State
-let appData = {};
+// Helper seguro para asignar texto a elementos sin crash
+function setTxt(id, txt) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = txt;
+}
+
+function setHtml(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+function setClass(id, cls) {
+    const el = document.getElementById(id);
+    if (el) el.className = cls;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
     refreshAllData();
-    setInterval(refreshAllData, 15000);
+    setInterval(refreshAllData, 10000);
 });
 
 function initTabs() {
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
+        tab.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = tab.dataset.tab;
+            if (!target) return;
             document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             tab.classList.add('active');
-            const target = tab.dataset.tab;
-            document.getElementById(target).classList.add('active');
+            const targetEl = document.getElementById(target);
+            if (targetEl) targetEl.classList.add('active');
         });
     });
 }
@@ -24,7 +40,6 @@ async function refreshAllData() {
     await Promise.all([
         loadMaster(),
         loadWheel(),
-        
         loadAlpha(),
         loadRsi(),
         loadDaytrade()
@@ -35,7 +50,7 @@ function formatUSD(num) {
     if (num === null || num === undefined) num = 0;
     const isNeg = num < 0;
     const absVal = Math.abs(num);
-    const formatted = absVal.toLocaleString('en-US', {minimumFractionDigits: 2});
+    const formatted = absVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     return (isNeg ? '-$' : '$') + formatted;
 }
 function formatPct(num) {
@@ -55,46 +70,39 @@ async function loadMaster() {
         const data = await res.json();
         
         // Header
-        document.getElementById('global-nav').innerText = formatUSD(data.consolidated_nav_usd);
-        const roiEl = document.getElementById('global-roi');
-        roiEl.innerText = sign(data.total_roi_pct) + formatPct(data.total_roi_pct);
-        roiEl.className = colorClass(data.total_roi_pct);
+        setTxt('global-nav', formatUSD(data.consolidated_nav_usd));
+        setTxt('global-roi', sign(data.total_roi_pct) + formatPct(data.total_roi_pct));
+        setClass('global-roi', colorClass(data.total_roi_pct));
         
         // Home tab
-        document.getElementById('home-master-nav').innerText = formatUSD(data.consolidated_nav_usd);
-        document.getElementById('home-master-initial').innerText = formatUSD(data.initial_master_capital_usd);
-        const homePnl = document.getElementById('home-master-pnl');
-        homePnl.innerText = sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd) + '  (' + sign(data.total_roi_pct) + formatPct(data.total_roi_pct) + ')';
-        homePnl.className = colorClass(data.total_pnl_usd);
+        setTxt('home-master-nav', formatUSD(data.consolidated_nav_usd));
+        setTxt('home-master-initial', formatUSD(data.initial_master_capital_usd));
+        setTxt('home-master-pnl', sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd) + '  (' + sign(data.total_roi_pct) + formatPct(data.total_roi_pct) + ')');
+        setClass('home-master-pnl', colorClass(data.total_pnl_usd));
 
-        document.getElementById('home-sgov-val').innerText = formatUSD(data.treasury_sgov?.allocated_usd || 60000);
-        document.getElementById('home-margin-val').innerText = (data.margin?.margin_utilization_pct || 0) + '%';
-        document.getElementById('home-margin-status').innerText = data.margin_status || 'OPTIMAL';
+        setTxt('home-margin-val', (data.margin?.margin_utilization_pct || 0) + '%');
+        setTxt('home-margin-status', data.margin_status || 'OPTIMAL');
         
         // Performance Analytics
         if (data.performance_analytics) {
-            document.getElementById('home-perf-days').innerText = data.performance_analytics.days_active + ' DÍAS';
-            document.getElementById('home-perf-inception').innerText = 'Desde ' + data.performance_analytics.inception_date;
+            setTxt('home-perf-days', (data.performance_analytics.days_active || 0) + ' DÍAS');
+            setTxt('home-perf-inception', 'Desde ' + (data.performance_analytics.inception_date || '-'));
             
-            const cagrEl = document.getElementById('home-perf-cagr');
-            cagrEl.innerText = formatPct(data.performance_analytics.annualized_roi_pct);
-            cagrEl.className = 'val ' + colorClass(data.performance_analytics.annualized_roi_pct);
+            setTxt('home-perf-cagr', formatPct(data.performance_analytics.annualized_roi_pct));
+            setClass('home-perf-cagr', 'val ' + colorClass(data.performance_analytics.annualized_roi_pct));
 
-            const pfEl = document.getElementById('home-perf-pf');
-            pfEl.innerText = (data.performance_analytics.profit_factor || 0).toFixed(2);
-            pfEl.className = 'val ' + (data.performance_analytics.profit_factor >= 1.5 ? 'text-green' : (data.performance_analytics.profit_factor >= 1.0 ? 'text-green' : 'text-red'));
+            const pfVal = (data.performance_analytics.profit_factor === 'N/A' || data.performance_analytics.profit_factor === undefined) ? 'N/A' : Number(data.performance_analytics.profit_factor).toFixed(2);
+            setTxt('home-perf-pf', pfVal);
+            setClass('home-perf-pf', 'val text-green');
 
-            const mddEl = document.getElementById('home-perf-mdd');
-            mddEl.innerText = formatPct(data.performance_analytics.max_drawdown_pct);
-            mddEl.className = 'val ' + colorClass(data.performance_analytics.max_drawdown_pct);
+            setTxt('home-perf-mdd', formatPct(data.performance_analytics.max_drawdown_pct));
+            setClass('home-perf-mdd', 'val ' + colorClass(data.performance_analytics.max_drawdown_pct));
 
-            const monthlyEl = document.getElementById('home-perf-monthly');
-            monthlyEl.innerText = sign(data.performance_analytics.projected_monthly_usd) + formatUSD(data.performance_analytics.projected_monthly_usd);
-            monthlyEl.className = 'val ' + colorClass(data.performance_analytics.projected_monthly_usd);
+            setTxt('home-perf-monthly', sign(data.performance_analytics.projected_monthly_usd) + formatUSD(data.performance_analytics.projected_monthly_usd));
+            setClass('home-perf-monthly', 'val ' + colorClass(data.performance_analytics.projected_monthly_usd));
 
-            const thetaEl = document.getElementById('home-perf-theta');
-            thetaEl.innerText = sign(data.performance_analytics.global_theta_usd_per_day) + formatUSD(data.performance_analytics.global_theta_usd_per_day) + '/d';
-            thetaEl.className = 'val ' + colorClass(data.performance_analytics.global_theta_usd_per_day);
+            setTxt('home-perf-theta', sign(data.performance_analytics.global_theta_usd_per_day) + formatUSD(data.performance_analytics.global_theta_usd_per_day) + '/d');
+            setClass('home-perf-theta', 'val ' + colorClass(data.performance_analytics.global_theta_usd_per_day));
         }
 
         // Collateral Portfolio Bars & Stats
@@ -118,10 +126,7 @@ async function loadMaster() {
             if(barQqq) { barQqq.style.width = qqqPct + '%'; barQqq.innerText = 'QQQ ' + qqqPct + '%'; }
             if(barGld) { barGld.style.width = gldPct + '%'; barGld.innerText = 'GLD ' + gldPct + '%'; }
 
-            const yieldEl = document.getElementById('home-yield-val');
-            if (yieldEl) {
-                yieldEl.innerText = '+' + formatUSD(data.collateral_portfolio.total_annual_yield_usd || 4350) + '/año';
-            }
+            setTxt('home-yield-val', '+' + formatUSD(data.collateral_portfolio.total_annual_yield_usd || 4350) + '/año');
         }
 
         // Collateral Detailed Table
@@ -159,24 +164,24 @@ async function loadMaster() {
                 const pnlClass = 'sub ' + colorClass(l.net_pnl_usd);
                 
                 if(l.id === 'wheel') {
-                    document.getElementById('home-c1-nav').innerText = formatUSD(liveNav);
-                    const el = document.getElementById('home-c1-pnl');
-                    el.innerText = pnlTxt; el.className = pnlClass;
+                    setTxt('home-c1-nav', formatUSD(liveNav));
+                    setTxt('home-c1-pnl', pnlTxt);
+                    setClass('home-c1-pnl', pnlClass);
                 }
                 if(l.id === 'alpha') {
-                    document.getElementById('home-c3-nav').innerText = formatUSD(liveNav);
-                    const el = document.getElementById('home-c3-pnl');
-                    el.innerText = pnlTxt; el.className = pnlClass;
+                    setTxt('home-c3-nav', formatUSD(liveNav));
+                    setTxt('home-c3-pnl', pnlTxt);
+                    setClass('home-c3-pnl', pnlClass);
                 }
                 if(l.id === 'rsi_opportunistic') {
-                    document.getElementById('home-c4-nav').innerText = formatUSD(liveNav);
-                    const el = document.getElementById('home-c4-pnl');
-                    el.innerText = pnlTxt; el.className = pnlClass;
+                    setTxt('home-c4-nav', formatUSD(liveNav));
+                    setTxt('home-c4-pnl', pnlTxt);
+                    setClass('home-c4-pnl', pnlClass);
                 }
                 if(l.id === 'daytrade') {
-                    document.getElementById('home-c5-nav').innerText = formatUSD(liveNav);
-                    const el = document.getElementById('home-c5-pnl');
-                    el.innerText = pnlTxt; el.className = pnlClass;
+                    setTxt('home-c5-nav', formatUSD(liveNav));
+                    setTxt('home-c5-pnl', pnlTxt);
+                    setClass('home-c5-pnl', pnlClass);
                 }
             });
         }
@@ -209,6 +214,7 @@ async function loadMaster() {
         }
     } catch(e) { console.error('Error loadMaster', e); }
 }
+
 
 async function loadWheel() {
     try {
