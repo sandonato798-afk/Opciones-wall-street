@@ -95,7 +95,7 @@ En lugar de tener tres cuentas de dinero separadas ( cada una), el sistema opera
 * **Margen Disponible:** $89,500.00 USD (89.5% - Estado: OPTIMO)
 * **Operaciones Day Trading:** 15 cerradas (100% Win Rate, +,352.60 USD)
 * **Operaciones Venta de Tiempo:** 2 abiertas (SPY K734.4/731.4 y QQQ K686.6/683.6, +,574 USD primas)
-* **Dashboard Live:** https://opciones-wall-street.onrender.com
+* **Dashboard Live:** https://opciones-wall-street-xmz0.onrender.com/
 * **Repositorio Git:** sandonato798-afk/Opciones-wall-street (rama main)
 
 ---
