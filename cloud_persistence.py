@@ -110,7 +110,16 @@ def sync_state_to_github_async(file_name, data_dict):
     t.start()
 
 def load_state_from_github(file_name):
-    # 1. Intentar descargar directamente desde Raw GitHub (funciona siempre, con o sin token)
+    # 0. Priorizar archivo local si existe (para respetar entorno local sin pushs)
+    local_path = os.path.join(os.path.dirname(__file__), file_name)
+    if os.path.exists(local_path):
+        try:
+            with open(local_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    # 1. Intentar descargar desde Raw GitHub si el archivo local no existía
     raw_url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{file_name}?cache_bust={int(datetime.now().timestamp())}"
     try:
         req = urllib.request.Request(raw_url, headers={"User-Agent": "WallStreet-Options-Bot"})
@@ -121,7 +130,7 @@ def load_state_from_github(file_name):
     except Exception:
         pass
 
-    # 2. Fallback a GitHub API si hay token configurado
+    # 2. Fallback a GitHub API
     token = get_token()
     if token:
         url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{file_name}"
