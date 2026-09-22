@@ -263,9 +263,11 @@ class MasterPortfolioManager:
         except Exception as e:
             print(f"[REINVESTMENT] Error en decouple Alpha: {e}")
 
-        # ── 50% → Registrar incremento en SGOV ───────────────────────────
-        self._reinvestment_state["sgov_accumulated_usd"] = round(
-            self._reinvestment_state.get("sgov_accumulated_usd", 50000.0) + sgov_50, 2)
+        # ── 50% → Registrar incremento en SGOV (Treasury) ──────────────────
+        current_treasury = self._reinvestment_state.get("treasury_accumulated_usd", 
+                            self._reinvestment_state.get("sgov_accumulated_usd", 40000.0))
+        self._reinvestment_state["treasury_accumulated_usd"] = round(current_treasury + sgov_50, 2)
+        self._reinvestment_state["sgov_accumulated_usd"] = self._reinvestment_state["treasury_accumulated_usd"]
 
         # ── Actualizar estado ─────────────────────────────────────────────
         self._reinvestment_state["total_reinvested_usd"] = round(already_reinvested + pending, 2)
@@ -364,7 +366,7 @@ class MasterPortfolioManager:
         # Sumar Theta de la Rueda si hay opciones emitidas
         wheel_positions = getattr(self.wheel_engine, 'wheel_positions', [])
         for pos in wheel_positions:
-            if pos.get("status") == "OPEN":
+            if pos.get("status") in ["OPEN", "ACTIVE"]:
                 # Aproximacion de theta por contrato (~0.05 a 0.15 theta diario por accion)
                 global_theta_usd += round(pos.get("contracts", 1) * 100 * 0.08, 2)
         # Sumar Theta de RSI bot si hay trades abiertos

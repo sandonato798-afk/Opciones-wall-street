@@ -195,14 +195,14 @@ class DaytradeOptionsBot:
                 
                 cp = data["current_price"]
                 
-                # Check 50% Take Profit usando valor real de mercado de la prima
+                # 1. Check 50% Take Profit usando valor real de mercado de la prima
                 current_premium = self._fetch_real_put_premium(symbol, pos["strike"])
                 current_put_value = round(current_premium * 100 * pos["contracts"], 2)
                 initial_premium = pos["premium_collected_usd"]
                 cost = pos.get("total_cost_usd", pos.get("strike", 500) * 100 * pos.get("contracts", 1) * 0.20)
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                # Si cuesta menos del 50% recomprarlo, cerramos ganando el resto
+                # Si cuesta menos del 50% recomprarlo, cerramos ganando el resto (+50% TP)
                 if current_put_value <= pos["take_profit_target_usd"]:
                     net_pnl = round(initial_premium - current_put_value, 2)
                     pos["status"] = "CLOSED_TAKE_PROFIT"
@@ -216,29 +216,41 @@ class DaytradeOptionsBot:
                     self.history.append(pos)
                     self.active_trades.remove(pos)
                     self.save_state()
-                    print(f"[DAYTRADE] ✅ Take Profit alcanzado en {symbol}. PnL: ${net_pnl}")
+                    print(f"[DAYTRADE] ✅ Take Profit (50%) alcanzado en {symbol}. PnL: +${net_pnl} USD")
                     continue
                     
-                # Check Expiration
+                # 2. Check Expiration & Liquidación Matemática Intrínseca (Cash Settlement)
                 try:
                     exp_date = datetime.strptime(pos["expiration_date"], "%Y-%m-%d")
                 except Exception:
                     exp_date = datetime.now()
                     
                 if datetime.now() >= exp_date:
-                    net_pnl = round(initial_premium - current_put_value, 2)
+                    # Al vencimiento no hay valor extrínseco ni theta.
+                    # Valor intrínseco final: max(0.0, Strike - Precio Spot)
+                    intrinsic_per_share = max(0.0, round(pos["strike"] - cp, 2))
+                    total_intrinsic_loss = round(intrinsic_per_share * 100 * pos["contracts"], 2)
+                    net_pnl = round(initial_premium - total_intrinsic_loss, 2)
+                    
                     pos["status"] = "CLOSED_EXPIRED"
                     pos["realized_pnl_usd"] = net_pnl
                     pos["final_pnl_usd"] = net_pnl
                     pos["pnl_usd"] = net_pnl
-                    pos["exit_premium"] = current_premium
+                    pos["exit_premium"] = intrinsic_per_share
                     pos["exit_time"] = now_str
                     pos["final_pnl_pct"] = round((net_pnl / cost) * 100, 2) if cost > 0 else 0.0
                     pos["roi_pct"] = pos["final_pnl_pct"]
                     self.history.append(pos)
                     self.active_trades.remove(pos)
                     self.save_state()
-                    print(f"[DAYTRADE] ⏳ Trade cerrado por expiración en {symbol}. PnL: ${net_pnl}")
+                    print(f"[DAYTRADE] ⏳ Trade cerrado por expiración en {symbol}. Spot: ${cp}, Strike: ${pos['strike']}. Valor intrínseco liquidado: ${total_intrinsic_loss}. PnL Neto: ${net_pnl} USD")
+                    continue
+                
+                # 3. Actualización de PnL Flotante Intradía mientras la posición esté activa
+                pos["current_underlying_price"] = cp
+                pos["current_put_value"] = current_put_value
+                pos["pnl_usd"] = round(initial_premium - current_put_value, 2)
+                self.save_state()
 
     def get_status(self):
         return {

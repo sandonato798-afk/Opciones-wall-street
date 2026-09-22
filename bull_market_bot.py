@@ -258,7 +258,10 @@ class BullMarketBot:
 
                 # Emitir nueva Short Call a 7-10 DTE (Delta ~0.20 OTM)
                 new_dte = 7
-                new_strike = round(current_px * 1.025, 1) # 2.5% OTM
+                # Regla de Oro PMCC: El strike de la Short Call NUNCA debe estar por debajo del Long Strike ITM
+                long_strike = diag.get("long_call_strike", 0.0)
+                min_safe_strike = round(long_strike + 1.0, 1) if long_strike > 0 else round(current_px * 1.01, 1)
+                new_strike = max(min_safe_strike, round(current_px * 1.025, 1)) # Al menos 2.5% OTM y > Long Strike
                 iv = BULLMARKET_UNIVERSE.get(symbol, {}).get("default_iv", 0.18)
                 new_bs = black_scholes("CALL", current_px, new_strike, new_dte / 365.0, 0.0525, iv)
                 contracts = diag.get("short_call_contracts", 1)

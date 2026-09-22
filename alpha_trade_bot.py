@@ -156,11 +156,29 @@ class AlphaTradeBot:
                 
                 put_strike = round(current_price * 0.85, 1)
                 call_strike = round(current_price * 1.05, 1)
-                premium_collected = round(current_price * 0.08 * 100, 2)
-                # Dimensionamiento Dinámico de Contratos
+                
+                # Dimensionamiento Dinámico Institucional de Contratos
                 # Se estima costo del margin requirement del put (aprox 20% del strike)
-                margin_req_per_contract = put_strike * 100 * 0.20
-                contracts = max(1, int(max_capital_for_symbol / margin_req_per_contract))
+                margin_req_per_put = put_strike * 100 * 0.20
+                calculated_puts = int(max_capital_for_symbol / margin_req_per_put)
+                
+                # REGLA INSTITUCIONAL: Siempre al menos 2 Long Calls.
+                # Si el peso de la cartera permite >= 2 puts, se entra en pares (2P : 2C o N:N).
+                # Si el límite asignado sólo permite 1 put (ej. ETFs sectoriales con tope del 5%), se entra en ratio 1P : 2C.
+                if calculated_puts >= 2:
+                    short_put_contracts = calculated_puts
+                    long_call_contracts = calculated_puts
+                    ratio_desc = f"{short_put_contracts}P:{long_call_contracts}C (Par)"
+                else:
+                    short_put_contracts = 1
+                    long_call_contracts = 2
+                    ratio_desc = "1P:2C (Ratio Asimétrico)"
+                
+                # Entrada con Costo Cero Neto Estricto (Net Cost = $0.00)
+                # La prima total cobrada por los puts financia el 100% de los calls comprados
+                put_premium_per_contract = round(current_price * 0.08 * 100, 2)
+                total_put_premium_collected = round(put_premium_per_contract * short_put_contracts, 2)
+                total_call_premium_paid = total_put_premium_collected # Financiación 100% simétrica a costo neto 0
                 
                 new_position = {
                     "id": int(datetime.now().timestamp() * 1000),
@@ -169,15 +187,16 @@ class AlphaTradeBot:
                     "entry_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "dte": max_available_dte, # Vencimiento más lejano posible # 2 años
                     "underlying_price_at_entry": current_price,
+                    "ratio": ratio_desc,
                     "short_put_strike": put_strike,
-                    "short_put_contracts": contracts,
-                    "short_put_premium_collected": premium_collected * contracts,
+                    "short_put_contracts": short_put_contracts,
+                    "short_put_premium_collected": total_put_premium_collected,
                     "long_call_strike": call_strike,
-                    "long_call_contracts": contracts,
-                    "long_call_premium_paid": premium_collected * contracts, # Costo Cero Neto
+                    "long_call_contracts": long_call_contracts,
+                    "long_call_premium_paid": total_call_premium_paid, # Costo Cero Neto
                     "net_cost_usd": 0.0,
                     "status": "ACTIVE_SYNTHETIC",
-                    "short_put_current_buyback_cost": premium_collected * contracts,
+                    "short_put_current_buyback_cost": total_put_premium_collected,
                     "decoupled": False,
                     "current_underlying_price": current_price,
                     "unrealized_pnl_usd": 0.0
@@ -185,7 +204,7 @@ class AlphaTradeBot:
                 
                 self.open_positions.append(new_position)
                 self.save_state()
-                print(f"[ALPHA_TRADE] ✅ Sintético LEAP abierto en {symbol}. Contratos: {contracts}. Capital asignado respetado.")
+                print(f"[ALPHA_TRADE] ✅ Sintético LEAP abierto en {symbol}. Estructura: {ratio_desc} ({short_put_contracts} Puts, {long_call_contracts} Calls). Costo Neto: $0.00.")
                 return {"status": "OPENED", "position": new_position}
                 
         return {"status": "NO_OPPORTUNITY"}
@@ -225,7 +244,8 @@ class AlphaTradeBot:
                     print(f"[ALPHA_TRADE] 🚀 GATILLO DE DESACOPLE AUTOFINANCIADO DETECTADO en {symbol}!")
                     
                     pos["decoupled"] = True
-                    pos["long_call_contracts"] -= half_calls
+                    remaining_calls = max(1, pos["long_call_contracts"] - half_calls)
+                    pos["long_call_contracts"] = remaining_calls
                     pos["short_put_contracts"] = 0
                     pos["short_put_current_buyback_cost"] = 0.0
                     
@@ -234,6 +254,7 @@ class AlphaTradeBot:
                     free_runner = {
                         **pos,
                         "status": "FREE_RUNNER_LONG_CALL",
+                        "long_call_contracts": remaining_calls,
                         "net_cash_generated_usd": net_cash_generated,
                         "decouple_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     }
@@ -241,7 +262,7 @@ class AlphaTradeBot:
                     if not any(p["id"] == free_runner["id"] for p in self.decoupled_calls):
                         self.decoupled_calls.append(free_runner)
                     self.save_state()
-                    print(f"[ALPHA_TRADE] ✅ Desacople Exitoso. Riesgo eliminado. Cash Sobrante: +${net_cash_generated}")
+                    print(f"[ALPHA_TRADE] ✅ Desacople Exitoso en {symbol}. {half_calls} Call(s) vendidos para liquidar Short Put. Quedan {remaining_calls} Long Call(s) Free Runner. Cash Neto Sobrante: +${net_cash_generated}")
                         
         return {"status": "MONITORED"}
 
