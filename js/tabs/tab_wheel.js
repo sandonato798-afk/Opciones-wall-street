@@ -16,11 +16,9 @@ async function loadWheel() {
         if (tbodyUniv) {
             tbodyUniv.innerHTML = '';
             const universe = [
-                { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust (Índice Núcleo)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (1.5% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Ciclo Mensual)</span>' },
-                { symbol: 'QQQ', name: 'Invesco QQQ (Nasdaq 100 MegaCap)', mode: 'CASH_SECURED_PUT / COVERED_CALL', delta: 'Δ 0.20 - 0.25 (2.0% OTM)', dte: '30 - 45 Días', backing: '100% Respaldado por SGOV T-Bills', status: '<span class="text-green">🟢 ACTIVO (Escaneo Abierto)</span>' },
-                { symbol: 'GLD', name: 'SPDR Gold Shares (Oro Físico)', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de GLD en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.5%)</span>' },
-                { symbol: 'TLT', name: 'iShares 20+ Year Treasury Bond', mode: 'COVERED_CALL SOBRE TENENCIA', delta: 'Δ 0.25 - 0.30 (OTM)', dte: '30 Días', backing: 'Cuotas de TLT en Cartera', status: '<span class="text-green">🟢 ACTIVO (Yield Boost +4.3%)</span>' },
-                { symbol: 'IWM', name: 'iShares Russell 2000 (Small Caps)', mode: 'CASH_SECURED_PUT', delta: 'Δ 0.20 (3.0% OTM)', dte: '30 - 45 Días', backing: 'Margen Libre Disponible', status: '<span style="color:var(--text-muted)">⚪ LISTO PARA ENTRADA</span>' }
+                { symbol: 'SPY', name: 'SPDR S&P 500 ETF Trust (Índice Núcleo)', mode: 'CASH/MARGIN-SECURED PUT OVERLAY', delta: 'Δ 0.20 - 0.25 (3.0% OTM)', dte: '30 - 45 Días', backing: 'Respaldado por Pool Unificado (Colateral Intocable)', status: '<span class="text-green">🟢 ACTIVO (Ciclo Mensual)</span>' },
+                { symbol: 'QQQ', name: 'Invesco QQQ (Nasdaq 100 MegaCap)', mode: 'CASH/MARGIN-SECURED PUT OVERLAY', delta: 'Δ 0.20 - 0.25 (3.0% OTM)', dte: '30 - 45 Días', backing: 'Respaldado por Pool Unificado (Colateral Intocable)', status: '<span class="text-green">🟢 ACTIVO (Escaneo Abierto)</span>' },
+                { symbol: 'IWM', name: 'iShares Russell 2000 (Small Caps)', mode: 'CASH/MARGIN-SECURED PUT OVERLAY', delta: 'Δ 0.20 (3.5% OTM)', dte: '30 - 45 Días', backing: 'Respaldado por Pool Unificado (Colateral Intocable)', status: '<span style="color:var(--text-muted)">⚪ LISTO PARA ENTRADA</span>' }
             ];
             universe.forEach(u => {
                 tbodyUniv.innerHTML += `<tr>

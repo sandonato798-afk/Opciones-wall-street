@@ -162,102 +162,120 @@ class WheelCompoundingEngine:
 
         log_msg("WHEEL_CYCLE", f"--- EJECUTANDO CICLO DE RUEDA & COMPUESTO EN {etf_symbol} (Precio ETF: ${etf_price} USD) ---")
 
-        # Determine strategy phase: Cash-Secured Put (CSP) or Covered Call (CC)
-        if self.etf_shares < 10:  # Holding Cash: Sell Cash-Secured Put
-            strike = round(etf_price * 0.97, 1) # Strike 3% OTM
-            greeks = black_scholes("PUT", etf_price, strike, CONFIG["target_dte"]/365.0, 0.0525, 0.18)
-            premium = max(2.50, greeks["price"])
-            
-            # Premium Income Collected
-            income_usd = round(premium * 100.0, 2)
-            self.accumulated_premiums_usd += income_usd
+        # Estrategia Institucional Rueda (Yield Overlay de Puts sobre Margen)
+        # NUNCA vende Covered Calls sobre el Colateral Base (SGOV/SPY/QQQ/GLD son intocables)
+        strike = round(etf_price * 0.97, 1) # Strike 3% OTM (Delta ~0.20-0.25)
+        greeks = black_scholes("PUT", etf_price, strike, CONFIG["target_dte"]/365.0, 0.0525, 0.18)
+        premium = max(2.50, greeks["price"])
+        
+        income_usd = round(premium * 100.0, 2)
+        self.accumulated_premiums_usd += income_usd
 
-            # AUTO-COMPOUNDING REINVESTMENT: Buy ETF shares with collected premium
-            shares_bought = round(income_usd / etf_price, 4)
-            self.etf_shares += shares_bought
-            self.total_reinvested_usd += income_usd
+        log_msg("CASH_PUT", f"🟢 VENTA CASH/MARGIN-SECURED PUT [{etf_symbol} K=${strike}]: Prima Cobrada: +${income_usd} USD.")
 
-            log_msg("CASH_PUT", f"🟢 VENTA CASH-SECURED PUT [{etf_symbol} K=${strike}]: Prima Cobrada: +${income_usd} USD.")
-            log_msg("AUTO_REINVEST", f"📈 REINVERSIÓN AUTOMÁTICA: Compradas +{shares_bought} acciones de {etf_symbol} @ ${etf_price} USD. Total Acciones: {self.etf_shares:.4f}")
+        exp_date = (datetime.now() + timedelta(days=CONFIG["target_dte"])).strftime("%Y-%m-%d")
+        active_pos = {
+            "id": f"WHEEL_CSP_{int(datetime.now().timestamp())}",
+            "ticker": f"{etf_symbol}_PUT_{strike:.1f}_{CONFIG['target_dte']}DTE",
+            "symbol": etf_symbol,
+            "strategy_type": "CASH_SECURED_PUT",
+            "underlying_price": etf_price,
+            "strike": strike,
+            "contracts": 1,
+            "premium_collected_usd": income_usd,
+            "issued_date": timestamp(),
+            "expiration_date": exp_date,
+            "target_dte": CONFIG["target_dte"],
+            "status": "ACTIVE"
+        }
+        self.wheel_positions = [active_pos]
 
-            exp_date = (datetime.now() + timedelta(days=CONFIG["target_dte"])).strftime("%Y-%m-%d")
-            active_pos = {
-                "id": f"WHEEL_CSP_{int(datetime.now().timestamp())}",
-                "ticker": f"{etf_symbol}_PUT_{strike:.1f}_{CONFIG['target_dte']}DTE",
-                "symbol": etf_symbol,
-                "strategy_type": "CASH_SECURED_PUT",
-                "underlying_price": etf_price,
-                "strike": strike,
-                "contracts": 1,
-                "premium_collected_usd": income_usd,
-                "issued_date": timestamp(),
-                "expiration_date": exp_date,
-                "target_dte": CONFIG["target_dte"],
-                "status": "ACTIVE"
-            }
-            self.wheel_positions = [active_pos]
+        cycle_record = {
+            "timestamp": timestamp(),
+            "type": "CASH_SECURED_PUT",
+            "symbol": etf_symbol,
+            "etf_price": etf_price,
+            "strike": strike,
+            "premium_collected_usd": income_usd,
+            "status": "ACTIVE",
+            "portfolio_nav_usd": round(self.cash_balance + (self.etf_shares * etf_price), 2)
+        }
+        self.history.append(cycle_record)
+        self.save_state()
+        return cycle_record
 
-            cycle_record = {
-                "timestamp": timestamp(),
-                "type": "CASH_SECURED_PUT",
-                "symbol": etf_symbol,
-                "etf_price": etf_price,
-                "strike": strike,
-                "premium_collected_usd": income_usd,
-                "shares_bought": shares_bought,
-                "total_shares_now": round(self.etf_shares, 4),
-                "portfolio_nav_usd": round(self.cash_balance + (self.etf_shares * etf_price), 2)
-            }
-            self.history.append(cycle_record)
-            self.save_state()
-            return cycle_record
+    def handle_assignment(self, assigned_shares=100, strike=None):
+        """
+        Protocolo Maestro de Asignación de Andrés Weisz (Capa 1):
+        1. A la apertura de la sesión (09:30 EST): SE VENDEN LAS ACCIONES INMEDIATAMENTE al precio de mercado.
+        2. A la par (simultáneamente): SE VENDE UN PUT (1 contrato por cada 100 acciones)
+           con el mismo strike y vencimiento a 6-8 semanas (45 DTE).
+        3. Excepción Caída > 15%: Buscar vencimiento con crédito neto manteniendo mismo strike o strike 5-10% menor.
+        """
+        etf_symbol = CONFIG["etf_target"]
+        etf_price = self.fetch_etf_live_price(etf_symbol)
+        ref_strike = strike if strike else round(etf_price * 1.02, 1)
 
-        else: # Holding Shares: Sell Covered Call
-            strike = round(etf_price * 1.03, 1) # Strike 3% OTM
-            greeks = black_scholes("CALL", etf_price, strike, CONFIG["target_dte"]/365.0, 0.0525, 0.18)
-            premium = max(2.50, greeks["price"])
-            
-            income_usd = round(premium * 100.0, 2)
-            self.accumulated_premiums_usd += income_usd
+        log_msg("ASSIGNMENT_PROTOCOL", f"⚡ EJECUTANDO PROTOCOLO DE ASIGNACIÓN ANDRÉS WEISZ en {etf_symbol}:")
+        
+        # 1. Venta Inmediata de Acciones para limpiar la cartera
+        sale_proceeds = round(assigned_shares * etf_price, 2)
+        log_msg("ASSIGNMENT_STOCK_SALE", f"🛒 1. Venta Inmediata de {assigned_shares} acciones de {etf_symbol} @ ${etf_price} USD (+$ {sale_proceeds} USD en efectivo). Cartera libre de acciones.")
 
-            shares_bought = round(income_usd / etf_price, 4)
-            self.etf_shares += shares_bought
-            self.total_reinvested_usd += income_usd
+        # 2. Venta Simultánea de Put a 6-8 semanas (45 DTE)
+        target_dte = 45 # Entre 6 y 8 semanas (42-56 DTE)
+        drop_pct = (ref_strike - etf_price) / ref_strike if etf_price < ref_strike else 0.0
 
-            log_msg("COVERED_CALL", f"🟢 VENTA COVERED CALL [{etf_symbol} K=${strike}]: Prima Cobrada: +${income_usd} USD.")
-            log_msg("AUTO_REINVEST", f"📈 REINVERSIÓN AUTOMÁTICA: Compradas +{shares_bought} acciones de {etf_symbol} @ ${etf_price} USD. Total Acciones: {self.etf_shares:.4f}")
+        if drop_pct > 0.15:
+            # Excepción: Caída > 15%, buscar strike entre 5% y 10% por debajo
+            new_strike = round(ref_strike * 0.92, 1)
+            reason_strike = f"Caída >15% ({drop_pct*100:.1f}%). Strike bajado 8% a ${new_strike} garantizando crédito neto."
+        else:
+            new_strike = ref_strike
+            reason_strike = f"Mismo strike anterior ${new_strike}."
 
-            exp_date = (datetime.now() + timedelta(days=CONFIG["target_dte"])).strftime("%Y-%m-%d")
-            active_pos = {
-                "id": f"WHEEL_CC_{int(datetime.now().timestamp())}",
-                "ticker": f"{etf_symbol}_CALL_{strike:.1f}_{CONFIG['target_dte']}DTE",
-                "symbol": etf_symbol,
-                "strategy_type": "COVERED_CALL",
-                "underlying_price": etf_price,
-                "strike": strike,
-                "contracts": 1,
-                "premium_collected_usd": income_usd,
-                "issued_date": timestamp(),
-                "expiration_date": exp_date,
-                "target_dte": CONFIG["target_dte"],
-                "status": "ACTIVE"
-            }
-            self.wheel_positions = [active_pos]
+        greeks = black_scholes("PUT", etf_price, new_strike, target_dte/365.0, 0.0525, 0.22)
+        premium = max(3.00, greeks["price"])
+        contracts = max(1, assigned_shares // 100)
+        income_usd = round(premium * 100.0 * contracts, 2)
+        self.accumulated_premiums_usd += income_usd
 
-            cycle_record = {
-                "timestamp": timestamp(),
-                "type": "COVERED_CALL",
-                "symbol": etf_symbol,
-                "etf_price": etf_price,
-                "strike": strike,
-                "premium_collected_usd": income_usd,
-                "shares_bought": shares_bought,
-                "total_shares_now": round(self.etf_shares, 4),
-                "portfolio_nav_usd": round(self.cash_balance + (self.etf_shares * etf_price), 2)
-            }
-            self.history.append(cycle_record)
-            self.save_state()
-            return cycle_record
+        exp_date = (datetime.now() + timedelta(days=target_dte)).strftime("%Y-%m-%d")
+        new_put_pos = {
+            "id": f"WHEEL_RECOVERY_PUT_{int(datetime.now().timestamp())}",
+            "ticker": f"{etf_symbol}_PUT_{new_strike:.1f}_{target_dte}DTE",
+            "symbol": etf_symbol,
+            "strategy_type": "ASSIGNMENT_RECOVERY_PUT_6_8_WEEKS",
+            "underlying_price": etf_price,
+            "strike": new_strike,
+            "contracts": contracts,
+            "premium_collected_usd": income_usd,
+            "issued_date": timestamp(),
+            "expiration_date": exp_date,
+            "target_dte": target_dte,
+            "status": "ACTIVE_RECOVERY",
+            "note": reason_strike
+        }
+        self.wheel_positions = [new_put_pos]
+
+        record = {
+            "timestamp": timestamp(),
+            "type": "ASSIGNMENT_RESET_6_8_WEEKS",
+            "symbol": etf_symbol,
+            "stock_sold_price": etf_price,
+            "shares_sold": assigned_shares,
+            "cash_freed_usd": sale_proceeds,
+            "new_put_strike": new_strike,
+            "new_put_dte": target_dte,
+            "premium_collected_usd": income_usd,
+            "note": reason_strike,
+            "status": "ACTIVE_RECOVERY"
+        }
+        self.history.append(record)
+        self.save_state()
+
+        log_msg("ASSIGNMENT_NEW_PUT", f"🛡️ 2. Venta Simultánea de Put {contracts}x {etf_symbol} K=${new_strike} ({target_dte} DTE). Prima: +${income_usd} USD. {reason_strike}")
+        return record
 
     def auto_check_and_run_cycle(self):
         """Verifica automáticamente el ciclo y aplica reglas institucionales de Auto-Roleo defensivo"""

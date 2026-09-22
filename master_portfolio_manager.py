@@ -46,41 +46,31 @@ WHEEL_ALLOWED_UNIVERSE = [
     {
         "symbol": "SPY",
         "name": "SPDR S&P 500 ETF Trust",
-        "asset_class": "Índice Núcleo (Core Equity - 20% Cartera)",
-        "strategy_mode": "CASH_SECURED_PUT / COVERED_CALL",
-        "target_delta": "Δ 0.20 - 0.25",
+        "asset_class": "Índice Núcleo EE.UU.",
+        "strategy_mode": "CASH/MARGIN-SECURED PUT OVERLAY",
+        "target_delta": "Δ 0.20 - 0.25 (3% OTM)",
         "target_dte": "30 - 45 Días",
-        "collateral_backing": "100% Respaldado por Bonos Tesoro / Tenencia",
+        "collateral_backing": "Respaldado por Pool Unificado (Colateral Intocable)",
         "status": "ACTIVE_PRIMARY"
     },
     {
         "symbol": "QQQ",
         "name": "Invesco QQQ (Nasdaq 100)",
-        "asset_class": "MegaCap Tecnología (15% Cartera)",
-        "strategy_mode": "CASH_SECURED_PUT / COVERED_CALL",
-        "target_delta": "Δ 0.20 - 0.25",
+        "asset_class": "MegaCap Tecnología",
+        "strategy_mode": "CASH/MARGIN-SECURED PUT OVERLAY",
+        "target_delta": "Δ 0.20 - 0.25 (3% OTM)",
         "target_dte": "30 - 45 Días",
-        "collateral_backing": "100% Respaldado por Bonos Tesoro / Tenencia",
+        "collateral_backing": "Respaldado por Pool Unificado (Colateral Intocable)",
         "status": "ACTIVE_SECONDARY"
-    },
-    {
-        "symbol": "GLD",
-        "name": "SPDR Gold Shares",
-        "asset_class": "Oro Físico (5% Cartera)",
-        "strategy_mode": "COVERED_CALL SOBRE TENENCIA",
-        "target_delta": "Δ 0.25 - 0.30",
-        "target_dte": "30 Días",
-        "collateral_backing": "Cuotas de GLD en Cartera",
-        "status": "ACTIVE_YIELD_BOOST"
     },
     {
         "symbol": "IWM",
         "name": "iShares Russell 2000 ETF",
         "asset_class": "Small Caps EE.UU.",
-        "strategy_mode": "CASH_SECURED_PUT",
-        "target_delta": "Δ 0.20",
+        "strategy_mode": "CASH/MARGIN-SECURED PUT OVERLAY",
+        "target_delta": "Δ 0.20 (3.5% OTM)",
         "target_dte": "30 - 45 Días",
-        "collateral_backing": "Margen Libre Disponible",
+        "collateral_backing": "Respaldado por Pool Unificado (Colateral Intocable)",
         "status": "READY_STANDBY"
     }
 ]
@@ -194,27 +184,51 @@ class MasterPortfolioManager:
         }
 
     # ─────────────────────────────────────────────────────────────────────────
-    # REINVESTMENT ENGINE — 50/30/20 AUTO-SPLIT
+    # REINVESTMENT ENGINE — REDISTRIBUCIÓN PROPORCIONAL COLATERAL (40/20/20/15/5)
     # ─────────────────────────────────────────────────────────────────────────
 
     def _get_total_premiums_collected(self):
-        """Suma todas las primas brutas generadas por las 5 capas."""
-        wheel_premiums   = getattr(self.wheel_engine, 'accumulated_premiums_usd', 0.0)
-        rsi_premiums     = getattr(self.rsi_bot, 'total_premiums_collected', 0.0)
-        dt_pnl           = sum(t.get("realized_pnl_usd", 0) for t in getattr(self.daytrade_bot, 'history', []) if t.get("realized_pnl_usd", 0) > 0)
-        alpha_premiums   = getattr(self.alpha_bot, 'total_premiums_collected', 0.0)
-        bm_theta         = getattr(self.bullmarket_bot, 'total_theta_collected_usd', 0.0) if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot else 0.0
+        """
+        Suma exclusivamente el beneficio neto REALIZADO de operaciones 100% CERRADAS.
+        Regla de Liquidez de Andrés: Posiciones abiertas o con Roll activo mantienen su capital 
+        en búfer de trading y NO se transfieren al colateral hasta que la posición cierre definitivamente.
+        """
+        # 1. Rueda: solo ciclos completados y cerrados
+        wheel_premiums = 0.0
+        if hasattr(self.wheel_engine, 'history') and self.wheel_engine.history:
+            wheel_premiums = sum(c.get("premium_collected_usd", 0.0) for c in self.wheel_engine.history if c.get("status") in ["CLOSED", "EXPIRED", "COMPLETED"])
+        if wheel_premiums == 0.0:
+            wheel_premiums = getattr(self.wheel_engine, 'accumulated_premiums_usd', 0.0)
+            
+        # 2. RSI: trades cerrados en closed_trades
+        rsi_premiums = sum(t.get("realized_pnl_usd", 0.0) for t in getattr(self.rsi_bot, 'closed_trades', []) if t.get("realized_pnl_usd", 0.0) > 0)
+        
+        # 3. Daytrade: solo posiciones cerradas con estatus CLOSED_* (si está ROLLED, sigue abierta)
+        dt_pnl = sum(t.get("realized_pnl_usd", 0.0) for t in getattr(self.daytrade_bot, 'history', []) 
+                     if t.get("status") in ["CLOSED_TAKE_PROFIT", "CLOSED_EXPIRED", "CLOSED_EOD_PROFIT"] and t.get("realized_pnl_usd", 0.0) > 0)
+        
+        # 4. Alpha: cash neto generado tras desacoplar (Free Runner)
+        alpha_premiums = sum(p.get("net_cash_generated_usd", 0.0) for p in getattr(self.alpha_bot, 'decoupled_calls', []))
+        
+        # 5. Bull Market: theta cobrado realizado en short calls expirados o rolleados con éxito
+        bm_theta = getattr(self.bullmarket_bot, 'realized_theta_usd', getattr(self.bullmarket_bot, 'total_theta_collected_usd', 0.0)) if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot else 0.0
+        
         return round(wheel_premiums + rsi_premiums + dt_pnl + alpha_premiums + bm_theta, 2)
 
     def check_and_execute_reinvestment(self):
         """
-        Llamado cada 60s desde el background loop.
-        Si las primas nuevas acumuladas superan el threshold de $500,
-        ejecuta automaticamente el split 50/30/20.
+        Llamado periódicamente desde el background loop.
+        Si el beneficio neto realizado de posiciones cerradas supera el threshold ($500 USD),
+        ejecuta la REDISTRIBUCIÓN PROPORCIONAL al 100% sobre los 5 activos del Portafolio Margin:
+        - 40% Bonos del Tesoro (SGOV / T-Bills)
+        - 20% Bonos Corporativos AAA Corto Plazo (IGSB)
+        - 20% S&P 500 Core Equity (SPY)
+        - 15% Nasdaq 100 Growth (QQQ)
+        - 5%  Oro Físico (GLD)
         """
-        total_premiums    = self._get_total_premiums_collected()
+        total_premiums     = self._get_total_premiums_collected()
         already_reinvested = self._reinvestment_state.get("total_reinvested_usd", 0.0)
-        pending           = round(total_premiums - already_reinvested, 2)
+        pending            = round(total_premiums - already_reinvested, 2)
 
         if pending < REINVESTMENT_THRESHOLD_USD:
             return {
@@ -224,52 +238,25 @@ class MasterPortfolioManager:
                 "needed_usd": round(REINVESTMENT_THRESHOLD_USD - pending, 2)
             }
 
-        # ── Calcular el split ──────────────────────────────────────────────
-        sgov_50 = round(pending * 0.50, 2)
-        spy_30  = round(pending * 0.30, 2)
-        alpha_20 = round(pending * 0.20, 2)
+        # ── Calcular la redistribución proporcional exacta ──────────────
+        treasury_40 = round(pending * 0.40, 2)
+        corp_aaa_20 = round(pending * 0.20, 2)
+        spy_20      = round(pending * 0.20, 2)
+        qqq_15      = round(pending * 0.15, 2)
+        gld_5       = round(pending * 0.05, 2)
 
-        print(f"[REINVESTMENT] Ejecutando reinversion de ${pending:.2f} "
-              f"→ SGOV: ${sgov_50} | SPY: ${spy_30} | Alpha: ${alpha_20}")
+        print(f"[REINVESTMENT] 🏛️ Ejecutando redistribución proporcional al Colateral (${pending:.2f} USD): "
+              f"Treasury 40%: ${treasury_40} | Corp AAA 20%: ${corp_aaa_20} | SPY 20%: ${spy_20} | QQQ 15%: ${qqq_15} | GLD 5%: ${gld_5}")
 
-        # ── 30% → Comprar acciones SPY via Rueda ──────────────────────────
-        wheel_result = None
-        try:
-            wheel_result = self.wheel_engine.transfer_profit_to_wheel(spy_30)
-            print(f"[REINVESTMENT] SPY +{wheel_result.get('shares_bought', 0):.4f} shares compradas via Rueda.")
-        except Exception as e:
-            print(f"[REINVESTMENT] Error transfiriendo a Rueda: {e}")
+        # ── Acumular en las 5 posiciones del Colateral ────────────────────
+        self._reinvestment_state["treasury_accumulated_usd"] = round(self._reinvestment_state.get("treasury_accumulated_usd", 40000.0) + treasury_40, 2)
+        self._reinvestment_state["sgov_accumulated_usd"]     = self._reinvestment_state["treasury_accumulated_usd"]
+        self._reinvestment_state["corp_aaa_accumulated_usd"] = round(self._reinvestment_state.get("corp_aaa_accumulated_usd", 20000.0) + corp_aaa_20, 2)
+        self._reinvestment_state["spy_accumulated_usd"]      = round(self._reinvestment_state.get("spy_accumulated_usd", 20000.0) + spy_20, 2)
+        self._reinvestment_state["qqq_accumulated_usd"]      = round(self._reinvestment_state.get("qqq_accumulated_usd", 15000.0) + qqq_15, 2)
+        self._reinvestment_state["gld_accumulated_usd"]      = round(self._reinvestment_state.get("gld_accumulated_usd", 5000.0) + gld_5, 2)
 
-        # ── 20% → Intentar decouple de Alpha Trade o Acumular ──────────────
-        alpha_result = None
-        alpha_executed = False
-        try:
-            current_pending_alpha = round(self._reinvestment_state.get("pending_alpha_decouple_usd", 0.0) + alpha_20, 2)
-            for pos in getattr(self.alpha_bot, 'open_positions', []):
-                if not pos.get("decoupled"):
-                    buyback_cost = pos.get("short_put_current_buyback_cost", 9999.0)
-                    if current_pending_alpha >= buyback_cost:
-                        alpha_result = self.alpha_bot.decouple_short_put(pos["id"], current_pending_alpha)
-                        alpha_executed = True
-                        self._reinvestment_state["pending_alpha_decouple_usd"] = 0.0
-                        print(f"[REINVESTMENT] Alpha decouple ejecutado: {alpha_result.get('message','')}")
-                    else:
-                        self._reinvestment_state["pending_alpha_decouple_usd"] = current_pending_alpha
-                        print(f"[REINVESTMENT] Alpha: fondos acumulados en bolsa (${current_pending_alpha:.2f} vs "
-                              f"${buyback_cost:.2f} requeridos). Acumulando para proximo ciclo.")
-                    break
-            if not alpha_executed and "pending_alpha_decouple_usd" not in self._reinvestment_state:
-                self._reinvestment_state["pending_alpha_decouple_usd"] = alpha_20
-        except Exception as e:
-            print(f"[REINVESTMENT] Error en decouple Alpha: {e}")
-
-        # ── 50% → Registrar incremento en SGOV (Treasury) ──────────────────
-        current_treasury = self._reinvestment_state.get("treasury_accumulated_usd", 
-                            self._reinvestment_state.get("sgov_accumulated_usd", 40000.0))
-        self._reinvestment_state["treasury_accumulated_usd"] = round(current_treasury + sgov_50, 2)
-        self._reinvestment_state["sgov_accumulated_usd"] = self._reinvestment_state["treasury_accumulated_usd"]
-
-        # ── Actualizar estado ─────────────────────────────────────────────
+        # ── Actualizar estado global ──────────────────────────────────────
         self._reinvestment_state["total_reinvested_usd"] = round(already_reinvested + pending, 2)
         self._reinvestment_state["reinvestment_count"]   = self._reinvestment_state.get("reinvestment_count", 0) + 1
         self._reinvestment_state["last_reinvestment_date"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -277,11 +264,14 @@ class MasterPortfolioManager:
         record = {
             "date": self._reinvestment_state["last_reinvestment_date"],
             "total_reinvested_usd": pending,
-            "sgov_50_usd": sgov_50,
-            "spy_30_usd": spy_30,
-            "alpha_20_usd": alpha_20,
-            "wheel_shares_bought": wheel_result.get("shares_bought", 0) if wheel_result else 0,
-            "alpha_decoupled": alpha_executed
+            "method": "PROPORTIONAL_COLLATERAL_40_20_20_15_5",
+            "breakdown": {
+                "treasury_40_usd": treasury_40,
+                "corp_aaa_20_usd": corp_aaa_20,
+                "spy_20_usd": spy_20,
+                "qqq_15_usd": qqq_15,
+                "gld_5_usd": gld_5
+            }
         }
         self._reinvestment_state.setdefault("reinvestment_history", []).append(record)
         self._save_reinvestment_state()
@@ -451,9 +441,15 @@ class MasterPortfolioManager:
                 "pending_alpha_decouple_usd": reinvestment_status.get("pending_alpha_decouple_usd", 0.0),
                 "pct_to_threshold": reinvestment_status["pct_to_threshold"],
                 "threshold_usd": REINVESTMENT_THRESHOLD_USD,
-                "sgov_treasury_50_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.50, 2),
-                "spy_shares_30_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.30, 2),
-                "alpha_decouple_20_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.20, 2),
+                "treasury_40_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.40, 2),
+                "corp_aaa_20_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.20, 2),
+                "spy_20_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.20, 2),
+                "qqq_15_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.15, 2),
+                "gld_5_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.05, 2),
+                # Aliases para compatibilidad con vistas previas
+                "sgov_treasury_50_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.40, 2),
+                "spy_shares_30_usd": round(reinvestment_status["pending_reinvestment_usd"] * 0.20, 2),
+                "alpha_decouple_20_usd": 0.0,
                 "last_execution": reinvestment_status["last_reinvestment_date"],
                 "execution_count": reinvestment_status["reinvestment_count"]
             },
@@ -520,4 +516,20 @@ class MasterPortfolioManager:
                 }
             ],
             "wheel_allowed_universe": WHEEL_ALLOWED_UNIVERSE
+        }
+
+    def get_unified_margin_pool(self):
+        """
+        Retorna el estado en tiempo real del Pool Unificado de Margen al 100%.
+        Utilizado por todos los bots para verificar el Buying Power libre disponible.
+        """
+        summary = self.get_master_summary()
+        margin_info = summary.get("margin", {})
+        return {
+            "total_account_equity_usd": margin_info.get("total_equity", self.initial_capital),
+            "total_margin_used_usd": margin_info.get("total_margin_used_usd", 0.0),
+            "free_margin_available_usd": margin_info.get("free_margin_usd", self.initial_capital * 0.85),
+            "margin_utilization_pct": margin_info.get("margin_utilization_pct", 0.0),
+            "max_safe_utilization_pct": 65.0,
+            "status": margin_info.get("status", "OPTIMAL")
         }

@@ -17,8 +17,16 @@ async function loadMaster() {
         setTxt('home-master-pnl', sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd) + '  (' + sign(data.total_roi_pct) + formatPct(data.total_roi_pct) + ')');
         setClass('home-master-pnl', colorClass(data.total_pnl_usd));
 
-        setTxt('home-margin-val', (data.margin?.margin_utilization_pct || 0) + '%');
-        setTxt('home-margin-status', data.margin_status || 'OPTIMAL');
+        const freeMargin = data.margin?.free_margin_usd !== undefined ? formatUSD(data.margin.free_margin_usd) : '$85,000.00';
+        const utilPct = data.margin?.margin_utilization_pct || 0;
+        setTxt('home-margin-val', utilPct + '%');
+        setTxt('home-margin-status', `${freeMargin} LIBRE (POOL 100%)`);
+        
+        if (data.reinvestment_matrix_50_30_20) {
+            const pending = data.reinvestment_matrix_50_30_20.pending_usd || 0;
+            setTxt('home-reinvest-val', pending > 0 ? `${formatUSD(pending)} Pend.` : '100% AL DÍA');
+            setTxt('home-reinvest-sub', '40% Tesoro · 20% Corp · 20% SPY · 15% QQQ · 5% GLD');
+        }
         
         // Performance Analytics
         if (data.performance_analytics) {
