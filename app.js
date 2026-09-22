@@ -98,45 +98,111 @@ function formatDurationStr(entryTime, exitTime, isOpen) {
 
 function render15MetricsRow(p, isOpen = false) {
     const ticker = p.symbol || p.ticker || 'SPY';
-    const optionType = p.option_type || p.type || p.strategy_mode || p.strategy_type || (p.strategy && p.strategy.includes('CALL') ? 'CALL' : (p.strategy && p.strategy.includes('PUT') ? 'PUT' : 'SINTÉTICO'));
+    const isDecoupled = p.decoupled || p.status === 'RISK_FREE_LONG_CALL' || p.status === 'FREE_RUNNER_LONG_CALL';
+    
+    let optionType = p.option_type || p.type || p.strategy_mode || p.strategy_type;
+    if (!optionType) {
+        if (isDecoupled) optionType = 'LONG CALL (RISK-FREE)';
+        else if (p.short_put_strike && p.long_call_strike) optionType = 'SINTÉTICO ZERO-COST';
+        else if (p.strategy && p.strategy.includes('CALL')) optionType = 'CALL';
+        else if (p.strategy && p.strategy.includes('PUT')) optionType = 'PUT';
+        else optionType = 'OPCIÓN';
+    }
     
     let strike = '-';
     if (p.strike !== undefined && p.strike !== null) strike = `$${p.strike}`;
     else if (p.put_strike !== undefined && p.put_strike !== null) strike = `P$${p.put_strike}`;
     else if (p.short_put_strike !== undefined || p.long_call_strike !== undefined) {
-        strike = `P$${p.short_put_strike || '-'}/C$${p.long_call_strike || '-'}`;
+        if (isDecoupled) {
+            strike = `C$${p.long_call_strike || '-'} <span style="font-size:10px;color:var(--accent-green);">(Put P$${p.short_put_strike || '-'} Cerrado)</span>`;
+        } else {
+            strike = `P$${p.short_put_strike || '-'}/C$${p.long_call_strike || '-'}`;
+        }
     }
     
     const dteVal = p.dte !== undefined ? p.dte : (p.target_dte || 30);
-    const dteStr = p.expiration_date ? `${p.expiration_date} (${dteVal}d)` : `${dteVal} DTE`;
-    const contractsNum = p.contracts || p.short_put_contracts || p.long_call_contracts || 1;
-    const contracts = contractsNum + 'x';
-    
     const entryTime = p.entry_time || p.entry_date || p.issued_date || p.timestamp || '-';
+    
+    // 1. Vencimiento: Fecha exacta (YYYY-MM-DD)
+    let expDateStr = p.expiration_date;
+    if (!expDateStr && entryTime && entryTime !== '-') {
+        try {
+            const d = new Date(entryTime.replace(' ', 'T'));
+            if (!isNaN(d.getTime())) {
+                d.setDate(d.getDate() + (dteVal || 30));
+                expDateStr = d.toISOString().split('T')[0];
+            }
+        } catch(e) { expDateStr = null; }
+    }
+    const dteStr = expDateStr ? `<strong>${expDateStr}</strong> <span style="font-size:11px;opacity:0.75;">(${dteVal}d)</span>` : `${dteVal} DTE`;
+    
+    // 2. Contratos Abiertos Residuaes
+    const contractsNum = p.contracts || p.long_call_contracts || p.short_put_contracts || 1;
+    const contracts = isDecoupled ? `${contractsNum}x Long Call` : `${contractsNum}x`;
+    
     const entryUnderlying = p.underlying_price_at_entry || p.entry_underlying_price || p.underlying_price || p.etf_price || p.entry_price || 0;
     
-    let entryPremium = 0;
-    if (p.entry_premium !== undefined) entryPremium = p.entry_premium;
-    else if (p.premium_per_share !== undefined) entryPremium = p.premium_per_share;
-    else if (p.short_put_premium_collected) entryPremium = p.short_put_premium_collected / (contractsNum * 100);
-    else if (p.premium_collected_usd) entryPremium = p.premium_collected_usd / (contractsNum * 100);
-    
+    // 3. Prima Entrada Especifica (Put Cobrado vs Call Pagado)
+    let entryPremiumStr = '';
     let netIncomeEntry = 0;
-    if (p.premium_collected_usd !== undefined) netIncomeEntry = p.premium_collected_usd;
-    else if (p.short_put_premium_collected !== undefined) netIncomeEntry = p.short_put_premium_collected;
-    else netIncomeEntry = entryPremium * 100 * contractsNum;
     
-    const exitTime = isOpen ? '<span class="text-green">🟢 EN CURSO</span>' : (p.exit_time || p.exit_date || p.timestamp || '-');
-    const exitUnderlying = isOpen ? (p.current_underlying_price || p.underlying_price || p.etf_price || 0) : (p.exit_underlying_price || p.exit_price || p.underlying_price || p.etf_price || 0);
-    const exitPremium = isOpen ? (p.current_premium || p.curr_prem_per_share || 0) : (p.exit_premium !== undefined ? p.exit_premium : 0);
-    
-    let netCostExit = 0;
-    if (isOpen) {
-        netCostExit = (p.short_put_current_buyback_cost !== undefined) ? p.short_put_current_buyback_cost : (exitPremium * 100 * contractsNum);
+    if (p.short_put_premium_collected !== undefined && p.long_call_premium_paid !== undefined) {
+        const putPremPerShare = (p.short_put_premium_collected / (contractsNum * 100)).toFixed(2);
+        const callPremPerShare = (p.long_call_premium_paid / (contractsNum * 100)).toFixed(2);
+        entryPremiumStr = `<span class="text-green">P:+$${putPremPerShare}</span> | <span class="text-red">C:-$${callPremPerShare}</span>`;
+        netIncomeEntry = 0; // Costo cero neto
     } else {
-        netCostExit = (p.decouple_cost_paid_usd !== undefined) ? p.decouple_cost_paid_usd : (p.exit_cost_usd !== undefined ? p.exit_cost_usd : (exitPremium * 100 * contractsNum));
+        let entryPremium = 0;
+        if (p.entry_premium !== undefined) entryPremium = p.entry_premium;
+        else if (p.premium_per_share !== undefined) entryPremium = p.premium_per_share;
+        else if (p.premium_collected_usd) entryPremium = p.premium_collected_usd / (contractsNum * 100);
+        
+        entryPremiumStr = formatUSD(entryPremium);
+        netIncomeEntry = p.premium_collected_usd !== undefined ? p.premium_collected_usd : (entryPremium * 100 * contractsNum);
     }
     
+    const netIncomeEntryStr = (p.short_put_premium_collected !== undefined && p.long_call_premium_paid !== undefined) ? '$0.00 (Costo Cero)' : `+${formatUSD(netIncomeEntry)}`;
+    
+    // 4. Detalle Especifico de Cierre/Desacople por Partes
+    let exitTimeStr = '-';
+    if (isOpen) {
+        if (isDecoupled && p.decouple_date) {
+            exitTimeStr = `<span class="text-green">🟢 EN CURSO</span><br/><span style="font-size:10px;opacity:0.8;">Desacople Put: ${p.decouple_date}</span>`;
+        } else {
+            exitTimeStr = '<span class="text-green">🟢 EN CURSO</span>';
+        }
+    } else {
+        exitTimeStr = p.exit_time || p.exit_date || p.decouple_date || p.timestamp || '-';
+    }
+    
+    const exitUnderlying = isOpen ? (p.current_underlying_price || p.underlying_price || p.etf_price || 0) : (p.exit_underlying_price || p.exit_price || p.underlying_price || p.etf_price || 0);
+    
+    // Prima Salida / Valor Actual de la parte Long Abierta
+    let exitPremiumStr = '-';
+    if (isOpen) {
+        if (p.unrealized_pnl_usd !== undefined && contractsNum > 0) {
+            const callValPerShare = p.unrealized_pnl_usd / (contractsNum * 100);
+            exitPremiumStr = `${formatUSD(callValPerShare)} / sh`;
+        } else {
+            exitPremiumStr = formatUSD(p.current_premium || p.curr_prem_per_share || 0);
+        }
+    } else {
+        exitPremiumStr = formatUSD(p.exit_premium || 0);
+    }
+    
+    // Costo Neto de Salida / Recompra Put
+    let netCostExitStr = '-';
+    if (p.decouple_cost_paid_usd !== undefined) {
+        netCostExitStr = `${formatUSD(p.decouple_cost_paid_usd)} <span style="font-size:10px;color:var(--primary-red);">(Recompra Put)</span>`;
+    } else if (isOpen) {
+        const buyback = p.short_put_current_buyback_cost !== undefined ? p.short_put_current_buyback_cost : 0;
+        netCostExitStr = buyback > 0 ? `${formatUSD(buyback)} (Buyback Put)` : '$0.00 (Libre Riesgo)';
+    } else {
+        const exitCost = p.exit_cost_usd !== undefined ? p.exit_cost_usd : 0;
+        netCostExitStr = formatUSD(exitCost);
+    }
+    
+    // Neto Operación & ROI
     let netPnl = 0;
     if (p.final_pnl_usd !== undefined) netPnl = p.final_pnl_usd;
     else if (p.unrealized_pnl_usd !== undefined) netPnl = p.unrealized_pnl_usd;
@@ -149,23 +215,24 @@ function render15MetricsRow(p, isOpen = false) {
     else if (p.pnl_pct !== undefined) roiPct = p.pnl_pct;
     else if (netIncomeEntry > 0) roiPct = (netPnl / netIncomeEntry) * 100;
     
-    const netDuration = formatDurationStr(entryTime, p.exit_time || p.exit_date, isOpen);
+    const pnlNote = isDecoupled ? ' (100% Risk-Free)' : '';
+    const netDuration = formatDurationStr(entryTime, p.exit_time || p.exit_date || p.decouple_date, isOpen);
     
     return `<tr>
         <td><strong>${ticker}</strong></td>
         <td><span style="color:var(--accent-blue);font-weight:600;">${optionType}</span></td>
         <td>${strike}</td>
         <td>${dteStr}</td>
-        <td>${contracts}</td>
+        <td><strong>${contracts}</strong></td>
         <td>${entryTime}</td>
         <td>${formatUSD(entryUnderlying)}</td>
-        <td>${formatUSD(entryPremium)}</td>
-        <td class="text-green">+${formatUSD(netIncomeEntry)}</td>
-        <td>${exitTime}</td>
+        <td>${entryPremiumStr}</td>
+        <td class="text-green">${netIncomeEntryStr}</td>
+        <td>${exitTimeStr}</td>
         <td>${formatUSD(exitUnderlying)}</td>
-        <td>${formatUSD(exitPremium)}</td>
-        <td class="text-red">${formatUSD(netCostExit)}</td>
-        <td class="${colorClass(netPnl)}"><strong>${sign(netPnl)}${formatUSD(netPnl)} (${sign(roiPct)}${formatPct(roiPct)})</strong></td>
+        <td class="text-green"><strong>${exitPremiumStr}</strong></td>
+        <td>${netCostExitStr}</td>
+        <td class="${colorClass(netPnl)}"><strong>${sign(netPnl)}${formatUSD(netPnl)}${pnlNote}</strong></td>
         <td>${netDuration}</td>
     </tr>`;
 }
