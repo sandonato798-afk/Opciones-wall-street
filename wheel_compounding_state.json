@@ -1,10 +1,10 @@
 {
-  "last_update": "2026-09-21 23:07:23",
+  "last_update": "2026-09-22 13:43:37",
   "initial_capital": 100000.0,
   "cash_balance": 100000.0,
-  "etf_shares": 0.7576,
+  "etf_shares": 0.9851,
   "accumulated_premiums_usd": 586.0,
-  "total_reinvested_usd": 586.0,
+  "total_reinvested_usd": 761.8,
   "wheel_positions": [
     {
       "id": "WHEEL_CSP_1790042843",
