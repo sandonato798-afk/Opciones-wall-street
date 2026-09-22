@@ -234,3 +234,64 @@ body {
 .btn-primary { background: var(--primary-red); color: white; }
 .btn-secondary { background: var(--steel-blue); color: white; }
 
+/* Alpha Matrix Audited Table */
+.alpha-matrix-table {
+    width: 100%;
+    margin-bottom: 25px;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.4);
+    border-collapse: collapse;
+}
+.alpha-matrix-table th {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--card-border);
+}
+.alpha-matrix-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 11.5px;
+}
+.alpha-matrix-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+.alpha-matrix-table .section-divider td {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--accent-blue);
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.badge-short {
+    background: rgba(0, 210, 255, 0.15);
+    color: var(--accent-blue);
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 10.5px;
+}
+.badge-long {
+    background: rgba(0, 230, 118, 0.15);
+    color: var(--accent-green);
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 10.5px;
+}
+.badge-comb {
+    background: rgba(245, 158, 11, 0.15);
+    color: #F59E0B;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 10.5px;
+}
+

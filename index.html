@@ -254,36 +254,12 @@
                     <div class="card"><div class="card-title">PnL NO REALIZADO</div><div class="val" id="alpha-pnl">$0.00</div></div>
                 </div>
                 <div class="card">
-                    <div class="card-title">SINTÉTICOS ACTIVOS Y LONG CALLS (15 MÉTRICAS AUDITADAS)</div>
-                    <div class="table-responsive">
-                        <table class="data-table data-table-15">
-                            <thead>
-                                <tr>
-                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
-                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
-                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
-                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
-                                </tr>
-                            </thead>
-                            <tbody id="alpha-positions"></tbody>
-                        </table>
-                    </div>
+                    <div class="card-title">ESTRUCTURA DE SINTÉTICOS ACTIVOS Y LONG CALLS (POSICIÓN SHORT | POSICIÓN LONG | COMBINADO)</div>
+                    <div class="table-responsive" id="alpha-positions"></div>
                 </div>
                 <div class="card" style="margin-top: 20px;">
-                    <div class="card-title">HISTORIAL DE SINTÉTICOS CERRADOS - ALPHA TRADE (15 MÉTRICAS AUDITADAS)</div>
-                    <div class="table-responsive">
-                        <table class="data-table data-table-15">
-                            <thead>
-                                <tr>
-                                    <th>TICKER</th><th>OPCIÓN</th><th>STRIKE</th><th>VENCIMIENTO</th><th>CONTRATOS</th>
-                                    <th>ENTRADA FECHA/HORA</th><th>UNDERLYING ENTRADA</th><th>PRIMA ENTRADA</th><th>NET INCOME ENTRADA</th>
-                                    <th>SALIDA FECHA/HORA</th><th>UNDERLYING SALIDA</th><th>PRIMA SALIDA</th><th>NET COST SALIDA</th>
-                                    <th>NETO OPERACIÓN</th><th>TIEMPO NETO</th>
-                                </tr>
-                            </thead>
-                            <tbody id="alpha-history"></tbody>
-                        </table>
-                    </div>
+                    <div class="card-title">HISTORIAL DE SINTÉTICOS CERRADOS - ALPHA TRADE (ESTRUCTURA AUDITADA)</div>
+                    <div class="table-responsive" id="alpha-history"></div>
                 </div>
             </section>
 
@@ -382,6 +358,6 @@
             </section>
         </main>
     </div>
-    <script src="app.js?v=29.0"></script>
+    <script src="app.js?v=30.0"></script>
 </body>
 </html>
