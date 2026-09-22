@@ -380,6 +380,7 @@ class AlphaTradeBot:
 
         if changed:
             self.save_state()
+            self.monitor_and_auto_decouple()
 
     def get_status(self):
         active_synthetics = [p for p in self.open_positions if not p.get("decoupled")]
