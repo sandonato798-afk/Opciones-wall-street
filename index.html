@@ -30,6 +30,7 @@
                 <button class="tab-btn" data-tab="tab-alpha">ALPHA</button>
                 <button class="tab-btn" data-tab="tab-rsi">RSI</button>
                 <button class="tab-btn" data-tab="tab-daytrade">DAYTRADING</button>
+                <button class="tab-btn" data-tab="tab-bullmarket">BULL MARKET</button>
             </nav>
         </aside>
 
@@ -40,7 +41,7 @@
                     <h2>PORTFOLIO OVERVIEW</h2>
                 </div>
                 
-                <div class="grid-5">
+                <div class="grid-6">
                     <div class="card master-card">
                         <div class="card-title">MASTER NAV (Valor Neto)</div>
                         <div class="val" id="home-master-nav">$0.00</div>
@@ -72,7 +73,7 @@
                         </div>
                     </div>
                     <div class="card" onclick="showTab('tab-rsi')" style="cursor:pointer;">
-                        <div class="card-title">CAPA 3: RSI (20%)</div>
+                        <div class="card-title">CAPA 3: RSI (25%)</div>
                         <div class="val" id="home-c4-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c4-pnl" style="margin:0;">+$0.00</div>
@@ -80,11 +81,19 @@
                         </div>
                     </div>
                     <div class="card" onclick="showTab('tab-daytrade')" style="cursor:pointer;">
-                        <div class="card-title">CAPA 4: DAYTRADING (10%)</div>
+                        <div class="card-title">CAPA 4: DAYTRADING (15%)</div>
                         <div class="val" id="home-c5-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c5-pnl" style="margin:0;">+$0.00</div>
                             <div class="status-dot" style="font-size: 11px; opacity: 0.8;" id="health-daytrade"><span class="dot green"></span> ---</div>
+                        </div>
+                    </div>
+                    <div class="card" onclick="showTab('tab-bullmarket')" style="cursor:pointer;">
+                        <div class="card-title">CAPA 5: BULL MARKET (PMCC)</div>
+                        <div class="val text-green" id="home-c6-nav">$0.00</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                            <div class="sub" id="home-c6-pnl" style="margin:0;">+$0.00</div>
+                            <div class="status-dot" style="font-size: 11px; opacity: 0.8;" id="health-bullmarket"><span class="dot green"></span> ---</div>
                         </div>
                     </div>
                 </div>
@@ -356,8 +365,50 @@
                     </div>
                 </div>
             </section>
+
+            <!-- TAB: BULL MARKET (PMCC) -->
+            <section id="tab-bullmarket" class="tab-content">
+                <div class="header-section">
+                    <h2>CAPA 5: BULL MARKET — POOR MAN'S COVERED CALL (PMCC DIAGONAL SPREAD)</h2>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-secondary" onclick="runBullMarketRoll()">ROLLEAR SHORT CALL SEMANAL</button>
+                        <button class="btn btn-primary" onclick="openBullMarketPMCC()">ABRIR NUEVO PMCC</button>
+                    </div>
+                </div>
+                <div class="grid-4">
+                    <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="bm-cap">$15,000.00</div></div>
+                    <div class="card"><div class="card-title">VALOR LONG CALLS ITM</div><div class="val text-green" id="bm-long-val">$0.00</div></div>
+                    <div class="card"><div class="card-title">THETA SEMANAL COBRADO</div><div class="val text-green" id="bm-theta-val">+$0.00</div></div>
+                    <div class="card"><div class="card-title">PnL TOTAL ACUMULADO</div><div class="val text-green" id="bm-pnl">$0.00</div></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">ESTRUCTURA DE SPREAD DIAGONAL ALCISTA (PATA LONG ITM Δ 0.80 | PATA SHORT SEMANAL Δ 0.20 | COMBINADO)</div>
+                    <div class="table-responsive" id="bullmarket-positions"></div>
+                </div>
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-title">HISTORIAL DE ROLLEOS SEMANALES Y CICLOS DE THETA DECAY (EXTRACCIÓN DE RENTA)</div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>FECHA/HORA ROLLEO</th>
+                                    <th>TICKER</th>
+                                    <th>CICLO SEMANAL</th>
+                                    <th>STRIKE SHORT CALL</th>
+                                    <th>VENCIMIENTO</th>
+                                    <th>PRIMA RECIBIDA</th>
+                                    <th>RECOMPRA PAGADA</th>
+                                    <th>THETA NETO GANADO</th>
+                                    <th>ESTADO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bullmarket-rolls-history"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
-    <script src="app.js?v=30.0"></script>
+    <script src="app.js?v=31.0"></script>
 </body>
 </html>

@@ -1,6 +1,26 @@
 {
   "allocated_capital": 15000.0,
-  "active_trades": [],
+  "active_trades": [
+    {
+      "id": "DAY_ITM_PUT_1790097781",
+      "symbol": "SPY",
+      "option_ticker": "SPY PUT $780.9 1-DTE",
+      "strategy": "ITM_PUT_1DTE",
+      "entry_price": 773.12,
+      "strike": 780.9,
+      "contracts": 1,
+      "dte": 1,
+      "entry_premium": 8.19,
+      "premium_collected_usd": 819.0,
+      "total_cost_usd": 15618.0,
+      "take_profit_target_usd": 409.5,
+      "issued_date": "2026-09-22 14:23:01",
+      "entry_time": "2026-09-22 14:23:01",
+      "expiration_date": "2026-09-23",
+      "status": "ACTIVE",
+      "pnl_usd": 0.0
+    }
+  ],
   "history": [],
-  "last_update": "2026-09-21 21:31:00"
+  "last_update": "2026-09-22 14:23:01"
 }

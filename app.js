@@ -53,7 +53,8 @@ async function refreshAllData() {
         loadWheel(),
         loadAlpha(),
         loadRsi(),
-        loadDaytrade()
+        loadDaytrade(),
+        loadBullMarket()
     ]);
 }
 
@@ -679,6 +680,11 @@ async function loadMaster() {
                     setTxt('home-c5-pnl', pnlTxt);
                     setClass('home-c5-pnl', pnlClass);
                 }
+                if(l.id === 'bullmarket') {
+                    setTxt('home-c6-nav', formatUSD(liveNav));
+                    setTxt('home-c6-pnl', pnlTxt);
+                    setClass('home-c6-pnl', pnlClass);
+                }
             });
         }
         
@@ -707,6 +713,7 @@ async function loadMaster() {
             updateHealth('alpha', data.health_pings.alpha || 0);
             updateHealth('rsi', data.health_pings.rsi || 0);
             updateHealth('daytrade', data.health_pings.daytrade || 0);
+            updateHealth('bullmarket', data.health_pings.bullmarket || 0);
         }
     } catch(e) { console.error('Error loadMaster', e); }
 }
@@ -919,6 +926,262 @@ async function loadDaytrade() {
     } catch(e) { console.error('Error loadDaytrade', e); }
 }
 
+function renderBullMarketMatrixTable(p, isOpen = true) {
+    const symbol = p.symbol || 'SPY';
+    const entryDate = p.entry_date || '-';
+    const entryUnderlying = p.underlying_price_at_entry || 0;
+    const currentUnderlying = p.current_underlying_price || entryUnderlying;
+    const exitUnderlying = p.exit_underlying_price || currentUnderlying;
+    
+    // Contratos
+    const longContracts = p.long_call_contracts || p.contracts || 1;
+    const shortContracts = p.short_call_contracts || p.contracts || 1;
+    
+    // --- 1. PATA LONG (CALL ITM Δ 0.80) ---
+    const longStrike = p.long_call_strike !== undefined ? `$${p.long_call_strike}` : '-';
+    const longDte = p.long_call_initial_dte || 75;
+    const longExp = p.long_call_expiration || '-';
+    const longDelta = p.long_call_delta_entry ? `Δ ${p.long_call_delta_entry}` : 'Δ ~0.80';
+    const longContractsStr = `${longContracts}x (${longContracts * 100} acc sintéticas)`;
+    
+    const longPremPaid = p.long_call_premium_paid || 0;
+    const longPremShare = longContracts > 0 ? (longPremPaid / (longContracts * 100)) : 0;
+    const longCurrentVal = p.long_call_current_value_usd || longPremPaid;
+    const longUnrealized = p.long_call_unrealized_pnl_usd !== undefined ? p.long_call_unrealized_pnl_usd : (longCurrentVal - longPremPaid);
+    const longDuration = formatDurationStr(entryDate, isOpen ? null : p.exit_date, isOpen, longDte);
+    
+    // --- 2. PATA SHORT (CALL SEMANAL Δ 0.20) ---
+    const shortStrike = p.short_call_strike !== undefined ? `$${p.short_call_strike}` : '-';
+    const shortDte = p.short_call_dte !== undefined ? p.short_call_dte : 7;
+    const shortExp = p.short_call_expiration || '-';
+    const shortDelta = p.short_call_delta_entry ? `Δ ${p.short_call_delta_entry}` : 'Δ ~0.20';
+    const shortContractsStr = `${shortContracts}x (${shortContracts * 100} acc cubiertas)`;
+    
+    const shortPremCollected = p.short_call_premium_collected || 0;
+    const shortPremShare = shortContracts > 0 ? (shortPremCollected / (shortContracts * 100)) : 0;
+    const shortBuybackCost = p.short_call_current_buyback_cost || 0;
+    const shortCurrentGain = shortPremCollected - shortBuybackCost;
+    const thetaAccum = p.accumulated_theta_income_usd || 0;
+    const rollsCount = p.rolls_completed_count || 0;
+    const shortTotalGain = thetaAccum + (isOpen ? shortCurrentGain : 0);
+    
+    // --- 3. COMBINADO (SPREAD PMCC) ---
+    const netDebit = p.net_debit_paid_usd !== undefined ? p.net_debit_paid_usd : (longPremPaid - shortPremCollected);
+    const netDebitShare = longContracts > 0 ? (netDebit / (longContracts * 100)) : 0;
+    const breakEven = p.break_even_price || (p.long_call_strike + netDebit / 100.0);
+    const combTotalPnl = p.total_unrealized_pnl_usd !== undefined ? p.total_unrealized_pnl_usd : (longUnrealized + shortTotalGain);
+    
+    // Rows
+    let longExitTimeStr = isOpen ? '<span class="text-green">🟢 ACTIVA (En curso)</span>' : (p.exit_date || '-');
+    let shortExitTimeStr = isOpen ? `<span class="badge-short">🔄 ROLLEO SEMANAL #${rollsCount}</span>` : (p.exit_date || '-');
+    let combStatusStr = isOpen ? `<span class="badge-long">🟢 PMCC ACTIVO (Semana #${rollsCount + 1})</span>` : '<span style="color:var(--text-muted)">⚪ CERRADO</span>';
+    
+    let longExitPremStr = isOpen ? `+${formatUSD(longCurrentVal / (longContracts * 100))} / sh <span style="font-size:10px;opacity:0.8;">(Val. Flotante)</span>` : formatUSD(longCurrentVal / (longContracts * 100));
+    let shortExitPremStr = isOpen ? `-${formatUSD(shortBuybackCost / (shortContracts * 100))} / sh <span style="font-size:10px;opacity:0.8;">(Recompra Ciclo)</span>` : formatUSD(shortBuybackCost / (shortContracts * 100));
+    let combExitPremStr = isOpen ? `Break-Even: <strong>$${breakEven.toFixed(2)}</strong>` : '-';
+    
+    let longNetCostExitStr = isOpen ? `<span class="text-green">+${formatUSD(longCurrentVal)}</span> <span style="font-size:10px;opacity:0.8;">(Valor Liquidación)</span>` : formatUSD(longCurrentVal);
+    let shortNetCostExitStr = isOpen ? `<span class="text-red">-${formatUSD(shortBuybackCost)}</span> <span style="font-size:10px;opacity:0.8;">(Recompra Actual)</span>` : formatUSD(shortBuybackCost);
+    let combNetCostExitStr = isOpen ? `<span class="text-green"><strong>+${formatUSD(thetaAccum)}</strong></span> <span style="font-size:10px;opacity:0.8;">(Theta Rolleos Acumulados)</span>` : '-';
+
+    return `
+    <div class="card alpha-card-block" style="margin-bottom:25px;border:1px solid var(--card-border);background:rgba(15,23,42,0.6);border-radius:8px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px;">
+            <div style="font-size:14px;font-weight:bold;color:var(--text-white);">
+                <strong>${symbol}</strong> — POOR MAN’S COVERED CALL (ID: #${p.id || 'PMCC'})
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <span class="badge-long">🎯 DELTA LONG: ${longDelta}</span>
+                <span class="badge-short">⚡ DELTA SHORT: ${shortDelta}</span>
+                ${isOpen ? '<span class="badge-long">🟢 ACTIVO Y ROLLEANDO</span>' : '<span style="color:var(--text-muted)">⚪ CERRADO</span>'}
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table alpha-matrix-table">
+                <thead>
+                    <tr>
+                        <th style="width:28%;color:var(--ice-blue);">MÉTRICA AUDITADA</th>
+                        <th style="width:24%;color:var(--accent-green);background:rgba(0,230,118,0.08);border-left:1px solid rgba(0,230,118,0.2);">PATA LONG (CALL ITM Δ 0.80)</th>
+                        <th style="width:24%;color:var(--accent-blue);background:rgba(0,210,255,0.08);border-left:1px solid rgba(0,210,255,0.2);">PATA SHORT (CALL SEMANAL Δ 0.20)</th>
+                        <th style="width:24%;color:#F59E0B;background:rgba(245,158,11,0.08);border-left:1px solid rgba(245,158,11,0.2);">COMBINADO (SPREAD PMCC)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- 1. ESPECIFICACIÓN -->
+                    <tr class="section-divider"><td colspan="4">1. ESPECIFICACIÓN Y CONTRATOS</td></tr>
+                    <tr>
+                        <td><strong>ticker</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${symbol}</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${symbol}</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);color:var(--text-muted);"><strong>${symbol} (PMCC)</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>opcion</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><span class="badge-long">CALL ITM (Colateral Sintético)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><span class="badge-short">CALL OTM (Extracción Semanal)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><span class="badge-long">DIAGONAL SPREAD ALCISTA</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>strike</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${longStrike} <span style="font-size:11px;opacity:0.8;">(${longDelta})</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${shortStrike} <span style="font-size:11px;opacity:0.8;">(${shortDelta})</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">K-Long: ${longStrike} / K-Short: ${shortStrike}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>vencimiento</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${longExp}</strong> <span style="font-size:11px;opacity:0.75;">(${longDte} DTE)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${shortExp}</strong> <span style="font-size:11px;opacity:0.75;">(${shortDte} DTE)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">Diagonal (${shortDte}d vs ${longDte}d)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>cantidad de contratos</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${longContractsStr}</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${shortContractsStr}</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);color:var(--text-muted);">${longContracts} spread(s) PMCC</td>
+                    </tr>
+
+                    <!-- 2. APERTURA -->
+                    <tr class="section-divider"><td colspan="4">2. CONDICIONES DE APERTURA</td></tr>
+                    <tr>
+                        <td><strong>fecha y hora de apertura de la operación</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${entryDate}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${entryDate} <span style="font-size:10px;opacity:0.75;">(Ciclo #${rollsCount + 1})</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${entryDate}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>precio del underlying a la apertura</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${formatUSD(entryUnderlying)}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${formatUSD(entryUnderlying)}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${formatUSD(entryUnderlying)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>prima en la apertura</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${formatUSD(longPremShare)} / sh <span style="font-size:10px;color:var(--primary-red);">(Pagada)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${formatUSD(shortPremShare)} / sh <span style="font-size:10px;color:var(--accent-blue);">(Recibida Ciclo)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${formatUSD(netDebitShare)} / sh</strong> <span style="font-size:10.5px;opacity:0.8;">(Débito neto pagado por acción)</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>neto entrada</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);color:var(--primary-red);"><strong>-${formatUSD(longPremPaid)}</strong> <span style="font-size:10px;">(Costo Colateral Long)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);color:var(--accent-green);"><strong>+${formatUSD(shortPremCollected)}</strong> <span style="font-size:10px;">(Crédito Inicial Cobrado)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);color:var(--ice-blue);"><strong>-${formatUSD(netDebit)}</strong> <span style="font-size:10.5px;opacity:0.8;">(Inversión Neta Inicial PMCC)</span></td>
+                    </tr>
+
+                    <!-- 3. CIERRE / ESTATUS -->
+                    <tr class="section-divider"><td colspan="4">3. CIERRE Y ESTATUS OPERATIVO</td></tr>
+                    <tr>
+                        <td><strong>fecha y hora de cierre de la operación</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${longExitTimeStr}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${shortExitTimeStr}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${combStatusStr}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>precio del underlying al cierre</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${formatUSD(currentUnderlying)} <span style="font-size:10px;opacity:0.75;">(Spot)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${formatUSD(currentUnderlying)} <span style="font-size:10px;opacity:0.75;">(Spot)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${formatUSD(currentUnderlying)}</strong> <span style="font-size:10px;opacity:0.75;">(Spot)</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>prima al cerrar / valor actual</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${longExitPremStr}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${shortExitPremStr}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${combExitPremStr}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>neto para cerrar / valor actual</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${longNetCostExitStr}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${shortNetCostExitStr}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${combNetCostExitStr}</td>
+                    </tr>
+
+                    <!-- 4. BALANCE Y TIEMPO -->
+                    <tr class="section-divider"><td colspan="4">4. BALANCE FINAL Y TIEMPO DE OPERACIÓN</td></tr>
+                    <tr style="background:rgba(255,255,255,0.03);font-size:13px;">
+                        <td><strong>neto total de la operación</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);" class="${colorClass(longUnrealized)}"><strong>${sign(longUnrealized)}${formatUSD(longUnrealized)}</strong> <br/><span style="font-size:10px;opacity:0.75;">(Apreciación Long Sintética)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);" class="text-green"><strong>+${formatUSD(shortTotalGain)}</strong> <br/><span style="font-size:10px;opacity:0.75;">(Theta Rolleos + Ciclo Actual)</span></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);" class="${colorClass(combTotalPnl)}"><strong style="font-size:15px;">${sign(combTotalPnl)}${formatUSD(combTotalPnl)}</strong> <br/><span style="font-size:10px;opacity:0.75;">(Neto Total Acumulado PMCC)</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>tiempo neto de la operacion</strong></td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">${longDuration}</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);">Ciclo #${rollsCount + 1} (${shortDte} DTE restantes)</td>
+                        <td style="border-left:1px solid rgba(255,255,255,0.05);"><strong>${longDuration}</strong> <br/><span style="font-size:10px;opacity:0.75;">(${rollsCount} rolleo(s) completados)</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+async function loadBullMarket() {
+    try {
+        const res = await fetch('/api/bullmarket/status');
+        if(!res.ok) return;
+        const data = await res.json();
+        const allocCap = data.allocated_capital || 15000;
+        const totalPnl = data.total_pnl_usd || 0;
+        const totalTheta = data.total_theta_collected_usd || 0;
+        
+        let totalLongVal = 0;
+        if (data.open_diagonals && data.open_diagonals.length > 0) {
+            totalLongVal = data.open_diagonals.reduce((acc, d) => acc + (d.long_call_current_value_usd || d.long_call_premium_paid || 0), 0);
+        }
+        
+        setTxt('bm-cap', formatUSD(allocCap + totalPnl));
+        setTxt('bm-long-val', formatUSD(totalLongVal));
+        setTxt('bm-theta-val', '+' + formatUSD(totalTheta));
+        setTxt('bm-pnl', sign(totalPnl) + formatUSD(totalPnl));
+        setClass('bm-pnl', 'val ' + colorClass(totalPnl));
+
+        // 1. Posiciones PMCC Abiertas y Cerradas
+        const tbodyPos = document.getElementById('bullmarket-positions');
+        if (tbodyPos) {
+            tbodyPos.innerHTML = '';
+            let count = 0;
+            if(data.open_diagonals && data.open_diagonals.length > 0) {
+                data.open_diagonals.forEach(p => {
+                    tbodyPos.innerHTML += renderBullMarketMatrixTable(p, true);
+                    count++;
+                });
+            }
+            if(data.closed_diagonals && data.closed_diagonals.length > 0) {
+                data.closed_diagonals.forEach(p => {
+                    tbodyPos.innerHTML += renderBullMarketMatrixTable(p, false);
+                    count++;
+                });
+            }
+            if (count === 0) {
+                tbodyPos.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">No hay posiciones Poor Man’s Covered Call abiertas en este momento.</div>';
+            }
+        }
+
+        // 2. Historial de Rolleos Semanales
+        const tbodyRolls = document.getElementById('bullmarket-rolls-history');
+        if(tbodyRolls) {
+            tbodyRolls.innerHTML = '';
+            if(data.weekly_rolls_history && data.weekly_rolls_history.length > 0) {
+                data.weekly_rolls_history.slice().reverse().forEach(r => {
+                    tbodyRolls.innerHTML += `
+                    <tr>
+                        <td><strong>${r.roll_date || '-'}</strong></td>
+                        <td><strong>${r.symbol || 'SPY'}</strong></td>
+                        <td><span class="badge-short">Ciclo #${r.cycle_num || 1}</span></td>
+                        <td>$${r.short_strike || '-'}</td>
+                        <td>${r.expiration || '-'}</td>
+                        <td class="text-green">+${formatUSD(r.premium_collected_usd)}</td>
+                        <td class="text-red">-${formatUSD(r.recompra_paid_usd)}</td>
+                        <td class="text-green"><strong>+${formatUSD(r.net_theta_profit_usd)}</strong></td>
+                        <td><span class="badge-long">${r.status || 'ROLLED'}</span></td>
+                    </tr>`;
+                });
+            } else {
+                tbodyRolls.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No hay rolleos semanales registrados aún</td></tr>';
+            }
+        }
+    } catch(e) { console.error('Error loadBullMarket', e); }
+}
+
 // API Actions
 async function runWheelCycle() {
     fetch('/api/wheel/run-cycle', { method:'POST' }).then(() => refreshAllData());
@@ -937,3 +1200,16 @@ async function togglePaperLive() {
         body: JSON.stringify({mode: mode, broker: 'INTERACTIVE_BROKERS'})
     }).then(() => refreshAllData());
 }
+async function runBullMarketRoll() {
+    try {
+        await fetch('/api/bullmarket/roll', { method: 'POST' });
+        await refreshAllData();
+    } catch(e) { console.error('Error runBullMarketRoll', e); }
+}
+async function openBullMarketPMCC() {
+    try {
+        await fetch('/api/bullmarket/open', { method: 'POST' });
+        await refreshAllData();
+    } catch(e) { console.error('Error openBullMarketPMCC', e); }
+}
+

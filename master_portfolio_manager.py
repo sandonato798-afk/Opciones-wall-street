@@ -97,11 +97,12 @@ class MasterPortfolioManager:
       * 5% GLD Oro Físico
     - Motor de Reinversion Automatica: 50% SGOV / 30% SPY / 20% Alpha decouple
     """
-    def __init__(self, wheel_engine, alpha_bot, rsi_bot, daytrade_bot):
+    def __init__(self, wheel_engine, alpha_bot, rsi_bot, daytrade_bot, bullmarket_bot=None):
         self.wheel_engine = wheel_engine
         self.alpha_bot = alpha_bot
         self.rsi_bot = rsi_bot
         self.daytrade_bot = daytrade_bot
+        self.bullmarket_bot = bullmarket_bot
         self.initial_capital = INITIAL_MASTER_CAPITAL_USD
         self._reinvestment_state = self._load_reinvestment_state()
 
@@ -179,30 +180,31 @@ class MasterPortfolioManager:
                 "collateral_unlocked_usd": round(actual_usd * (1 - cfg["margin_req_pct"] / 100), 2)
             }
 
-        total_collateral_usd = sum(c["actual_usd"] for c in collateral.values())
-        total_unlocked_usd   = sum(c["collateral_unlocked_usd"] for c in collateral.values())
-        total_yield_annual   = sum(c["annual_yield_usd"] for c in collateral.values())
+        total_collateral_actual = sum(c["actual_usd"] for c in collateral.values())
+        total_annual_yield      = sum(c["annual_yield_usd"] for c in collateral.values())
+        total_unlocked_bp       = sum(c["collateral_unlocked_usd"] for c in collateral.values())
 
         return {
             "breakdown": collateral,
-            "total_collateral_usd": round(total_collateral_usd, 2),
-            "total_collateral_pct": round((total_collateral_usd / nav) * 100, 1) if nav > 0 else 100.0,
-            "total_unlocked_buying_power_usd": round(total_unlocked_usd, 2),
-            "total_annual_yield_usd": round(total_yield_annual, 2),
-            "total_monthly_yield_usd": round(total_yield_annual / 12, 2),
+            "total_collateral_usd": round(total_collateral_actual, 2),
+            "total_collateral_pct": round((total_collateral_actual / (nav or 1)) * 100, 1),
+            "total_unlocked_buying_power_usd": round(total_unlocked_bp, 2),
+            "total_annual_yield_usd": round(total_annual_yield, 2),
+            "total_monthly_yield_usd": round(total_annual_yield / 12, 2)
         }
 
     # ─────────────────────────────────────────────────────────────────────────
-    # AUTOMATIC REINVESTMENT ENGINE
+    # REINVESTMENT ENGINE — 50/30/20 AUTO-SPLIT
     # ─────────────────────────────────────────────────────────────────────────
 
     def _get_total_premiums_collected(self):
-        """Suma todas las primas brutas generadas por las 4 capas."""
+        """Suma todas las primas brutas generadas por las 5 capas."""
         wheel_premiums   = getattr(self.wheel_engine, 'accumulated_premiums_usd', 0.0)
         rsi_premiums     = getattr(self.rsi_bot, 'total_premiums_collected', 0.0)
         dt_pnl           = sum(t.get("realized_pnl_usd", 0) for t in getattr(self.daytrade_bot, 'history', []) if t.get("realized_pnl_usd", 0) > 0)
         alpha_premiums   = getattr(self.alpha_bot, 'total_premiums_collected', 0.0)
-        return round(wheel_premiums + rsi_premiums + dt_pnl + alpha_premiums, 2)
+        bm_theta         = getattr(self.bullmarket_bot, 'total_theta_collected_usd', 0.0) if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot else 0.0
+        return round(wheel_premiums + rsi_premiums + dt_pnl + alpha_premiums + bm_theta, 2)
 
     def check_and_execute_reinvestment(self):
         """
@@ -308,9 +310,11 @@ class MasterPortfolioManager:
     def get_master_summary(self):
         # 1. Refrescar estados
         self.wheel_engine.load_state()
-        if hasattr(self.alpha_bot, 'load_state'):   self.alpha_bot.load_state()
-        if hasattr(self.rsi_bot, 'load_state'):     self.rsi_bot.load_state()
+        if hasattr(self.alpha_bot, 'load_state'):       self.alpha_bot.load_state()
+        if hasattr(self.rsi_bot, 'load_state'):         self.rsi_bot.load_state()
         self.daytrade_bot.load_state()
+        if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot:
+            self.bullmarket_bot.load_state()
 
         # 2. Datos de Mercado
         spy_price = self.wheel_engine.fetch_etf_live_price("SPY")
@@ -336,8 +340,11 @@ class MasterPortfolioManager:
         if dt_stats["total"] > 0:
             dt_stats["win_rate"] = round(dt_stats["wins"] / dt_stats["total"] * 100, 1)
 
+        bm_status      = self.bullmarket_bot.get_status() if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot else {}
+        bm_pnl_usd     = bm_status.get("total_pnl_usd", 0.0)
+
         # 4. NAV Consolidado & Analiticas de Rendimiento
-        total_pnl_usd    = round(wheel_pnl_usd + alpha_pnl_usd + rsi_pnl_usd + dt_pnl_usd, 2)
+        total_pnl_usd    = round(wheel_pnl_usd + alpha_pnl_usd + rsi_pnl_usd + dt_pnl_usd + bm_pnl_usd, 2)
         consolidated_nav = round(self.initial_capital + total_pnl_usd, 2)
         total_roi_pct    = round((total_pnl_usd / self.initial_capital) * 100.0, 2)
 
@@ -363,12 +370,16 @@ class MasterPortfolioManager:
         # Sumar Theta de RSI bot si hay trades abiertos
         for trade in getattr(self.rsi_bot, 'open_trades', []):
             global_theta_usd += round(trade.get("contracts", 1) * 100 * 0.12, 2)
+        # Sumar Theta de Bull Market PMCC (Short Call semanal activa)
+        if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot:
+            for diag in getattr(self.bullmarket_bot, 'open_diagonals', []):
+                global_theta_usd += round(diag.get("short_call_contracts", 1) * 100 * 0.15, 2)
 
         # Profit Factor Real
         dt_gross_profit = sum(t.get("realized_pnl_usd", 0) for t in dt_history if t.get("realized_pnl_usd", 0) > 0)
         dt_gross_loss   = sum(t.get("realized_pnl_usd", 0) for t in dt_history if t.get("realized_pnl_usd", 0) < 0)
         
-        gross_profit = (wheel_pnl_usd if wheel_pnl_usd > 0 else 0) + dt_gross_profit + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0)
+        gross_profit = (wheel_pnl_usd if wheel_pnl_usd > 0 else 0) + dt_gross_profit + (rsi_pnl_usd if rsi_pnl_usd > 0 else 0) + (bm_pnl_usd if bm_pnl_usd > 0 else 0)
         gross_loss = abs(dt_gross_loss) + abs(rsi_pnl_usd if rsi_pnl_usd < 0 else 0) + abs(wheel_pnl_usd if wheel_pnl_usd < 0 else 0)
         
         if gross_profit == 0 and gross_loss == 0:
@@ -396,7 +407,8 @@ class MasterPortfolioManager:
         # 6. Margen (sin spreads)
         margin_rsi       = 0.0 if rsi_status.get("status_mode") == "IDLE_MONITORING" else 5000.0
         margin_daytrade  = sum(p.get('strike', 500) * 100 * p.get('contracts', 1) * 0.20 for p in dt_active)
-        total_margin_used = round(margin_daytrade + margin_rsi + 5000.0, 2)
+        margin_bullmkt   = sum(d.get("net_debit_paid_usd", 4000.0) for d in getattr(self.bullmarket_bot, "open_diagonals", [])) if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot else 0.0
+        total_margin_used = round(margin_daytrade + margin_rsi + margin_bullmkt + 5000.0, 2)
         free_margin       = max(0.0, round(consolidated_nav - total_margin_used, 2))
         margin_util_pct   = min(100.0, round((total_margin_used / consolidated_nav) * 100.0, 1)) if consolidated_nav > 0 else 0.0
         margin_status     = "OPTIMAL" if margin_util_pct <= 65.0 else ("WARNING" if margin_util_pct <= 80.0 else "DANGER")
@@ -455,6 +467,7 @@ class MasterPortfolioManager:
                     "alpha_trade_margin_usd": 12000.0,
                     "rsi_opportunistic_margin_usd": margin_rsi,
                     "daytrade_intraday_margin_usd": margin_daytrade,
+                    "bullmarket_margin_usd": margin_bullmkt,
                     "free_buffer_usd": free_margin
                 }
             },
@@ -492,6 +505,16 @@ class MasterPortfolioManager:
                     "capital_allocated_usd": 15000.0, "capital_allocated_pct": 15.0,
                     "net_pnl_usd": dt_pnl_usd, "win_rate_pct": dt_stats.get("win_rate", 0.0),
                     "closed_trades_count": len(dt_history), "status": "SCANNING_INTRADAY"
+                },
+                {
+                    "id": "bullmarket", "name": "Capa 5: Bull Market (PMCC Diagonal Alcista)",
+                    "role": "Sustituto Sintético Acciones (Δ 0.80) + Venta Semanal Theta (Δ 0.20)",
+                    "target_asset": "SPY / QQQ / GLD / IWM / TLT",
+                    "capital_allocated_usd": 15000.0, "capital_allocated_pct": 15.0,
+                    "net_pnl_usd": bm_pnl_usd,
+                    "theta_income_usd": bm_status.get("total_theta_collected_usd", 0.0),
+                    "active_diagonals_count": len(getattr(self.bullmarket_bot, "open_diagonals", [])) if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot else 0,
+                    "status": "ACTIVE_WEEKLY_ROLLS"
                 }
             ],
             "wheel_allowed_universe": WHEEL_ALLOWED_UNIVERSE

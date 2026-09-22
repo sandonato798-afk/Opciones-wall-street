@@ -17,6 +17,7 @@ from wheel_compounding_engine import WheelCompoundingEngine, CONFIG as WHEEL_CON
 DAYTRADE_CONFIG = {"execution_mode": "PAPER_TRADING", "broker_name": "INTERACTIVE_BROKERS"}
 from alpha_trade_bot import AlphaTradeBot
 from rsi_opportunistic_bot import RSIOpportunisticBot
+from bull_market_bot import BullMarketBot
 from cloud_persistence import load_state_from_github
 from master_portfolio_manager import MasterPortfolioManager
 
@@ -28,8 +29,9 @@ daytrade_bot = DaytradeOptionsBot()
 wheel_engine = WheelCompoundingEngine()
 alpha_bot = AlphaTradeBot()
 rsi_bot = RSIOpportunisticBot()
+bullmarket_bot = BullMarketBot(allocated_capital=15000.0)
 
-master_portfolio = MasterPortfolioManager(wheel_engine, alpha_bot, rsi_bot, daytrade_bot)
+master_portfolio = MasterPortfolioManager(wheel_engine, alpha_bot, rsi_bot, daytrade_bot, bullmarket_bot)
 
 def is_market_open():
     # Use UTC-based Eastern time (EDT=UTC-4, EST=UTC-5)
@@ -47,14 +49,15 @@ SYSTEM_HEALTH_PINGS = {
     "wheel": 0,
     "alpha": 0,
     "rsi": 0,
-    "daytrade": 0
+    "daytrade": 0,
+    "bullmarket": 0
 }
 
 # Candado Global para proteger la memoria concurrente
 trading_state_lock = threading.Lock()
 
 def background_trading_loop():
-    print("Motor de Opciones Hibrido (4 Capas + Colateral SGOV/GLD/TLT + Reinversion Auto) iniciado.")
+    print("Motor de Opciones Hibrido (5 Capas + Colateral SGOV/GLD/TLT + Reinversion Auto) iniciado.")
     cycle = 0
     import time as builtin_time
     while True:
@@ -70,6 +73,10 @@ def background_trading_loop():
                 alpha_bot.monitor_positions()
                 SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
 
+                # Capa 5: Bull Market PMCC (Diagonal Spread Alcista)
+                bullmarket_bot.monitor_positions()
+                SYSTEM_HEALTH_PINGS["bullmarket"] = builtin_time.time()
+
                 if is_market_open():
                     # Capa 4: Daytrading ITM 1DTE
                     daytrade_bot.scan_market()
@@ -78,6 +85,8 @@ def background_trading_loop():
                     # Capa 3: RSI Oportunista
                     rsi_bot.scan_market()
                     SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
+                    # Capa 5: Bull Market PMCC escaneo
+                    bullmarket_bot.scan_market()
                 else:
                     # Fuera de horario de mercado: verificar vencimientos de posiciones abiertas
                     daytrade_bot.manage_open_position()
@@ -155,6 +164,10 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
 
         elif path == "/api/rsi-opportunistic/status":
             return self.send_json_response(rsi_bot.get_status())
+
+        elif path == "/api/bullmarket/status":
+            bullmarket_bot.load_state()
+            return self.send_json_response(bullmarket_bot.get_status())
 
         elif path == "/api/collateral/status":
             summary = master_portfolio.get_master_summary()
@@ -298,6 +311,17 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
                 return self.send_json_response({"status": "NOTHING_PENDING", "pending_usd": pending})
             result = master_portfolio.check_and_execute_reinvestment()
             return self.send_json_response(result)
+
+        elif path == "/api/bullmarket/open":
+            res = bullmarket_bot.scan_market()
+            return self.send_json_response(res)
+
+        elif path == "/api/bullmarket/roll":
+            diag_id = int(payload.get("diagonal_id", 0))
+            if not diag_id and bullmarket_bot.open_diagonals:
+                diag_id = bullmarket_bot.open_diagonals[0]["id"]
+            res = bullmarket_bot.roll_short_call(diag_id)
+            return self.send_json_response(res)
 
         elif path == "/api/payoff":
             legs = payload.get("legs", [])

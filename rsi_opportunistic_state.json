@@ -1,14 +1,30 @@
 {
   "allocated_capital": 25000.0,
-  "status_mode": "IDLE_MONITORING",
-  "open_trades": [],
+  "status_mode": "ACTIVE_TRADE",
+  "open_trades": [
+    {
+      "id": 1790096599652,
+      "symbol": "DIA",
+      "strategy": "NAKED_PUT_PANIC_SCALP_1DTE",
+      "entry_date": "2026-09-22 14:03:19",
+      "entry_rsi": 21.1,
+      "underlying_price": 517.47,
+      "put_strike": 512.3,
+      "contracts": 1,
+      "premium_per_share": 2.05,
+      "premium_collected_usd": 205.0,
+      "take_profit_target_usd": 102.5,
+      "dte": 1,
+      "status": "OPEN"
+    }
+  ],
   "closed_trades": [],
   "total_premiums_collected": 0.0,
   "total_pnl_usd": 0.0,
   "last_rsi_scanned": {
-    "SPY": 51.6,
-    "QQQ": 74.8,
-    "DIA": 55.4
+    "SPY": 60.8,
+    "QQQ": 51.2,
+    "DIA": 69.1
   },
-  "last_update": "2026-09-21 21:31:00"
+  "last_update": "2026-09-22 14:36:38"
 }
