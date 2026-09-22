@@ -218,3 +218,85 @@ function render15MetricsRow(p, isOpen = false) {
         <td>${netDuration}</td>
     </tr>`;
 }
+
+function renderActiveTradeCard(p, strategyName = 'DAYTRADE') {
+    const symbol = p.symbol || p.ticker || 'SPY';
+    const contracts = p.contracts || 1;
+    const strike = Number(p.strike || p.put_strike || 0);
+    const spot = Number(p.current_underlying_price || p.underlying_price || p.entry_price || strike);
+    
+    // Distancia al strike y semáforo
+    const distPct = strike > 0 ? (((spot - strike) / strike) * 100).toFixed(2) : '0.0';
+    let semaphoreClass = 'text-green';
+    let semaphoreTxt = `🟢 SEGURO OTM (+${distPct}% margen)`;
+    if (spot < strike) {
+        semaphoreClass = 'text-red';
+        semaphoreTxt = `🔴 ITM (${distPct}%) · ROLL DEFENSIVO ANDRÉS`;
+    } else if (spot < strike * 1.015) {
+        semaphoreClass = 'text-gold';
+        semaphoreTxt = `🟡 ALERTA CERCANO (+${distPct}%)`;
+    }
+    
+    // Take Profit 50%
+    const initialPrem = p.premium_collected_usd || (p.entry_premium ? p.entry_premium * 100 * contracts : 0);
+    const currCost = p.current_put_value !== undefined ? p.current_put_value : (p.short_put_current_buyback_cost || 0);
+    const tpTargetUsd = round(initialPrem * 0.50, 2);
+    const currentGain = Math.max(0, initialPrem - currCost);
+    const progressPct = initialPrem > 0 ? Math.min(100, Math.max(0, Math.round((currentGain / (initialPrem * 0.50)) * 100))) : 0;
+    
+    // PnL Flotante
+    const floatingPnl = p.pnl_usd !== undefined ? p.pnl_usd : (initialPrem - currCost);
+    
+    // Regla de Andrés: Notificaciones operativas
+    let eodNotice = '';
+    if (strategyName === 'DAYTRADE') {
+        eodNotice = `<div style="font-size:12px;color:var(--accent-gold);margin-top:10px;font-weight:600;background:rgba(234,179,8,0.08);padding:8px 12px;border-radius:6px;border-left:3px solid var(--accent-gold);">
+            ⏰ <strong>Protocolo Andrés:</strong> Cierre a las 15:55 EST si hay beneficio neto (+ ganancia asegurada), o Roll Defensivo con crédito si hay pérdida.
+        </div>`;
+    } else if (strategyName === 'WHEEL') {
+        eodNotice = `<div style="font-size:12px;color:var(--accent-blue);margin-top:10px;font-weight:600;background:rgba(59,130,246,0.08);padding:8px 12px;border-radius:6px;border-left:3px solid var(--accent-blue);">
+            🏛️ <strong>Protocolo Andrés:</strong> Colateral intocable. Ante asignación: venta inmediata de acciones a las 09:30 EST + venta de Put a 6-8 semanas.
+        </div>`;
+    } else if (strategyName === 'RSI') {
+        eodNotice = `<div style="font-size:12px;color:var(--accent-green);margin-top:10px;font-weight:600;background:rgba(34,197,94,0.08);padding:8px 12px;border-radius:6px;border-left:3px solid var(--accent-green);">
+            🎯 <strong>Cierre Automático:</strong> Take Profit al 50% de la prima o rebote de RSI diario &gt; 60.
+        </div>`;
+    }
+
+    return `
+    <div style="background:linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:16px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:16px; font-weight:bold; color:var(--text-white);">${symbol} PUT $${strike} · ${p.dte || 1}DTE</span>
+                <span class="badge" style="background:rgba(34,197,94,0.15); color:var(--accent-green); font-size:11px; padding:3px 8px; border-radius:6px; font-weight:600;">🟢 EN CURSO (${contracts}x)</span>
+            </div>
+            <div style="font-size:14px; font-weight:bold;" class="${colorClass(floatingPnl)}">
+                PnL Flotante: ${sign(floatingPnl)}${formatUSD(floatingPnl)}
+            </div>
+        </div>
+        
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+            <div>
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase;">Strike &amp; Monitoreo de Riesgo</div>
+                <div style="font-size:14px; font-weight:bold; margin-top:2px;">Strike: $${strike} | Spot: ${formatUSD(spot)}</div>
+                <div style="font-size:12px; font-weight:bold; margin-top:4px;" class="${semaphoreClass}">${semaphoreTxt}</div>
+            </div>
+            
+            <div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); text-transform:uppercase;">
+                    <span>Progreso Take Profit (50%)</span>
+                    <span style="font-weight:bold; color:var(--accent-green);">${progressPct}%</span>
+                </div>
+                <div style="background:rgba(255,255,255,0.08); border-radius:6px; height:8px; margin-top:6px; overflow:hidden;">
+                    <div style="width:${progressPct}%; background:linear-gradient(90deg, var(--accent-blue) 0%, var(--accent-green) 100%); height:100%; transition:width 0.4s;"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-top:4px;">
+                    <span>Cobrado: +${formatUSD(initialPrem)}</span>
+                    <span>Meta TP: +${formatUSD(tpTargetUsd)}</span>
+                </div>
+            </div>
+        </div>
+        ${eodNotice}
+    </div>
+    `;
+}

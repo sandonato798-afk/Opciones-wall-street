@@ -5,9 +5,8 @@ async function loadRsi() {
         const res = await fetch('/api/rsi-opportunistic/status');
         if(!res.ok) return;
         const data = await res.json();
-        const allocCap = data.allocated_capital || 15000;
-        const totalPnl = data.total_pnl_usd || 0;
-        setTxt('rsi-cap', formatUSD(allocCap + totalPnl));
+        const marginUsed = (data.open_trades || []).reduce((acc, t) => acc + (t.margin_required_usd || ((t.put_strike || t.strike || 0) * 100 * (t.contracts || 1) * 0.20) || 0), 0);
+        setTxt('rsi-cap', formatUSD(marginUsed));
         
         const rsiVal = data.current_market_indicators?.SPY?.rsi || 30.0;
         setTxt('rsi-val', Number(rsiVal).toFixed(1));
@@ -16,10 +15,21 @@ async function loadRsi() {
         const totalOpps = (data.open_trades?.length || 0) + (data.closed_trades?.length || 0);
         setTxt('rsi-opps', totalOpps);
         
+        const totalPnl = data.total_pnl_usd || 0;
         setTxt('rsi-pnl', sign(totalPnl) + formatUSD(totalPnl));
         setClass('rsi-pnl', 'val ' + colorClass(totalPnl));
 
-        // 1. Operaciones 1DTE Abiertas
+        // 1. Tarjetas Interactivas & Posiciones Abiertas
+        const cardsRsi = document.getElementById('rsi-active-cards');
+        if (cardsRsi) {
+            cardsRsi.innerHTML = '';
+            if (data.open_trades && data.open_trades.length > 0) {
+                data.open_trades.forEach(p => {
+                    cardsRsi.innerHTML += renderActiveTradeCard(p, 'RSI 1DTE');
+                });
+            }
+        }
+
         const tbodyPos = document.getElementById('rsi-positions');
         if (tbodyPos) {
             tbodyPos.innerHTML = '';

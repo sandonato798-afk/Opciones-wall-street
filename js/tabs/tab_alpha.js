@@ -5,16 +5,15 @@ async function loadAlpha() {
         const res = await fetch('/api/alpha/status');
         if(!res.ok) return;
         const data = await res.json();
-        const allocCap = data.allocated_capital || 20000;
-        const unrealizedPnl = data.total_unrealized_pnl_usd || 0;
-        setTxt('alpha-cap', formatUSD(allocCap + unrealizedPnl));
-        setTxt('alpha-leaps', formatUSD(unrealizedPnl));
-        
         let putRisk = 0;
         if (data.open_positions && data.open_positions.length > 0) {
             putRisk = data.open_positions.reduce((acc, p) => acc + (p.short_put_current_buyback_cost || 0), 0);
         }
+        setTxt('alpha-cap', formatUSD(putRisk));
         setTxt('alpha-risk', formatUSD(putRisk));
+        
+        const unrealizedPnl = data.total_unrealized_pnl_usd || 0;
+        setTxt('alpha-leaps', formatUSD(unrealizedPnl));
         
         setTxt('alpha-pnl', sign(unrealizedPnl) + formatUSD(unrealizedPnl));
         setClass('alpha-pnl', 'val ' + colorClass(unrealizedPnl));

@@ -33,7 +33,17 @@ async function loadWheel() {
             });
         }
 
-        // 1. Posiciones Abiertas
+        // 1. Tarjetas Interactivas & Posiciones Abiertas
+        const cardsWheel = document.getElementById('wheel-active-cards');
+        if (cardsWheel) {
+            cardsWheel.innerHTML = '';
+            if (data.wheel_positions && data.wheel_positions.length > 0) {
+                data.wheel_positions.forEach(p => {
+                    cardsWheel.innerHTML += renderActiveTradeCard(p, 'WHEEL');
+                });
+            }
+        }
+
         const tbodyPos = document.getElementById('wheel-positions');
         if (tbodyPos) {
             tbodyPos.innerHTML = '';

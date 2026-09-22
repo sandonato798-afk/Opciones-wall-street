@@ -104,32 +104,32 @@ async function loadMaster() {
 
         if (data.strategies_ledger) {
             data.strategies_ledger.forEach(l => {
-                const liveNav = (l.capital_allocated_usd || 0) + (l.net_pnl_usd || 0);
-                const pnlTxt = sign(l.net_pnl_usd) + formatUSD(l.net_pnl_usd);
+                const marginTxt = formatUSD(l.margin_used_usd || 0);
+                const pnlTxt = 'PnL: ' + sign(l.net_pnl_usd) + formatUSD(l.net_pnl_usd);
                 const pnlClass = 'sub ' + colorClass(l.net_pnl_usd);
                 
                 if(l.id === 'wheel') {
-                    setTxt('home-c1-nav', formatUSD(liveNav));
+                    setTxt('home-c1-nav', marginTxt);
                     setTxt('home-c1-pnl', pnlTxt);
                     setClass('home-c1-pnl', pnlClass);
                 }
                 if(l.id === 'alpha') {
-                    setTxt('home-c3-nav', formatUSD(liveNav));
+                    setTxt('home-c3-nav', marginTxt);
                     setTxt('home-c3-pnl', pnlTxt);
                     setClass('home-c3-pnl', pnlClass);
                 }
                 if(l.id === 'rsi_opportunistic') {
-                    setTxt('home-c4-nav', formatUSD(liveNav));
+                    setTxt('home-c4-nav', marginTxt);
                     setTxt('home-c4-pnl', pnlTxt);
                     setClass('home-c4-pnl', pnlClass);
                 }
                 if(l.id === 'daytrade') {
-                    setTxt('home-c5-nav', formatUSD(liveNav));
+                    setTxt('home-c5-nav', marginTxt);
                     setTxt('home-c5-pnl', pnlTxt);
                     setClass('home-c5-pnl', pnlClass);
                 }
                 if(l.id === 'bullmarket') {
-                    setTxt('home-c6-nav', formatUSD(liveNav));
+                    setTxt('home-c6-nav', marginTxt);
                     setTxt('home-c6-pnl', pnlTxt);
                     setClass('home-c6-pnl', pnlClass);
                 }

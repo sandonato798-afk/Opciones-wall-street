@@ -58,6 +58,7 @@
                     </div>
                     <div class="card" onclick="showTab('tab-wheel')" style="cursor:pointer;">
                         <div class="card-title">CAPA 1: RUEDA (OVERLAY)</div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">MARGEN EN USO (POOL 100%)</div>
                         <div class="val" id="home-c1-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c1-pnl" style="margin:0;">+$0.00</div>
@@ -65,7 +66,8 @@
                         </div>
                     </div>
                     <div class="card" onclick="showTab('tab-alpha')" style="cursor:pointer;">
-                        <div class="card-title">CAPA 2: ALPHA LEAPS (40%)</div>
+                        <div class="card-title">CAPA 2: ALPHA LEAPS</div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">MARGEN EN USO (POOL 100%)</div>
                         <div class="val" id="home-c3-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c3-pnl" style="margin:0;">+$0.00</div>
@@ -73,7 +75,8 @@
                         </div>
                     </div>
                     <div class="card" onclick="showTab('tab-rsi')" style="cursor:pointer;">
-                        <div class="card-title">CAPA 3: RSI (25%)</div>
+                        <div class="card-title">CAPA 3: RSI OPORTUNISTA</div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">MARGEN EN USO (POOL 100%)</div>
                         <div class="val" id="home-c4-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c4-pnl" style="margin:0;">+$0.00</div>
@@ -81,7 +84,8 @@
                         </div>
                     </div>
                     <div class="card" onclick="showTab('tab-daytrade')" style="cursor:pointer;">
-                        <div class="card-title">CAPA 4: DAYTRADING (15%)</div>
+                        <div class="card-title">CAPA 4: DAYTRADING INTRADÍA</div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">MARGEN EN USO (POOL 100%)</div>
                         <div class="val" id="home-c5-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c5-pnl" style="margin:0;">+$0.00</div>
@@ -90,6 +94,7 @@
                     </div>
                     <div class="card" onclick="showTab('tab-bullmarket')" style="cursor:pointer;">
                         <div class="card-title">CAPA 5: BULL MARKET (PMCC)</div>
+                        <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">MARGEN EN USO (POOL 100%)</div>
                         <div class="val text-green" id="home-c6-nav">$0.00</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
                             <div class="sub" id="home-c6-pnl" style="margin:0;">+$0.00</div>
@@ -218,6 +223,7 @@
 
                 <div class="card" style="margin-top: 20px;">
                     <div class="card-title">POSICIONES ACTIVAS EN LA RUEDA (15 MÉTRICAS AUDITADAS)</div>
+                    <div id="wheel-active-cards" style="margin-bottom: 16px;"></div>
                     <div class="table-responsive">
                         <table class="data-table data-table-15">
                             <thead>
@@ -257,7 +263,7 @@
                     <button class="btn btn-primary" onclick="runAlphaDecouple()">DESACOPLAR PUT (RECOMPRA)</button>
                 </div>
                 <div class="grid-4">
-                    <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="alpha-cap">$0.00</div></div>
+                    <div class="card"><div class="card-title">MARGEN EN USO</div><div class="val" id="alpha-cap">$0.00</div><div class="sub">Pool Unificado 100%</div></div>
                     <div class="card"><div class="card-title">VALOR LONG CALLS</div><div class="val text-green" id="alpha-leaps">$0.00</div></div>
                     <div class="card"><div class="card-title">COSTO RECOMPRA PUT</div><div class="val text-red" id="alpha-risk">$0.00</div></div>
                     <div class="card"><div class="card-title">PnL NO REALIZADO</div><div class="val" id="alpha-pnl">$0.00</div></div>
@@ -278,13 +284,14 @@
                     <h2>CAPA 3: RSI OPORTUNISTA (VENTA 1DTE EN PÁNICO RSI &lt; 30)</h2>
                 </div>
                 <div class="grid-4">
-                    <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="rsi-cap">$0.00</div></div>
+                    <div class="card"><div class="card-title">MARGEN EN USO</div><div class="val" id="rsi-cap">$0.00</div><div class="sub">Pool Unificado 100%</div></div>
                     <div class="card"><div class="card-title">RSI ACTUAL (SPY)</div><div class="val text-red" id="rsi-val">0.00</div></div>
                     <div class="card"><div class="card-title">OPORTUNIDADES DETECTADAS</div><div class="val" id="rsi-opps">0</div></div>
                     <div class="card"><div class="card-title">PnL TOTAL ACUMULADO</div><div class="val text-green" id="rsi-pnl">$0.00</div></div>
                 </div>
                 <div class="card">
                     <div class="card-title">OPERACIONES 1DTE ABIERTAS (15 MÉTRICAS AUDITADAS)</div>
+                    <div id="rsi-active-cards" style="margin-bottom: 16px;"></div>
                     <div class="table-responsive">
                         <table class="data-table data-table-15">
                             <thead>
@@ -327,13 +334,14 @@
                     </div>
                 </div>
                 <div class="grid-4">
-                    <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="dt-cap">$0.00</div></div>
+                    <div class="card"><div class="card-title">MARGEN EN USO</div><div class="val" id="dt-cap">$0.00</div><div class="sub">Pool Unificado 100%</div></div>
                     <div class="card"><div class="card-title">WIN RATE AUDITADO</div><div class="val text-green" id="dt-wr">0.00%</div></div>
                     <div class="card"><div class="card-title">MODO EJECUCIÓN</div><div class="val" id="dt-mode">PAPER</div></div>
                     <div class="card"><div class="card-title">PnL TOTAL</div><div class="val text-green" id="dt-pnl">$0.00</div></div>
                 </div>
                 <div class="card">
                     <div class="card-title">POSICIONES INTRADÍA ABIERTAS (15 MÉTRICAS AUDITADAS)</div>
+                    <div id="dt-active-cards" style="margin-bottom: 16px;"></div>
                     <div class="table-responsive">
                         <table class="data-table data-table-15">
                             <thead>
@@ -376,7 +384,7 @@
                     </div>
                 </div>
                 <div class="grid-4">
-                    <div class="card"><div class="card-title">CAPITAL ASIGNADO</div><div class="val" id="bm-cap">$15,000.00</div></div>
+                    <div class="card"><div class="card-title">MARGEN EN USO</div><div class="val" id="bm-cap">$0.00</div><div class="sub">Pool Unificado 100%</div></div>
                     <div class="card"><div class="card-title">VALOR LONG CALLS ITM</div><div class="val text-green" id="bm-long-val">$0.00</div></div>
                     <div class="card"><div class="card-title">THETA SEMANAL COBRADO</div><div class="val text-green" id="bm-theta-val">+$0.00</div></div>
                     <div class="card"><div class="card-title">PnL TOTAL ACUMULADO</div><div class="val text-green" id="bm-pnl">$0.00</div></div>
@@ -410,18 +418,18 @@
         </main>
     </div>
     <!-- 1. Utilidades y Helpers -->
-    <script src="js/formatters.js?v=32.0"></script>
+    <script src="js/formatters.js?v=33.0"></script>
     <!-- 2. Componentes de Renderizado Reutilizables -->
-    <script src="js/components/table_15_metrics.js?v=32.0"></script>
-    <script src="js/components/matrix_table.js?v=32.0"></script>
+    <script src="js/components/table_15_metrics.js?v=33.0"></script>
+    <script src="js/components/matrix_table.js?v=33.0"></script>
     <!-- 3. Módulos por Estrategia y Solapa -->
-    <script src="js/tabs/tab_master.js?v=32.0"></script>
-    <script src="js/tabs/tab_wheel.js?v=32.0"></script>
-    <script src="js/tabs/tab_alpha.js?v=32.0"></script>
-    <script src="js/tabs/tab_rsi.js?v=32.0"></script>
-    <script src="js/tabs/tab_daytrade.js?v=32.0"></script>
-    <script src="js/tabs/tab_bullmarket.js?v=32.0"></script>
+    <script src="js/tabs/tab_master.js?v=33.0"></script>
+    <script src="js/tabs/tab_wheel.js?v=33.0"></script>
+    <script src="js/tabs/tab_alpha.js?v=33.0"></script>
+    <script src="js/tabs/tab_rsi.js?v=33.0"></script>
+    <script src="js/tabs/tab_daytrade.js?v=33.0"></script>
+    <script src="js/tabs/tab_bullmarket.js?v=33.0"></script>
     <!-- 4. Orquestador Principal del Dashboard -->
-    <script src="app.js?v=32.0"></script>
+    <script src="app.js?v=33.0"></script>
 </body>
 </html>

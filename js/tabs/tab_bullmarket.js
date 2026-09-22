@@ -5,16 +5,17 @@ async function loadBullMarket() {
         const res = await fetch('/api/bullmarket/status');
         if(!res.ok) return;
         const data = await res.json();
-        const allocCap = data.allocated_capital || 15000;
         const totalPnl = data.total_pnl_usd || 0;
         const totalTheta = data.total_theta_collected_usd || 0;
         
         let totalLongVal = 0;
+        let marginUsed = 0;
         if (data.open_diagonals && data.open_diagonals.length > 0) {
             totalLongVal = data.open_diagonals.reduce((acc, d) => acc + (d.long_call_current_value_usd || d.long_call_premium_paid || 0), 0);
+            marginUsed = data.open_diagonals.reduce((acc, d) => acc + (d.margin_required_usd || d.long_call_premium_paid || 0), 0);
         }
         
-        setTxt('bm-cap', formatUSD(allocCap + totalPnl));
+        setTxt('bm-cap', formatUSD(marginUsed));
         setTxt('bm-long-val', formatUSD(totalLongVal));
         setTxt('bm-theta-val', '+' + formatUSD(totalTheta));
         setTxt('bm-pnl', sign(totalPnl) + formatUSD(totalPnl));

@@ -5,7 +5,8 @@ async function loadDaytrade() {
         const res = await fetch('/api/daytrade/status');
         if(!res.ok) return;
         const data = await res.json();
-        setTxt('dt-cap', formatUSD(10000 + (data.total_pnl_usd || 0)));
+        const marginUsed = (data.open_positions || []).reduce((acc, p) => acc + (p.margin_required_usd || ((p.strike || 0) * 100 * (p.contracts || 1) * 0.20) || 0), 0);
+        setTxt('dt-cap', formatUSD(marginUsed));
         
         let wr = data.stats?.win_rate || 0;
         setTxt('dt-wr', formatPct(wr));
@@ -14,7 +15,17 @@ async function loadDaytrade() {
         setTxt('dt-pnl', sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd));
         setClass('dt-pnl', 'val ' + colorClass(data.total_pnl_usd));
 
-        // 1. Posiciones Intradía Abiertas
+        // 1. Tarjetas Interactivas & Posiciones Abiertas
+        const cardsDt = document.getElementById('dt-active-cards');
+        if (cardsDt) {
+            cardsDt.innerHTML = '';
+            if (data.open_positions && data.open_positions.length > 0) {
+                data.open_positions.forEach(p => {
+                    cardsDt.innerHTML += renderActiveTradeCard(p, 'DAYTRADE');
+                });
+            }
+        }
+
         const tbodyOpen = document.getElementById('dt-open-positions');
         if (tbodyOpen) {
             tbodyOpen.innerHTML = '';
