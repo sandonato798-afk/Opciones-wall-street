@@ -18,11 +18,11 @@
       "entry_time": "2026-09-22 14:23:01",
       "expiration_date": "2026-09-23",
       "status": "ACTIVE",
-      "pnl_usd": 19.0,
-      "current_underlying_price": 773.38,
-      "current_put_value": 800.0
+      "pnl_usd": -430.0,
+      "current_underlying_price": 768.37,
+      "current_put_value": 1249.0
     }
   ],
   "history": [],
-  "last_update": "2026-09-22 17:20:51"
+  "last_update": "2026-09-23 12:53:31"
 }
