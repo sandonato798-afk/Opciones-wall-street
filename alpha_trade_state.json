@@ -19,13 +19,13 @@
       "status": "RISK_FREE_LONG_CALL",
       "short_put_current_buyback_cost": 0.0,
       "decoupled": true,
-      "current_underlying_price": 740.58,
-      "unrealized_pnl_usd": 9818.0,
+      "current_underlying_price": 739.49,
+      "unrealized_pnl_usd": 9662.0,
       "decouple_date": "2026-09-18 13:38:57",
       "decouple_cost_paid_usd": 10.0
     }
   ],
   "closed_positions": [],
   "total_decouple_funds_used": 10.0,
-  "last_update": "2026-09-23 13:35:05"
+  "last_update": "2026-09-23 13:45:31"
 }
