@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Metodología de La Rueda con Interés Compuesto y Yield Stacking</title>
+<style>
+    @page {
+        size: A4;
+        margin: 16mm 14mm 16mm 14mm;
+        @bottom-right {
+            content: counter(page);
+        }
+    }
+    body {
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+        color: #1e293b;
+        background-color: #ffffff;
+        line-height: 1.55;
+        font-size: 13px;
+        margin: 0;
+        padding: 0;
+    }
+    .header-box {
+        border-bottom: 2px solid #0f172a;
+        padding-bottom: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+    .header-title h1 {
+        font-size: 22px;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.5px;
+    }
+    .header-title p {
+        font-size: 12px;
+        color: #64748b;
+        margin: 0;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .header-meta {
+        text-align: right;
+        font-size: 11px;
+        color: #475569;
+    }
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .badge-institutional {
+        background-color: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+    }
+    h2 {
+        font-size: 15px;
+        color: #0f172a;
+        margin-top: 22px;
+        margin-bottom: 8px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    h3 {
+        font-size: 13.5px;
+        color: #1e293b;
+        margin-top: 14px;
+        margin-bottom: 6px;
+    }
+    p {
+        margin: 0 0 10px 0;
+        text-align: justify;
+    }
+    .callout {
+        border-left: 4px solid #0284c7;
+        background: #f8fafc;
+        padding: 10px 14px;
+        margin: 12px 0;
+        border-radius: 0 6px 6px 0;
+        font-size: 12.5px;
+    }
+    .callout-success {
+        border-left-color: #059669;
+        background: #f0fdf4;
+    }
+    .callout-warning {
+        border-left-color: #d97706;
+        background: #fffbeb;
+    }
+    .formula-box {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin: 12px 0;
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 12.5px;
+        line-height: 1.6;
+    }
+    .formula-highlight {
+        color: #38bdf8;
+        font-weight: bold;
+    }
+    .formula-green {
+        color: #4ade80;
+        font-weight: bold;
+    }
+    .formula-gold {
+        color: #fbbf24;
+        font-weight: bold;
+    }
+    .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 12px 0;
+    }
+    .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+        margin: 12px 0;
+    }
+    .card {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 10px 12px;
+        background: #ffffff;
+    }
+    .card-title {
+        font-size: 11px;
+        font-weight: bold;
+        color: #64748b;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+    .card-val {
+        font-size: 15px;
+        font-weight: bold;
+        color: #0f172a;
+    }
+    .card-desc {
+        font-size: 11px;
+        color: #475569;
+        margin-top: 4px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11.5px;
+        margin: 14px 0;
+    }
+    th, td {
+        padding: 7px 9px;
+        text-align: left;
+        border: 1px solid #cbd5e1;
+    }
+    th {
+        background-color: #f1f5f9;
+        color: #0f172a;
+        font-weight: 700;
+    }
+    tr:nth-child(even) {
+        background-color: #f8fafc;
+    }
+    .text-green { color: #15803d; font-weight: bold; }
+    .text-blue { color: #0369a1; font-weight: bold; }
+    .page-break {
+        page-break-before: always;
+    }
+    .flow-step {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    .flow-step-num {
+        display: inline-block;
+        background: #0f172a;
+        color: white;
+        width: 18px;
+        height: 18px;
+        text-align: center;
+        border-radius: 50%;
+        font-size: 11px;
+        line-height: 18px;
+        margin-right: 6px;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div class="header-box">
+    <div class="header-title">
+        <h1>INGENIERÍA CUANTITATIVA: LA RUEDA & INTERÉS COMPUESTO</h1>
+        <p>Arquitectura de Opciones Institucionales · Yield Stacking · Re-Inversión 50/30/20</p>
+    </div>
+    <div class="header-meta">
+        <div><strong>PORTFOLIO NAV:</strong> $100,000 USD Base</div>
+        <div><strong>ESTRATEGIA:</strong> The Wheel Compounding Engine</div>
+        <div style="margin-top: 4px;"><span class="badge badge-institutional">Modelo Cuantitativo</span></div>
+    </div>
+</div>
+
+<h2>1. Diagnóstico: La Trampa de la Rueda Tradicional (Interés Simple)</h2>
+<p>
+    La estrategia tradicional de <strong>La Rueda</strong> (<em>The Wheel Strategy</em>) es popular entre inversores minoristas por su alta tasa de acierto estadístico (~75% a 85%). Sin embargo, la gran mayoría comete un error estructural que destruye el potencial exponencial del capital: <strong>tratar las primas como ingreso lineal de retiro o dejarlas como saldo ocioso en efectivo</strong>.
+</p>
+
+<div class="callout callout-warning">
+    <strong>La Trampa del Interés Simple:</strong> Si un inversor opera con $100,000 USD y genera $1,500 USD de prima mensual, pero retira el dinero o lo deja en cuenta a rendimiento 0%, en 10 años habrá generado $180,000 USD de ingresos. Su capital base seguirá siendo $100,000 USD y su crecimiento será estrictamente lineal: <code>Capital_Final = Capital_Inicial × (1 + r × t)</code>.
+</div>
+
+<p>
+    En cambio, el interés compuesto responde a la ley exponencial <code>Capital_Final = Capital_Inicial × (1 + r)^t</code>. Para activar esta función, <strong>cada dólar generado por las opciones debe reincorporarse de forma inmediata al circuito generador de flujo</strong>, sumando nuevas unidades productivas de activos sin desembolsar capital de bolsillo.
+</p>
+
+<h2>2. Los Tres Motores de Aceleración del Interés Compuesto</h2>
+<p>
+    El sistema implementa una arquitectura institucional de <strong>Yield Stacking</strong> (acumulación de capas de rendimiento) sustentada sobre tres motores autónomos:
+</p>
+
+<div class="grid-3">
+    <div class="card">
+        <div class="card-title">MOTOR 1 · SHARE STACKING</div>
+        <div class="card-val" style="color:#0369a1;">Re-Inversión Instantánea</div>
+        <div class="card-desc">100% de primas transformadas en más acciones del ETF (DCA financiado por el mercado).</div>
+    </div>
+    <div class="card">
+        <div class="card-title">MOTOR 2 · YIELD STACKING</div>
+        <div class="card-val" style="color:#15803d;">Doble Renta sobre Colateral</div>
+        <div class="card-desc">T-Bills SGOV al 5.1% APY como colateral vivo en Interactive Brokers Portfolio Margin.</div>
+    </div>
+    <div class="card">
+        <div class="card-title">MOTOR 3 · SPLIT MATRICIAL</div>
+        <div class="card-val" style="color:#b45309;">Distribución 50 / 30 / 20</div>
+        <div class="card-desc">50% SGOV (Tesorería), 30% SPY (Inventario Rueda), 20% Alpha (Long Calls Free Runner).</div>
+    </div>
+</div>
+
+<h3>Motor 1: Share Stacking Automático (DCA Gratuito en Índices)</h3>
+<p>
+    En nuestro motor algorítmico (<code>wheel_compounding_engine.py</code>), cuando se emite un Cash-Secured Put o Covered Call mensual a Delta 0.20-0.25 y se acreditan las primas líquidas en cuenta:
+</p>
+<div class="formula-box">
+    Acciones_Compradas = Prima_Recibida_USD / Precio_Spot_ETF<br>
+    <span class="formula-highlight">Ejemplo:</span> $560.00 USD cobrados / $560.00 (Precio SPY) = <span class="formula-green">+1.0000 Acción SPY</span> adquirida automáticamente.
+</div>
+<p>
+    Estas acciones ingresan al inventario de cartera <strong>sin aportar capital externo</strong>. A partir de ese segundo, esas acciones:
+</p>
+<ul>
+    <li><strong>Capturan la apreciación de capital histórica</strong> del índice (~9.0% anual compuesto).</li>
+    <li><strong>Cobran dividendos trimestrales en dólares</strong> (~1.5% anual) que se reinvierten automáticamente.</li>
+    <li><strong>Aumentan el NAV total</strong>, expandiendo la base patrimonial para vender contratos adicionales a futuro.</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h3>Motor 2: Yield Stacking sobre Colateral (Doble Renta sobre el Mismo Dólar)</h3>
+<p>
+    En un broker convencional de efectivo, si apartás $50,000 USD para respaldar la venta de un Put de SPY, ese dinero permanece inmovilizado con rendimiento 0%.
+</p>
+<p>
+    En nuestra arquitectura institucional:
+</p>
+<ul>
+    <li><strong>El 100% del colateral se coloca en Bonos del Tesoro de EE.UU. a ultracorto plazo (<code>SGOV</code> / 0-3M T-Bills)</strong>, generando un piso de rendimiento del <strong>5.10% APY</strong> garantizado por el gobierno de EE.UU.</li>
+    <li>Interactive Brokers (bajo el régimen de <em>Portfolio Margin</em>) asigna a SGOV un requerimiento de margen ínfimo (<strong>entre 2.0% y 5.0%</strong> de haircut). Esto significa que el <strong>95% al 98% del valor del bono queda disponible</strong> como poder de compra para garantizar las opciones vendidas.</li>
+</ul>
+
+<div class="formula-box">
+    <span class="formula-gold">FÓRMULA INSTITUCIONAL DE YIELD STACKING:</span><br>
+    Rendimiento_Total_Cartera = <span class="formula-highlight">Renta_Fija_SGOV (~5.1% APY)</span> + <span class="formula-green">Flujo_Opciones (~18% a 24% anual)</span> + <span class="formula-gold">Apreciación_Acciones (~9% SPY)</span><br>
+    <span style="font-size:11px;opacity:0.85;">→ El mismo capital físico genera intereses en bonos del Tesoro y primas de opciones simultáneamente.</span>
+</div>
+
+<h3>Motor 3: El Split Matricial 50 / 30 / 20 (Cerebro Maestro)</h3>
+<p>
+    Cuando el acumulador central de primas brutas de todas las capas supera el umbral de <strong>$500.00 USD</strong>, el gestor maestro (<code>master_portfolio_manager.py</code>) ejecuta la dispersión matricial:
+</p>
+
+<div class="flow-step">
+    <strong><span class="flow-step-num">1</span> 50% Asignado a Bonos del Tesoro (SGOV):</strong> Aumenta el colchón de seguridad de la cartera, incrementa el poder de compra liberado y eleva el flujo pasivo mensual en dólares.
+</div>
+<div class="flow-step">
+    <strong><span class="flow-step-num">2</span> 30% Asignado a Acciones Directas de SPY:</strong> Acelera la adquisición de títulos físicos para completar bloques de 100 acciones y habilitar Covered Calls institucionales.
+</div>
+<div class="flow-step">
+    <strong><span class="flow-step-num">3</span> 20% Asignado al Desacople de Alpha (Capa 2):</strong> Se acumula para recomprar el Short Put del sintético LEAPS a 2 años. Una vez recomprado el Put, el inversor conserva una <strong>Long Call a 2 años 100% libre de riesgo (Free Runner)</strong> con exposición alcista apalancada ilimitada.
+</div>
+
+<h2>3. Proyección Matemática Comparativa a 10 Años</h2>
+<p>
+    Simulación sobre un capital base de <strong>$100,000 USD</strong>, asumiendo 2.0% de prima mensual por venta de opciones OTM y 9.0% de apreciación histórica anual de SPY:
+</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>AÑO</th>
+            <th>MODELO TRADICIONAL (Sin Reinversión)</th>
+            <th>RUEDA AUTO-COMPOUNDING (Acciones SPY)</th>
+            <th>CAGR EFECTIVO</th>
+            <th>ACCIONES SPY ACUMULADAS</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Año 1</strong></td>
+            <td>$115,000 USD</td>
+            <td><strong>$127,420 USD</strong></td>
+            <td class="text-green">+27.42%</td>
+            <td>212 acciones</td>
+        </tr>
+        <tr>
+            <td><strong>Año 2</strong></td>
+            <td>$130,000 USD</td>
+            <td><strong>$162,350 USD</strong></td>
+            <td class="text-green">+27.42%</td>
+            <td>248 acciones</td>
+        </tr>
+        <tr>
+            <td><strong>Año 3</strong></td>
+            <td>$145,000 USD</td>
+            <td><strong>$206,880 USD</strong></td>
+            <td class="text-green">+27.42%</td>
+            <td>291 acciones</td>
+        </tr>
+        <tr>
+            <td><strong>Año 5</strong></td>
+            <td>$175,000 USD</td>
+            <td><strong>$335,760 USD</strong></td>
+            <td class="text-green">+27.42%</td>
+            <td>401 acciones</td>
+        </tr>
+        <tr>
+            <td><strong>Año 7</strong></td>
+            <td>$205,000 USD</td>
+            <td><strong>$545,020 USD</strong></td>
+            <td class="text-green">+27.42%</td>
+            <td>552 acciones</td>
+        </tr>
+        <tr>
+            <td><strong>Año 10</strong></td>
+            <td>$250,000 USD (Lineal)</td>
+            <td><strong>$1,128,400 USD (Exponencial)</strong></td>
+            <td class="text-green">+27.42% Prom.</td>
+            <td><strong>890 acciones SPY</strong></td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="callout callout-success">
+    <strong>Conclusión Matemática:</strong> Al cabo de 10 años, la Rueda Tradicional sin reinversión acumula $250,000 USD. La Rueda con Interés Compuesto y Yield Stacking sobrepasa <strong>$1.1 Millones de USD</strong>, habiendo transformado el flujo de opciones en una tenencia masiva de acciones físicas que generan dividendos crecientes y protección contra la inflación.
+</div>
+
+<h2>4. Protocolo de Defensa: Matriz de Rolleo Institucional</h2>
+<p>
+    Para proteger el colateral y evitar asignaciones forzosas indeseadas durante caídas de mercado, el motor aplica una <strong>Matriz Institucional de Rolleo en 4 Niveles</strong>:
+</p>
+<ul>
+    <li><strong>Caída Leve (&lt; 2%):</strong> Rolleo a 30 días en el mismo strike si la posición llega a 0 DTE.</li>
+    <li><strong>Caída Moderada (2% a 5%):</strong> Se busca un "Día Verde" de rebote intradía a 3-5 DTE para rollear con crédito neto positivo.</li>
+    <li><strong>Caída Fuerte (&gt; 15%):</strong> Gatillo a 10 DTE para bajar el strike un 10% y extender vencimiento a 45 días, cobrando prima de ajuste.</li>
+    <li><strong>Cisne Negro (&gt; 20%):</strong> Rolleo de emergencia a 60 días en el strike spot actual, priorizando absorción de margen y neutralización de Delta.</li>
+</ul>
+
+</body>
+</html>

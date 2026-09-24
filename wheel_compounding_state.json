@@ -1,24 +1,25 @@
 {
-  "last_update": "2026-09-22 14:35:28",
+  "last_update": "2026-09-22 18:30:42",
   "initial_capital": 100000.0,
   "cash_balance": 100000.0,
   "etf_shares": 1.9685,
-  "accumulated_premiums_usd": 1171.0,
+  "accumulated_premiums_usd": 4121.0,
   "total_reinvested_usd": 1522.3,
   "wheel_positions": [
     {
-      "id": "WHEEL_CSP_1790098006",
-      "ticker": "SPY_PUT_750.1_30DTE",
+      "id": "WHEEL_RECOVERY_PUT_1790112642",
+      "ticker": "SPY_PUT_788.8_45DTE",
       "symbol": "SPY",
-      "strategy_type": "CASH_SECURED_PUT",
-      "underlying_price": 773.3,
-      "strike": 750.1,
+      "strategy_type": "ASSIGNMENT_RECOVERY_PUT_6_8_WEEKS",
+      "underlying_price": 773.38,
+      "strike": 788.8,
       "contracts": 1,
-      "premium_collected_usd": 585.0,
-      "issued_date": "2026-09-22 14:26:46",
-      "expiration_date": "2026-10-22",
-      "target_dte": 30,
-      "status": "ACTIVE"
+      "premium_collected_usd": 2950.0,
+      "issued_date": "2026-09-22 18:30:42",
+      "expiration_date": "2026-11-06",
+      "target_dte": 45,
+      "status": "ACTIVE_RECOVERY",
+      "note": "Mismo strike anterior $788.8."
     }
   ],
   "history": [
@@ -43,6 +44,19 @@
       "shares_bought": 0.7565,
       "total_shares_now": 1.7416,
       "portfolio_nav_usd": 101346.78
+    },
+    {
+      "timestamp": "2026-09-22 18:30:42",
+      "type": "ASSIGNMENT_RESET_6_8_WEEKS",
+      "symbol": "SPY",
+      "stock_sold_price": 773.38,
+      "shares_sold": 100,
+      "cash_freed_usd": 77338.0,
+      "new_put_strike": 788.8,
+      "new_put_dte": 45,
+      "premium_collected_usd": 2950.0,
+      "note": "Mismo strike anterior $788.8.",
+      "status": "ACTIVE_RECOVERY"
     }
   ]
 }
