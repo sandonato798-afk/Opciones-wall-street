@@ -57,3 +57,6 @@ function formatDurationStr(entryTime, exitTime, isOpen, fallbackDte = null) {
         return fallbackDte ? `${fallbackDte}d` : '-';
     }
 }
+
+function round(value, decimals) { return Number(Math.round(value+'e'+decimals)+'e-'+decimals); }
+
