@@ -92,30 +92,36 @@ def background_trading_loop():
                 except Exception as e_ib:
                     print(f"⚠️ Watchdog IBKR alert: {e_ib}")
 
-                # Capa 1: Rueda & Compounding
-                wheel_engine.auto_check_and_run_cycle()
-                SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
-
-                # Capa 2: Alpha Trade (Sintéticos LEAPS)
-                alpha_bot.monitor_positions()
-                SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
-
-                # Capa 5: Bull Market PMCC (Diagonal Spread Alcista)
-                bullmarket_bot.monitor_positions()
-                SYSTEM_HEALTH_PINGS["bullmarket"] = builtin_time.time()
-
                 if is_market_open():
+                    # Capa 1: Rueda & Compounding
+                    wheel_engine.auto_check_and_run_cycle()
+                    SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
+
+                    # Capa 2: Alpha Trade (Sintéticos LEAPS)
+                    alpha_bot.monitor_positions()
+                    SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
+
+                    # Capa 5: Bull Market PMCC (Diagonal Spread Alcista)
+                    bullmarket_bot.monitor_positions()
+                    SYSTEM_HEALTH_PINGS["bullmarket"] = builtin_time.time()
+
                     # Capa 4: Daytrading ITM 1DTE
                     daytrade_bot.scan_market()
                     daytrade_bot.manage_open_position()
                     SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
+                    
                     # Capa 3: RSI Oportunista
                     rsi_bot.scan_market()
                     SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
+                    
                     # Capa 5: Bull Market PMCC escaneo
                     bullmarket_bot.scan_market()
                 else:
-                    daytrade_bot.manage_open_position()
+                    print("🌙 Mercado Cerrado. Hibernando hasta 09:30 AM EST...")
+                    # Update health pings so Dashboard knows we are alive
+                    SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
+                    SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
+                    SYSTEM_HEALTH_PINGS["bullmarket"] = builtin_time.time()
                     SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
                     SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
 
@@ -125,10 +131,10 @@ def background_trading_loop():
                     if result and result.get("status") == "EXECUTED":
                         print(f"[REINVESTMENT] Reinversión ejecutada: ${result['record']['total_reinvested_usd']:.2f}")
 
-            time.sleep(60)
+            builtin_time.sleep(60)
         except Exception as e:
             print(f"Error en bucle en segundo plano: {e}")
-            time.sleep(30)
+            builtin_time.sleep(30)
 
 def self_ping_loop():
     time.sleep(15)

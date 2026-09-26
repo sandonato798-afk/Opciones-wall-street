@@ -166,6 +166,14 @@ class DaytradeOptionsBot:
                 cost_usd = round(strike * 100 * contracts * 0.20, 2)
                 now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
+                # --- EJECUCIÓN REAL EN IBKR ---
+                expiry_str = (datetime.now() + timedelta(days=1)).strftime("%Y%m%d")
+                if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
+                    put_resp = self.ibkr_adapter.execute_option_order_sync(symbol, "P", strike, expiry_str, "SELL", contracts)
+                else:
+                    print("[DAYTRADE] ⚠️ IBKR no conectado. Abortando trade.")
+                    return
+
                 new_trade = {
                     "id": f"DAY_ITM_PUT_{int(datetime.now().timestamp())}",
                     "symbol": symbol,

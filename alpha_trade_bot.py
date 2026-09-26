@@ -182,6 +182,20 @@ class AlphaTradeBot:
                 total_put_premium_collected = round(put_premium_per_contract * short_put_contracts, 2)
                 total_call_premium_paid = total_put_premium_collected # Financiación 100% simétrica a costo neto 0
                 
+                # --- EJECUCIÓN REAL EN IBKR ---
+                # Expiry string: 730 días desde hoy (aprox 2 años)
+                expiry_str = (datetime.now() + timedelta(days=730)).strftime("%Y%m%d")
+                
+                # Para evitar bloquear si no hay conexión, validamos:
+                if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
+                    # Ejecutar pata corta (Short Put)
+                    put_resp = self.ibkr_adapter.execute_option_order_sync(symbol, "P", put_strike, expiry_str, "SELL", short_put_contracts)
+                    # Ejecutar pata larga (Long Call)
+                    call_resp = self.ibkr_adapter.execute_option_order_sync(symbol, "C", call_strike, expiry_str, "BUY", long_call_contracts)
+                else:
+                    print("[ALPHA_TRADE] ⚠️ IBKR no está conectado. Abortando trade real por seguridad.")
+                    return {"status": "NO_OPPORTUNITY"}
+
                 new_position = {
                     "id": int(datetime.now().timestamp() * 1000),
                     "symbol": symbol,
@@ -305,15 +319,14 @@ class AlphaTradeBot:
         return {"success": False, "message": "Posición no encontrada o ya desacoplada."}
 
     def fetch_underlying_price(self, symbol):
-        """Fetches live underlying price from Yahoo Finance."""
-        try:
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode())
-                return round(data["chart"]["result"][0]["meta"]["regularMarketPrice"], 2)
-        except Exception:
-            return None
+        """Fetches live underlying price from IBKR."""
+        if self.ibkr_adapter:
+            try:
+                return self.ibkr_adapter.fetch_live_price(symbol)
+            except Exception as e:
+                print(f"[{bot.upper()}] Error obteniendo precio: {e}")
+                return None
+        return None
 
     def monitor_positions(self):
         """

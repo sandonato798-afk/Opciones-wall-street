@@ -81,8 +81,7 @@ class BullMarketBot:
                 loaded = True
 
         if not loaded:
-            # Posición inicial de demostración institucional en SPY para que el sistema tenga datos vivos
-            self._seed_initial_spy_diagonal()
+            print("[BULL_MARKET] Estado inicializado en limpio (desde cero).")
             self.save_state()
 
     def _seed_initial_spy_diagonal(self):
@@ -305,6 +304,17 @@ class BullMarketBot:
                     short_bs = black_scholes("CALL", price, short_strike, 10.0 / 365.0, 0.0525, iv)
                     short_income = round(short_bs["price"] * 100 * 1, 2)
                     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                    # --- EJECUCIÓN REAL EN IBKR ---
+                    exp_long_str = (datetime.now() + timedelta(days=75)).strftime("%Y%m%d")
+                    exp_short_str = (datetime.now() + timedelta(days=10)).strftime("%Y%m%d")
+                    
+                    if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
+                        call_long_resp = self.ibkr_adapter.execute_option_order_sync(symbol, "C", long_strike, exp_long_str, "BUY", 1)
+                        call_short_resp = self.ibkr_adapter.execute_option_order_sync(symbol, "C", short_strike, exp_short_str, "SELL", 1)
+                    else:
+                        print("[BULL_MARKET] ⚠️ IBKR no conectado. Abortando trade real.")
+                        break
 
                     new_diag = {
                         "id": int(datetime.now().timestamp()),

@@ -102,16 +102,13 @@ class WheelCompoundingEngine:
         sync_state_to_github_async("wheel_compounding_state.json", state)
 
     def fetch_etf_live_price(self, symbol="SPY"):
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        try:
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode())
-                current_price = data["chart"]["result"][0]["meta"]["regularMarketPrice"]
-                return round(current_price, 2)
-        except Exception:
-            return 773.00 if symbol == "SPY" else 493.00  # Precios reales Sep 2026
+        if self.ibkr_adapter:
+            try:
+                return self.ibkr_adapter.fetch_live_price(symbol)
+            except Exception as e:
+                log_msg("ERROR", f"Abortando operaciones: {e}")
+                raise e
+        raise Exception("Adaptador IBKR no inyectado. No se puede obtener precio.")
 
     def calculate_compounding_projections(self, years=10):
         """

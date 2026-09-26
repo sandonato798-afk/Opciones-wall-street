@@ -1,9 +1,70 @@
-import React, { useState } from 'react';
-import { activeTrades, portfolioSummary } from '../data/mockData';
-
+import React, { useState, useEffect } from 'react';
 
 export const GlobalLedgerView: React.FC = () => {
   const [filterLayer, setFilterLayer] = useState<string>('TODAS');
+  const [activeTrades, setActiveTrades] = useState<any[]>([]);
+  const [portfolioSummary, setPortfolioSummary] = useState<any>({
+    winRate: 0,
+    tradesPositivos: 0,
+    tradesTotales: 0,
+    thetaGlobalTotal: 0,
+    thetaDiario: 0,
+    pnlTotal: 0,
+    pnlPercentage: 0
+  });
+
+  useEffect(() => {
+    fetch('/api/master/summary')
+      .then(res => res.json())
+      .then(data => {
+        // Mapeo básico para mostrar la conexión en vivo
+        if(data && data.collateral_portfolio) {
+           setPortfolioSummary({
+             winRate: 0,
+             tradesPositivos: 0,
+             tradesTotales: 0,
+             thetaGlobalTotal: 0,
+             thetaDiario: 0,
+             pnlTotal: data.global_unrealized_pnl_usd || 0,
+             pnlPercentage: 0
+           });
+           
+           // Aplanamos las posiciones activas de cada capa para la tabla
+           const allPos: any[] = [];
+           if (data.layer_status) {
+              Object.keys(data.layer_status).forEach(layerKey => {
+                 const layer = data.layer_status[layerKey];
+                 if (layer.open_diagonals) {
+                    layer.open_diagonals.forEach((p:any) => allPos.push({...p, layerTitle: layerKey.toUpperCase()}));
+                 }
+                 if (layer.active_synthetics_count && layer.open_positions) {
+                    layer.open_positions.forEach((p:any) => allPos.push({...p, layerTitle: layerKey.toUpperCase()}));
+                 }
+                 if (layer.active_trades) {
+                    layer.active_trades.forEach((p:any) => allPos.push({...p, layerTitle: layerKey.toUpperCase()}));
+                 }
+              });
+           }
+           // Map them to the table's expected format if needed
+           setActiveTrades(allPos.map((t:any) => ({
+             id: t.id || Math.random().toString(),
+             layer: t.layerTitle || 'UNKNOWN',
+             layerTitle: t.layerTitle || 'UNKNOWN',
+             strategy: t.strategy || 'OPTION TRADE',
+             ticker: t.symbol || 'SPY',
+             strike: t.strike || t.short_put_strike || t.short_call_strike || 0,
+             dte: t.dte || t.short_call_dte || 0,
+             deltaNet: 0,
+             entryNet: t.premium_collected_usd || t.short_put_premium_collected || 0,
+             spotPrice: t.current_underlying_price || 0,
+             pnlFlotante: t.unrealized_pnl_usd || t.total_unrealized_pnl_usd || 0,
+             statusLabel: t.status || 'ACTIVE',
+             status: t.status || 'ACTIVE'
+           })));
+        }
+      })
+      .catch(err => console.error(err));
+  }, []);
 
   const filtered = activeTrades.filter(t => {
     if (filterLayer !== 'TODAS' && t.layer !== filterLayer) return false;
@@ -16,9 +77,9 @@ export const GlobalLedgerView: React.FC = () => {
       <div className="flex justify-between items-end border-b border-[#1f2633] pb-4">
         <div>
           <div className="text-xs text-[#00e676] flex items-center gap-2">
-            <span>● SYNC 100% NY4</span>
+            <span>● SYNC 100% IBKR LIVE</span>
             <span className="text-gray-500">|</span>
-            <span>AUDITORÍA TRANSVERSAL MULTI-CAPA (34 OPS TOTAL)</span>
+            <span>EJECUCIÓN REAL (PAPER)</span>
           </div>
           <h1 className="text-2xl font-bold text-white tracking-wide mt-1">REPOSITORIO GLOBAL <span className="text-sm font-normal text-gray-400">LEDGER V4.2</span></h1>
         </div>

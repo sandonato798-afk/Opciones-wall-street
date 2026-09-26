@@ -112,6 +112,25 @@ class IBKRBrokerAdapter:
             "RealizedPnL": 0.0
         }
 
+    def fetch_live_price(self, symbol: str) -> float:
+        """Extrae el precio de mercado en vivo directamente desde IBKR. Nada de hardcoding."""
+        if self.is_live_connected():
+            try:
+                contract = Stock(symbol, 'SMART', 'USD')
+                self.ib.qualifyContracts(contract)
+                tickers = self.ib.reqTickers(contract)
+                if tickers:
+                    price = tickers[0].marketPrice()
+                    import math
+                    if math.isnan(price) or price <= 0:
+                        price = tickers[0].close
+                    if price and not math.isnan(price) and price > 0:
+                        return round(price, 2)
+            except Exception as e:
+                logging.error(f"Error extrayendo precio real IBKR para {symbol}: {e}")
+                raise Exception(f"No se pudo obtener precio real de IBKR para {symbol}")
+        raise Exception("IBKR no está conectado. Abortando cálculo de precio por seguridad.")
+
     def place_bracket_option_order(self, symbol: str, option_type: str, strike: float, expiry: str, 
                                    action: str, quantity: int, limit_price: float) -> Dict:
         """

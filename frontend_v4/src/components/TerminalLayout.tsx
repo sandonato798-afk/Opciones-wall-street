@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { LayerId } from '../types/darq';
-import { portfolioSummary } from '../data/mockData';
 
 interface Props {
   currentTab: LayerId;
@@ -9,6 +8,21 @@ interface Props {
 }
 
 export const TerminalLayout: React.FC<Props> = ({ currentTab, onSelectTab, children }) => {
+  const [nav, setNav] = useState(0);
+  const [pnlPct, setPnlPct] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/master/summary')
+      .then(res => res.json())
+      .then(data => {
+         if(data && data.collateral_portfolio) {
+            setNav(data.collateral_portfolio.current_liquidity_usd || 100000);
+            setPnlPct(0); // placeholder for real calculation
+         }
+      })
+      .catch(err => console.error(err));
+  }, []);
+
   const menuItems: { id: LayerId; label: string; badge?: string }[] = [
     { id: 'HOME', label: 'HOME (OVERVIEW)' },
     { id: 'RUEDA', label: 'RUEDA (CAPA 1)' },
@@ -90,8 +104,8 @@ export const TerminalLayout: React.FC<Props> = ({ currentTab, onSelectTab, child
             </div>
             <div className="text-xs text-gray-400">
               PORTFOLIO NAV: 
-              <span className="text-white font-bold mx-2">${portfolioSummary.masterNav.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-              <span className="text-[#00e676] font-bold">+{portfolioSummary.pnlPercentage}%</span>
+              <span className="text-white font-bold mx-2">${nav.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+              <span className="text-[#00e676] font-bold">+{pnlPct}%</span>
             </div>
           </div>
           <div className="flex items-center gap-3">

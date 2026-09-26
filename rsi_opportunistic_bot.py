@@ -243,6 +243,14 @@ class RSIOpportunisticBot:
                     premium_collected_usd = round(premium_per_share * 100 * contracts, 2)
                     take_profit_usd = round(premium_collected_usd * 0.50, 2)  # TP al 50%
 
+                    # --- EJECUCIÓN REAL EN IBKR ---
+                    expiry_str = (datetime.now() + timedelta(days=1)).strftime("%Y%m%d")
+                    if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
+                        put_resp = self.ibkr_adapter.execute_option_order_sync(symbol, "P", put_strike, expiry_str, "SELL", contracts)
+                    else:
+                        print("[RSI_OPPORTUNISTIC] ⚠️ IBKR no conectado. Abortando trade.")
+                        continue
+
                     trade = {
                         "id": int(datetime.now().timestamp() * 1000),
                         "symbol": symbol,
