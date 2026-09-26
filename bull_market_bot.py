@@ -38,18 +38,12 @@ class BullMarketBot:
         self.load_state()
 
     def fetch_live_price(self, symbol="SPY"):
-        """Consulta cotización en tiempo real desde Yahoo Finance chart API."""
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        try:
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode())
-                current_price = data["chart"]["result"][0]["meta"]["regularMarketPrice"]
-                return round(float(current_price), 2)
-        except Exception:
-            fallbacks = {"SPY": 565.0, "QQQ": 490.0, "GLD": 240.0, "IWM": 220.0, "TLT": 98.0}
-            return fallbacks.get(symbol, 500.0)
+        """Obtiene precio REAL desde IBKR. Si no hay conexión, lanza excepción — nunca inventa precios."""
+        if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
+            price = self.ibkr_adapter.fetch_live_price(symbol)
+            if price and price > 0:
+                return price
+        raise Exception(f"[BULL_MARKET] IBKR no conectado. No se puede obtener precio real de {symbol}. Abortando operación.")
 
     def load_state(self):
         loaded = False

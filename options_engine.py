@@ -141,19 +141,8 @@ class OptionsTradingEngine:
                         "implied_volatility": WALL_STREET_ETFS[symbol]["default_iv"]
                     }
             except Exception as e:
-                self.log("WARN", f"Fallo consulta Yahoo Finance para {symbol}: {e}")
-                # Fallback realistic pricing
-                fallback_prices = {"SPY": 560.50, "QQQ": 485.20, "IWM": 220.10, "TLT": 98.40, "GLD": 232.80}
-                prices[symbol] = {
-                    "symbol": symbol,
-                    "name": WALL_STREET_ETFS[symbol]["name"],
-                    "description": WALL_STREET_ETFS[symbol]["description"],
-                    "price": fallback_prices.get(symbol, 500.0),
-                    "prev_close": fallback_prices.get(symbol, 500.0),
-                    "change_pct": 0.25,
-                    "iv_rank": 52.0,
-                    "implied_volatility": WALL_STREET_ETFS[symbol]["default_iv"]
-                }
+                self.log("ERROR", f"Error obteniendo precio real para {symbol}: {e}. Omitiendo este símbolo.")
+                # Sin precio real no se incluye el símbolo — nunca se inventan precios
         return prices
 
     def generate_option_chain(self, symbol, dte=30, strikes_count=7):

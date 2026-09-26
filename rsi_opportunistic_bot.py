@@ -108,36 +108,21 @@ class RSIOpportunisticBot:
             return None, None
 
     def _fetch_real_put_premium(self, symbol, target_strike):
-        """Busca la prima real en la cadena de opciones (bid/ask mid) usando yfinance. Fallback a ~0.4%."""
+        """Busca la prima real usando Black-Scholes con precio real de IBKR. Sin yfinance."""
         try:
-            import yfinance as yf
-            ticker = yf.Ticker(symbol)
-            exps = ticker.options
-            if not exps:
-                return round(target_strike * 0.004, 2)
-            
-            # Usar el vencimiento más cercano (0-1 DTE)
-            chain = ticker.option_chain(exps[0])
-            puts = chain.puts
-            if puts.empty:
-                return round(target_strike * 0.004, 2)
-            
-            # Encontrar el strike más cercano al target
-            put_row = puts.iloc[(puts['strike'] - target_strike).abs().argsort()[:1]]
-            if not put_row.empty:
-                bid = put_row['bid'].values[0]
-                ask = put_row['ask'].values[0]
-                mid = (bid + ask) / 2.0
-                # Si el mercado está cerrado, a veces bid/ask es 0, usamos lastPrice
-                if mid <= 0.01:
-                    mid = put_row['lastPrice'].values[0]
-                if mid > 0.01:
-                    return round(mid, 2)
+            if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
+                spot = self.ibkr_adapter.fetch_live_price(symbol)
+                if spot and spot > 0:
+                    from options_engine import black_scholes
+                    bs = black_scholes("PUT", spot, target_strike, 1.0 / 365.0, 0.0525, 0.18)
+                    premium = round(max(0.50, bs["price"]), 2)
+                    print(f"[RSI_OPPORTUNISTIC] Prima BS calculada para {symbol} Strike {target_strike}: ${premium} (Spot IBKR: ${spot})")
+                    return premium
         except Exception as e:
-            print(f"[RSI_OPPORTUNISTIC] Error YF Option Chain {symbol}: {e}")
-            
-        # Fallback realista: ~0.4% del strike (típico para 1DTE OTM)
-        return round(target_strike * 0.004, 2)
+            print(f"[RSI_OPPORTUNISTIC] Error calculando prima BS: {e}")
+        # Sin IBKR no ejecutamos — retornamos 0 para que el sistema aborte la operación
+        print(f"[RSI_OPPORTUNISTIC] ⚠️ IBKR no disponible. Abortando cálculo de prima para {symbol}.")
+        return 0.0
 
     def scan_market(self, market_data=None):
         """

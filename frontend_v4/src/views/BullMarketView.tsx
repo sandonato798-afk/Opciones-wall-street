@@ -1,9 +1,37 @@
-import React from 'react';
-import { activeTrades } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
 
 export const BullMarketView: React.FC = () => {
-  const trade = activeTrades.find(t => t.id === '#20260901');
-  if (!trade) return null;
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/master/summary')
+      .then(res => res.json())
+      .then(d => {
+        setData(d?.layer_status?.bull_market || null);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const ibkrOnline = data !== null;
+  const openDiagonals: any[] = data?.open_diagonals || [];
+  const rollHistory: any[] = data?.weekly_rolls_history || [];
+  const totalPnl = data?.total_pnl_usd ?? 0;
+  const thetaCollected = data?.total_theta_collected_usd ?? 0;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-[#00e676] animate-pulse text-sm font-mono">
+          ● CARGANDO DATOS REALES IBKR CAPA 5...
+        </div>
+      </div>
+    );
+  }
+
+  const fmt = (v: number) => v >= 0 ? `+$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : `-$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  const pnlColor = (v: number) => v > 0 ? 'text-[#00e676]' : v < 0 ? 'text-red-400' : 'text-gray-400';
 
   return (
     <div className="space-y-6">
@@ -12,103 +40,97 @@ export const BullMarketView: React.FC = () => {
         <div>
           <span className="bg-red-900/60 border border-red-600 text-red-300 text-xs px-2 py-0.5 rounded font-bold">CAPA 05</span>
           <h1 className="text-2xl font-bold text-white mt-1">BULL MARKET PMCC <span className="text-sm font-normal text-gray-400">DIAGONAL SYNTHETIC LEAP OVERLAY</span></h1>
-          <div className="text-xs text-gray-400 mt-1">UNDERLYING: SPY | SPOT: $771.35 | IV: 16.42%</div>
-        </div>
-        <div className="flex gap-2">
-          <button className="text-xs bg-[#141a24] border border-[#1f2633] text-white px-3 py-2 rounded">
-            ABRIR NUEVO PMCC
-          </button>
-          <button className="text-xs bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-2 rounded">
-            ROLLEAR SHORT CALL SEMANAL
-          </button>
-        </div>
-      </div>
-
-      {/* Grid de 3 Columnas Forenses (Estándar Pantalla Alpha) */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Pata Long ITM */}
-        <div className="bg-[#10141e] border border-[#1f2633] p-5 rounded space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-white font-bold">● PATA LONG (CALL ITM)</span>
-            <span className="text-cyan-400">Δ +0.85 LEAP</span>
-          </div>
-          <div className="text-xs text-gray-400">Subrogación Sintética de Acciones SPY</div>
-          <div className="pt-2 border-t border-[#1f2633] space-y-2 text-xs">
-            <div className="flex justify-between"><span>Strike:</span><span className="text-white font-bold">$726.90 CALL</span></div>
-            <div className="flex justify-between"><span>Vencimiento:</span><span className="text-white">2026-11-24 (75 DTE)</span></div>
-            <div className="flex justify-between"><span>Prima Pagada:</span><span className="text-red-400">-$58.70 /sh (-$5,870 Total)</span></div>
-            <div className="flex justify-between"><span>Valor de Mercado:</span><span className="text-[#00e676] font-bold">$5,401.00 Liquidez</span></div>
+          <div className={`text-xs mt-1 ${ibkrOnline ? 'text-[#00e676]' : 'text-yellow-400'}`}>
+            {ibkrOnline ? '● DATOS EN VIVO IBKR PAPER' : '● IBKR STANDBY — MERCADO CERRADO'}
           </div>
         </div>
-
-        {/* Pata Short Semanal */}
-        <div className="bg-[#10141e] border border-[#1f2633] p-5 rounded space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-white font-bold">● PATA SHORT (RENTA OTM)</span>
-            <span className="text-amber-400">Δ -0.14 CALL</span>
-          </div>
-          <div className="text-xs text-gray-400">Extracción Periódica de Prima / Escudo Semanal</div>
-          <div className="pt-2 border-t border-[#1f2633] space-y-2 text-xs">
-            <div className="flex justify-between"><span>Strike Ciclo #6:</span><span className="text-white font-bold">$787.00 CALL</span></div>
-            <div className="flex justify-between"><span>Vencimiento:</span><span className="text-white">2026-09-30 (3 DTE)</span></div>
-            <div className="flex justify-between"><span>Prima Recibida:</span><span className="text-[#00e676] font-bold">+$1.25 /sh (+$125.00)</span></div>
-            <div className="flex justify-between"><span>Recompra Actual:</span><span className="text-amber-400">-$0.46 /sh (-$46.00)</span></div>
-          </div>
-        </div>
-
-        {/* Estructura Combinada */}
-        <div className="bg-[#10141e] border border-[#1f2633] p-5 rounded space-y-3">
-          <div className="flex justify-between items-center text-xs">
-            <span className="text-white font-bold">● ESTRUCTURA COMBINADA</span>
-            <span className="text-[#00e676]">SPREAD AUDIT</span>
-          </div>
-          <div className="text-xs text-gray-400">Consolidación Neta Sintética + Cashflow Reinvest</div>
-          <div className="pt-2 border-t border-[#1f2633] space-y-2 text-xs">
-            <div className="flex justify-between"><span>Inversión Inicial:</span><span className="text-white">-$5,572.00 Débito</span></div>
-            <div className="flex justify-between"><span>Break-Even:</span><span className="text-amber-400 font-bold">$782.62 (Spot: $771.35)</span></div>
-            <div className="flex justify-between"><span>Theta Rolles Acum.:</span><span className="text-[#00e676] font-bold">+$528.30 USD</span></div>
-            <div className="flex justify-between"><span>PNL Combinado:</span><span className="text-[#00e676] font-bold">+2.41% Spread ROI</span></div>
-          </div>
+        <div className="text-right">
+          <div className="text-[11px] text-gray-500">PnL TOTAL CAPA</div>
+          <div className={`text-2xl font-bold ${pnlColor(totalPnl)}`}>{fmt(totalPnl)}</div>
+          <div className="text-xs text-gray-400">Theta Acum: {fmt(thetaCollected)}</div>
         </div>
       </div>
 
-      {/* Historial de Rolles Semanales Auditados */}
-      <div className="bg-[#10141e] border border-[#1f2633] p-5 rounded space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-sm font-bold text-white tracking-wide">HISTORIAL DE ROLLEOS SEMANALES Y CICLOS DE THETA (5 CICLOS AUDITADOS)</h2>
-          <span className="text-xs text-[#00e676]">100% PROFIT RECORD</span>
+      {/* Estado real */}
+      {openDiagonals.length === 0 ? (
+        <div className="bg-[#10141e] border border-[#1f2633] p-8 rounded text-center space-y-2">
+          <div className="text-[#00e676] text-lg font-bold">✓ SISTEMA LIMPIO</div>
+          <div className="text-gray-400 text-sm">No hay diagonales PMCC abiertas. El sistema abrirá posiciones reales el lunes a las 09:30 EST cuando el mercado abra.</div>
+          <div className="text-xs text-gray-500 mt-2">Broker: IBKR Paper Trading | Estado: Esperando apertura de mercado</div>
         </div>
-        <table className="w-full text-left text-xs">
-          <thead className="text-gray-500 border-b border-[#1f2633]">
-            <tr>
-              <th className="pb-2">CICLO</th>
-              <th className="pb-2">FECHA</th>
-              <th className="pb-2">STRIKE VENDIDO</th>
-              <th className="pb-2">PRIMA RECIBIDA</th>
-              <th className="pb-2">RECOMPRA</th>
-              <th className="pb-2">RESULTADO NETO</th>
-              <th className="pb-2 text-right">ESTADO</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#1f2633]">
-            {trade.rollCycles?.map((rc: any) => (
-              <tr key={rc.cycle} className="hover:bg-[#141924]">
-                <td className="py-2.5 font-bold text-white">Ciclo #{rc.cycle}</td>
-                <td className="py-2.5 text-gray-400">{rc.date}</td>
-                <td className="py-2.5 text-white">${rc.strike.toFixed(2)} C</td>
-                <td className="py-2.5 text-[#00e676] font-medium">+${rc.credit.toFixed(2)}</td>
-                <td className="py-2.5 text-amber-400">-${rc.rebuy.toFixed(2)}</td>
-                <td className="py-2.5 text-[#00e676] font-bold">+${rc.net.toFixed(2)}</td>
-                <td className="py-2.5 text-right">
-                  <span className="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded">
-                    {rc.status}
-                  </span>
-                </td>
+      ) : (
+        openDiagonals.map((d: any, i: number) => (
+          <div key={i} className="bg-[#10141e] border border-[#1f2633] p-5 rounded space-y-4">
+            <div className="flex justify-between items-center border-b border-[#1f2633] pb-3">
+              <div>
+                <span className="text-lg font-bold text-white">{d.symbol} PMCC — Long ${d.long_call_strike} / Short ${d.short_call_strike}</span>
+                <div className="text-xs text-gray-400 mt-0.5">Exp Long: {d.long_call_expiry} | Exp Short: {d.short_call_expiry} ({d.short_call_dte} DTE)</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-400">PnL No Realizado</div>
+                <div className={`text-xl font-bold ${pnlColor(d.total_unrealized_pnl_usd || 0)}`}>{fmt(d.total_unrealized_pnl_usd || 0)}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-xs">
+              <div className="bg-[#141924] p-3 rounded border border-[#222a38] space-y-1">
+                <div className="text-gray-500 uppercase text-[10px]">PATA LONG (CALL ITM)</div>
+                <div>Strike: <span className="text-white font-bold">${d.long_call_strike} CALL</span></div>
+                <div>Vencimiento: <span className="text-white">{d.long_call_expiry}</span></div>
+                <div>Delta: <span className="text-cyan-400">Δ {d.long_call_delta ?? '—'}</span></div>
+                <div>Prima Pagada: <span className="text-red-400">-${d.long_call_premium_paid ?? 0}</span></div>
+              </div>
+              <div className="bg-[#141924] p-3 rounded border border-[#222a38] space-y-1">
+                <div className="text-gray-500 uppercase text-[10px]">PATA SHORT (RENTA OTM)</div>
+                <div>Strike: <span className="text-white font-bold">${d.short_call_strike} CALL</span></div>
+                <div>Vencimiento: <span className="text-white">{d.short_call_expiry} ({d.short_call_dte} DTE)</span></div>
+                <div>Delta: <span className="text-amber-400">Δ {d.short_call_delta ?? '—'}</span></div>
+                <div>Prima: <span className="text-[#00e676]">+${d.short_call_premium_collected ?? 0}</span></div>
+              </div>
+              <div className="bg-[#141924] p-3 rounded border border-[#222a38] space-y-1">
+                <div className="text-gray-500 uppercase text-[10px]">ESTRUCTURA COMBINADA</div>
+                <div>Inversión Neta: <span className="text-white">${d.net_debit_usd ?? 0}</span></div>
+                <div>Break-Even: <span className="text-amber-400">${d.breakeven ?? '—'}</span></div>
+                <div>Theta Rolls: <span className="text-[#00e676]">+${d.theta_collected_usd ?? 0}</span></div>
+                <div>ROI: <span className={pnlColor(d.total_unrealized_pnl_usd || 0)}>{fmt(d.total_unrealized_pnl_usd || 0)}</span></div>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+
+      {/* Historial de Rolles — solo datos reales del estado */}
+      {rollHistory.length > 0 && (
+        <div className="bg-[#10141e] border border-[#1f2633] p-5 rounded space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-sm font-bold text-white tracking-wide">HISTORIAL DE ROLLEOS SEMANALES AUDITADOS</h2>
+            <span className="text-xs text-[#00e676]">{rollHistory.length} CICLOS REALES</span>
+          </div>
+          <table className="w-full text-left text-xs">
+            <thead className="text-gray-500 border-b border-[#1f2633]">
+              <tr>
+                <th className="pb-2">CICLO</th>
+                <th className="pb-2">FECHA</th>
+                <th className="pb-2">STRIKE VENDIDO</th>
+                <th className="pb-2">PRIMA RECIBIDA</th>
+                <th className="pb-2">RECOMPRA</th>
+                <th className="pb-2 text-right">RESULTADO NETO</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-[#1f2633]">
+              {rollHistory.map((rc: any, idx: number) => (
+                <tr key={idx} className="hover:bg-[#141924]">
+                  <td className="py-2.5 font-bold text-white">Ciclo #{rc.cycle ?? idx + 1}</td>
+                  <td className="py-2.5 text-gray-400">{rc.date ?? rc.roll_date ?? '—'}</td>
+                  <td className="py-2.5 text-white">${rc.strike?.toFixed(2) ?? '—'} C</td>
+                  <td className="py-2.5 text-[#00e676] font-medium">+${rc.credit?.toFixed(2) ?? rc.premium_collected?.toFixed(2) ?? '0.00'}</td>
+                  <td className="py-2.5 text-amber-400">-${rc.rebuy?.toFixed(2) ?? rc.buyback_cost?.toFixed(2) ?? '0.00'}</td>
+                  <td className="py-2.5 text-right font-bold text-[#00e676]">+${rc.net?.toFixed(2) ?? rc.net_profit?.toFixed(2) ?? '0.00'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
