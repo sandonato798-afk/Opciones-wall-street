@@ -112,37 +112,31 @@ class OptionsTradingEngine:
         with open(STATE_FILE, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2, ensure_ascii=False)
 
-    def fetch_live_etf_prices(self):
-        """Consulta cotizaciones reales en vivo de ETFs desde Yahoo Finance API"""
+    def fetch_live_etf_prices(self, ibkr_adapter=None):
+        """Consulta cotizaciones reales en vivo de ETFs desde IBKR. Sin Yahoo Finance."""
         prices = {}
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
 
         for symbol in WALL_STREET_ETFS.keys():
             try:
-                url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d"
-                req = urllib.request.Request(url, headers=headers)
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    data = json.loads(resp.read().decode())
-                    meta = data["chart"]["result"][0]["meta"]
-                    current_price = meta.get("regularMarketPrice", 0.0)
-                    prev_close = meta.get("chartPreviousClose", current_price)
-                    pct_change = ((current_price - prev_close) / prev_close) * 100.0 if prev_close > 0 else 0.0
-                    
-                    prices[symbol] = {
-                        "symbol": symbol,
-                        "name": WALL_STREET_ETFS[symbol]["name"],
-                        "description": WALL_STREET_ETFS[symbol]["description"],
-                        "price": round(current_price, 2),
-                        "prev_close": round(prev_close, 2),
-                        "change_pct": round(pct_change, 2),
-                        "iv_rank": round(45.0 + (hash(symbol) % 30), 1),  # Simulated IV Rank 30-75%
-                        "implied_volatility": WALL_STREET_ETFS[symbol]["default_iv"]
-                    }
+                if ibkr_adapter and ibkr_adapter.is_live_connected():
+                    price = ibkr_adapter.fetch_live_price(symbol)
+                    if price and price > 0:
+                        prices[symbol] = {
+                            "symbol": symbol,
+                            "name": WALL_STREET_ETFS[symbol]["name"],
+                            "description": WALL_STREET_ETFS[symbol]["description"],
+                            "price": round(price, 2),
+                            "prev_close": round(price, 2),
+                            "change_pct": 0.0,
+                            "iv_rank": 0.0,
+                            "implied_volatility": WALL_STREET_ETFS[symbol]["default_iv"]
+                        }
+                    else:
+                        self.log("ERROR", f"Precio inválido de IBKR para {symbol}. Omitiendo.")
+                else:
+                    self.log("WARN", f"IBKR no conectado — omitiendo {symbol} sin inventar precio.")
             except Exception as e:
-                self.log("ERROR", f"Error obteniendo precio real para {symbol}: {e}. Omitiendo este símbolo.")
-                # Sin precio real no se incluye el símbolo — nunca se inventan precios
+                self.log("ERROR", f"Error obteniendo precio IBKR para {symbol}: {e}. Omitiendo.")
         return prices
 
     def generate_option_chain(self, symbol, dte=30, strikes_count=7):

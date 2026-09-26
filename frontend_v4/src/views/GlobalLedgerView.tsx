@@ -1,197 +1,230 @@
 import React, { useState, useEffect } from 'react';
 
 export const GlobalLedgerView: React.FC = () => {
-  const [filterLayer, setFilterLayer] = useState<string>('TODAS');
-  const [activeTrades, setActiveTrades] = useState<any[]>([]);
-  const [portfolioSummary, setPortfolioSummary] = useState<any>({
-    winRate: 0,
-    tradesPositivos: 0,
-    tradesTotales: 0,
-    thetaGlobalTotal: 0,
-    thetaDiario: 0,
-    pnlTotal: 0,
-    pnlPercentage: 0
-  });
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<string>('TODAS');
+  const [lastRefresh, setLastRefresh] = useState<string>('—');
+
+  const fetchData = () => {
+    fetch('/api/ibkr/positions')
+      .then(res => res.json())
+      .then(d => {
+        setData(d);
+        setLastRefresh(new Date().toLocaleTimeString('es-AR'));
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
-    fetch('/api/master/summary')
-      .then(res => res.json())
-      .then(data => {
-        // Mapeo básico para mostrar la conexión en vivo
-        if(data && data.collateral_portfolio) {
-           setPortfolioSummary({
-             winRate: 0,
-             tradesPositivos: 0,
-             tradesTotales: 0,
-             thetaGlobalTotal: 0,
-             thetaDiario: 0,
-             pnlTotal: data.global_unrealized_pnl_usd || 0,
-             pnlPercentage: 0
-           });
-           
-           // Aplanamos las posiciones activas de cada capa para la tabla
-           const allPos: any[] = [];
-           if (data.layer_status) {
-              Object.keys(data.layer_status).forEach(layerKey => {
-                 const layer = data.layer_status[layerKey];
-                 if (layer.open_diagonals) {
-                    layer.open_diagonals.forEach((p:any) => allPos.push({...p, layerTitle: layerKey.toUpperCase()}));
-                 }
-                 if (layer.active_synthetics_count && layer.open_positions) {
-                    layer.open_positions.forEach((p:any) => allPos.push({...p, layerTitle: layerKey.toUpperCase()}));
-                 }
-                 if (layer.active_trades) {
-                    layer.active_trades.forEach((p:any) => allPos.push({...p, layerTitle: layerKey.toUpperCase()}));
-                 }
-              });
-           }
-           // Map them to the table's expected format if needed
-           setActiveTrades(allPos.map((t:any) => ({
-             id: t.id || Math.random().toString(),
-             layer: t.layerTitle || 'UNKNOWN',
-             layerTitle: t.layerTitle || 'UNKNOWN',
-             strategy: t.strategy || 'OPTION TRADE',
-             ticker: t.symbol || 'SPY',
-             strike: t.strike || t.short_put_strike || t.short_call_strike || 0,
-             dte: t.dte || t.short_call_dte || 0,
-             deltaNet: 0,
-             entryNet: t.premium_collected_usd || t.short_put_premium_collected || 0,
-             spotPrice: t.current_underlying_price || 0,
-             pnlFlotante: t.unrealized_pnl_usd || t.total_unrealized_pnl_usd || 0,
-             statusLabel: t.status || 'ACTIVE',
-             status: t.status || 'ACTIVE'
-           })));
-        }
-      })
-      .catch(err => console.error(err));
+    fetchData();
+    // Auto-refresh cada 30 segundos durante horario de mercado
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const filtered = activeTrades.filter(t => {
-    if (filterLayer !== 'TODAS' && t.layer !== filterLayer) return false;
-    return true;
-  });
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-[#00e676] animate-pulse text-sm font-mono">
+          ● SINCRONIZANDO CON IBKR PAPER TRADING...
+        </div>
+      </div>
+    );
+  }
+
+  const connected = data?.ibkr_connected ?? false;
+  const account = data?.account || {};
+  const totals = data?.portfolio_totals || {};
+  const positions: any[] = data?.positions || [];
+  const options: any[] = data?.options || [];
+  const stocks: any[] = data?.stocks || [];
+
+  const filtered = filterType === 'TODAS' ? positions
+    : filterType === 'OPT' ? options
+    : stocks;
+
+  const fmtUsd = (v: number) => `$${(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  const fmtPnl = (v: number) => {
+    if (!v && v !== 0) return '—';
+    return v >= 0
+      ? `+$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+      : `-$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
+  const pnlColor = (v: number) => v > 0 ? 'text-[#00e676]' : v < 0 ? 'text-red-400' : 'text-gray-400';
 
   return (
     <div className="space-y-6">
-      {/* Title & Stats */}
-      <div className="flex justify-between items-end border-b border-[#1f2633] pb-4">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-[#1f2633] pb-4">
         <div>
-          <div className="text-xs text-[#00e676] flex items-center gap-2">
-            <span>● SYNC 100% IBKR LIVE</span>
-            <span className="text-gray-500">|</span>
-            <span>EJECUCIÓN REAL (PAPER)</span>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${connected ? 'bg-[#00e676] animate-pulse' : 'bg-red-500'}`}></span>
+            <span className={`text-xs font-bold ${connected ? 'text-[#00e676]' : 'text-red-400'}`}>
+              {connected ? 'IBKR PAPER TRADING — ESPEJO EN VIVO' : 'IBKR OFFLINE — DATOS CUANDO CONECTE'}
+            </span>
+            <span className="text-gray-500 text-xs">Latencia: {data?.ibkr_latency_ms ?? '—'} ms</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-wide mt-1">REPOSITORIO GLOBAL <span className="text-sm font-normal text-gray-400">LEDGER V4.2</span></h1>
+          <h1 className="text-2xl font-bold text-white tracking-wide mt-1">
+            REPOSITORIO GLOBAL <span className="text-sm font-normal text-gray-400">— PORTFOLIO IBKR REAL</span>
+          </h1>
+          <div className="text-xs text-gray-500 mt-1">Último sync: {lastRefresh} | Auto-refresh: 30s</div>
         </div>
+        <button
+          onClick={fetchData}
+          className="text-xs bg-[#141a24] border border-[#1f2633] hover:border-[#00e676] text-gray-300 hover:text-[#00e676] px-4 py-2 rounded transition-colors"
+        >
+          ↻ FORZAR SYNC
+        </button>
       </div>
 
-      {/* KPI Cards Consolidado */}
+      {/* KPIs de Cuenta — datos 100% IBKR */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
-          <div className="text-[11px] text-gray-400 uppercase">WIN RATE AUDIT (GLOBAL)</div>
-          <div className="text-2xl font-bold text-[#00e676] mt-1">{portfolioSummary.winRate}%</div>
-          <div className="text-xs text-gray-500 mt-1">{portfolioSummary.tradesPositivos}/{portfolioSummary.tradesTotales} Trades Positivos</div>
+          <div className="text-[11px] text-gray-400 uppercase">NAV REAL (NET LIQUIDATION)</div>
+          <div className="text-2xl font-bold text-white mt-1">{fmtUsd(account.nav)}</div>
+          <div className="text-xs text-gray-500 mt-1">Fuente: IBKR accountValues()</div>
         </div>
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
-          <div className="text-[11px] text-gray-400 uppercase">THETA GLOBAL EXTRAÍDO</div>
-          <div className="text-2xl font-bold text-[#00e676] mt-1">+${portfolioSummary.thetaGlobalTotal.toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-1">Decay Engine (+${portfolioSummary.thetaDiario}/día)</div>
+          <div className="text-[11px] text-gray-400 uppercase">CASH DISPONIBLE</div>
+          <div className="text-2xl font-bold text-white mt-1">{fmtUsd(account.cash)}</div>
+          <div className="text-xs text-gray-500 mt-1">TotalCashValue · Settled Cash</div>
         </div>
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
-          <div className="text-[11px] text-gray-400 uppercase">ESTADO MASTER OPERATIVO</div>
-          <div className="text-2xl font-bold text-white mt-1">5 ACTIVAS <span className="text-sm font-normal text-gray-500">/ 29 Cerradas</span></div>
-          <div className="text-xs text-[#00e676] mt-1">Pool 100% Asignable</div>
+          <div className="text-[11px] text-gray-400 uppercase">PnL NO REALIZADO</div>
+          <div className={`text-2xl font-bold mt-1 ${pnlColor(account.unrealized_pnl)}`}>
+            {fmtPnl(account.unrealized_pnl)}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">Posiciones Abiertas · IBKR Real</div>
         </div>
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
-          <div className="text-[11px] text-gray-400 uppercase">TOTAL PNL AUDITADO NETO</div>
-          <div className="text-2xl font-bold text-[#00e676] mt-1">+${portfolioSummary.pnlTotal.toLocaleString()}</div>
-          <div className="text-xs text-[#00e676] mt-1">ROI Realizado: +{portfolioSummary.pnlPercentage}%</div>
+          <div className="text-[11px] text-gray-400 uppercase">PnL REALIZADO (YTD)</div>
+          <div className={`text-2xl font-bold mt-1 ${pnlColor(account.realized_pnl)}`}>
+            {fmtPnl(account.realized_pnl)}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">Operaciones Cerradas · IBKR Real</div>
         </div>
       </div>
 
-      {/* Barra de Filtros */}
-      <div className="flex gap-2 border-b border-[#1f2633] pb-3">
-        {['TODAS', 'RUEDA', 'ALPHA', 'RSI', 'DAYTRADING', 'BULL_MARKET'].map(layer => (
-          <button
-            key={layer}
-            onClick={() => setFilterLayer(layer)}
-            className={`text-xs px-3 py-1.5 rounded transition ${
-              filterLayer === layer ? 'bg-red-600 text-white font-bold' : 'bg-[#141a24] text-gray-400 hover:text-white'
-            }`}
-          >
-            {layer}
-          </button>
-        ))}
+      {/* Resumen del Portfolio */}
+      <div className="grid grid-cols-3 gap-4 text-xs">
+        <div className="bg-[#10141e] border border-[#1f2633] p-3 rounded flex justify-between items-center">
+          <span className="text-gray-400">TOTAL POSICIONES</span>
+          <span className="text-white font-bold text-lg">{totals.total_positions ?? 0}</span>
+        </div>
+        <div className="bg-[#10141e] border border-[#1f2633] p-3 rounded flex justify-between items-center">
+          <span className="text-gray-400">OPCIONES ABIERTAS</span>
+          <span className="text-cyan-400 font-bold text-lg">{totals.total_options ?? 0}</span>
+        </div>
+        <div className="bg-[#10141e] border border-[#1f2633] p-3 rounded flex justify-between items-center">
+          <span className="text-gray-400">VALOR DE MERCADO TOTAL</span>
+          <span className="text-white font-bold text-lg">{fmtUsd(totals.total_market_value ?? 0)}</span>
+        </div>
       </div>
 
-      {/* Tabla Transversal Forense */}
+      {/* Tabla de Posiciones — espejo exacto IBKR */}
       <div className="bg-[#10141e] border border-[#1f2633] rounded overflow-hidden">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-[#0c1018] text-gray-400 border-b border-[#1f2633]">
-            <tr>
-              <th className="p-3">ID / REF</th>
-              <th className="p-3">CAPA & ESTRATEGIA</th>
-              <th className="p-3">TICKER</th>
-              <th className="p-3">STRIKES</th>
-              <th className="p-3">DTE</th>
-              <th className="p-3">DELTA</th>
-              <th className="p-3">CRÉDITO/DÉBITO</th>
-              <th className="p-3">SPOT</th>
-              <th className="p-3">PNL FLOTANTE</th>
-              <th className="p-3">ESTADO / PROTOCOLO</th>
-              <th className="p-3 text-right">ACCIONES</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#1f2633]">
-            {filtered.map(t => {
-              const isProfit = t.pnlFlotante >= 0;
-              return (
-                <tr key={t.id} className="hover:bg-[#141924] transition">
-                  <td className="p-3 font-semibold text-white">{t.id}</td>
-                  <td className="p-3">
-                    <div className="text-white font-medium">{t.layerTitle}</div>
-                    <div className="text-[10px] text-gray-400">{t.strategy}</div>
-                  </td>
-                  <td className="p-3 font-bold text-white">{t.ticker}</td>
-                  <td className="p-3">
-                    {t.strike ? `$${t.strike}` : `$${t.strikeLong} / $${t.strikeShort}`}
-                  </td>
-                  <td className="p-3 font-semibold text-cyan-400">{t.dte}d</td>
-                  <td className="p-3 text-cyan-400">{t.deltaNet > 0 ? `+${t.deltaNet}` : t.deltaNet} Δ</td>
-                  <td className="p-3 text-[#00e676]">{t.entryNet >= 0 ? `+$${t.entryNet}` : `-$${Math.abs(t.entryNet)}`}</td>
-                  <td className="p-3 text-white">${t.spotPrice}</td>
-                  <td className={`p-3 font-bold ${isProfit ? 'text-[#00e676]' : 'text-red-400'}`}>
-                    {isProfit ? `+$${t.pnlFlotante}` : `-$${Math.abs(t.pnlFlotante)}`}
-                  </td>
-                  <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] border ${
-                      t.status === 'ALERTA_1555_ROLL_DEFENSIVO' ? 'bg-red-950 text-red-300 border-red-700 font-bold animate-pulse' :
-                      t.status === 'TAKE_PROFIT_50_LISTO' ? 'bg-emerald-950 text-emerald-300 border-emerald-700' :
-                      'bg-[#1b2230] text-gray-300 border-[#283245]'
-                    }`}>
-                      {t.statusLabel}
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    {t.status === 'ALERTA_1555_ROLL_DEFENSIVO' ? (
-                      <button className="bg-red-600 hover:bg-red-500 text-white font-bold text-[10px] px-2.5 py-1 rounded">
-                        ROLL AHORA
-                      </button>
-                    ) : t.status === 'TAKE_PROFIT_50_LISTO' ? (
-                      <button className="bg-[#00e676] hover:bg-[#00c853] text-black font-bold text-[10px] px-2.5 py-1 rounded">
-                        CERRAR 50%
-                      </button>
-                    ) : (
-                      <button className="border border-[#1f2633] hover:border-gray-500 text-gray-300 text-[10px] px-2 py-1 rounded">
-                        AUDITAR
-                      </button>
-                    )}
-                  </td>
+        <div className="flex justify-between items-center p-4 border-b border-[#1f2633]">
+          <span className="text-sm font-bold text-white uppercase">
+            POSICIONES ABIERTAS — IBKR PAPER ACCOUNT
+          </span>
+          <div className="flex gap-2">
+            {['TODAS', 'OPT', 'STK'].map(f => (
+              <button
+                key={f}
+                onClick={() => setFilterType(f)}
+                className={`text-[11px] px-3 py-1 rounded border transition-colors ${
+                  filterType === f
+                    ? 'bg-[#00e676] text-black border-[#00e676] font-bold'
+                    : 'text-gray-400 border-[#1f2633] hover:border-[#00e676]'
+                }`}
+              >
+                {f === 'TODAS' ? 'TODAS' : f === 'OPT' ? 'OPCIONES' : 'ACCIONES'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="p-12 text-center space-y-2">
+            <div className="text-[#00e676] text-lg font-bold">
+              {connected ? '✓ CUENTA LIMPIA' : '⏳ ESPERANDO CONEXIÓN IBKR'}
+            </div>
+            <div className="text-gray-400 text-sm">
+              {connected
+                ? 'No hay posiciones abiertas en tu cuenta paper de IBKR. El sistema abrirá posiciones reales el lunes cuando el mercado abra a las 09:30 EST.'
+                : 'Iniciá IB Gateway para ver las posiciones en vivo.'}
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-[#0c1018] text-gray-400 border-b border-[#1f2633]">
+                <tr>
+                  <th className="p-3 text-left">SÍMBOLO</th>
+                  <th className="p-3 text-left">TIPO</th>
+                  <th className="p-3 text-left">POSICIÓN</th>
+                  <th className="p-3 text-left">STRIKE / EXP</th>
+                  <th className="p-3 text-right">PRECIO MKTV</th>
+                  <th className="p-3 text-right">VALOR MERCADO</th>
+                  <th className="p-3 text-right">COSTO PROM.</th>
+                  <th className="p-3 text-right">PnL NO REAL.</th>
+                  <th className="p-3 text-right">PnL REAL.</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="divide-y divide-[#1f2633]">
+                {filtered.map((pos: any, i: number) => (
+                  <tr key={i} className="hover:bg-[#141924] transition-colors">
+                    <td className="p-3 font-bold text-white">{pos.symbol}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        pos.sec_type === 'OPT'
+                          ? 'bg-cyan-950 text-cyan-300 border-cyan-800'
+                          : 'bg-blue-950 text-blue-300 border-blue-800'
+                      }`}>
+                        {pos.sec_type === 'OPT'
+                          ? `${pos.right === 'C' ? 'CALL' : 'PUT'}`
+                          : 'ACCIÓN'}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <span className={`font-bold ${pos.position < 0 ? 'text-red-400' : 'text-[#00e676]'}`}>
+                        {pos.position > 0 ? '+' : ''}{pos.position}
+                        <span className="text-gray-500 font-normal ml-1">
+                          {pos.position < 0 ? 'SHORT' : 'LONG'}
+                        </span>
+                      </span>
+                    </td>
+                    <td className="p-3 text-gray-300">
+                      {pos.sec_type === 'OPT'
+                        ? `$${pos.strike} | ${pos.expiry}`
+                        : '—'}
+                    </td>
+                    <td className="p-3 text-right text-white">{fmtUsd(pos.market_price)}</td>
+                    <td className="p-3 text-right text-white">{fmtUsd(pos.market_value)}</td>
+                    <td className="p-3 text-right text-gray-300">{fmtUsd(pos.avg_cost)}</td>
+                    <td className={`p-3 text-right font-bold ${pnlColor(pos.unrealized_pnl)}`}>
+                      {fmtPnl(pos.unrealized_pnl)}
+                    </td>
+                    <td className={`p-3 text-right ${pnlColor(pos.realized_pnl)}`}>
+                      {fmtPnl(pos.realized_pnl)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Nota de fuente de datos */}
+      <div className="text-[11px] text-gray-600 text-center">
+        Todos los datos provienen directamente de <span className="text-gray-400 font-bold">ib.portfolio()</span> — API nativa de Interactive Brokers.
+        Espejo exacto de lo que muestra tu cuenta paper en TWS / IB Gateway.
       </div>
     </div>
   );

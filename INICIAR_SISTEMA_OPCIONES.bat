@@ -1,11 +1,11 @@
 @echo off
-title Sistema de Opciones sobre ETFs (Wall Street) - D+ARQ
+title Sistema de Opciones D+ARQ - Motor Algoritmico 5 Capas
 cls
 echo ====================================================================
-echo      INICIANDO SISTEMA DE OPCIONES SOBRE ETFs DE WALL STREET
+echo      INICIANDO SISTEMA DE OPCIONES D+ARQ - 5 CAPAS IBKR PAPER
 echo ====================================================================
 echo.
-echo  Conectando con Yahoo Finance y cargando motor Black-Scholes...
+echo  Conectando con Interactive Brokers Paper Trading (Puerto 4002)...
 echo.
 
 cd /d "%~dp0"

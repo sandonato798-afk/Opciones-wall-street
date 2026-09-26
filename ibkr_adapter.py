@@ -103,14 +103,55 @@ class IBKRBrokerAdapter:
             return self._cached_summary
 
         return self.update_account_summary_cache() or {
-            "NetLiquidation": 1000000.0,
-            "TotalCashValue": 1000000.0,
-            "SettledCash": 1000000.0,
-            "BuyingPower": 4000000.0,
-            "AvailableFunds": 1000000.0,
+            "NetLiquidation": 0.0,
+            "TotalCashValue": 0.0,
+            "SettledCash": 0.0,
+            "BuyingPower": 0.0,
+            "AvailableFunds": 0.0,
             "UnrealizedPnL": 0.0,
             "RealizedPnL": 0.0
         }
+
+    def get_live_positions(self) -> list:
+        """
+        Lee DIRECTAMENTE el portfolio real de la cuenta IBKR.
+        Espejo exacto de lo que ves en la pantalla de TWS / IB Gateway.
+        Retorna lista de posiciones con símbolo, tipo, strike, expiry, cantidad, precio promedio, PnL.
+        """
+        if not self.is_live_connected():
+            logging.warning("⚠️ get_live_positions: IBKR no conectado. Retornando lista vacía.")
+            return []
+
+        try:
+            portfolio_items = self.ib.portfolio()
+            positions = []
+            for item in portfolio_items:
+                contract = item.contract
+                pos = {
+                    "symbol": contract.symbol,
+                    "sec_type": contract.secType,           # STK, OPT, etc.
+                    "currency": contract.currency,
+                    "position": item.position,              # cantidad (neg = short)
+                    "market_price": round(item.marketPrice, 4) if item.marketPrice else 0.0,
+                    "market_value": round(item.marketValue, 2) if item.marketValue else 0.0,
+                    "avg_cost": round(item.averageCost, 4) if item.averageCost else 0.0,
+                    "unrealized_pnl": round(item.unrealizedPNL, 2) if item.unrealizedPNL else 0.0,
+                    "realized_pnl": round(item.realizedPNL, 2) if item.realizedPNL else 0.0,
+                }
+                # Datos adicionales para opciones
+                if contract.secType == "OPT":
+                    pos["strike"] = contract.strike
+                    pos["right"] = contract.right          # "C" o "P"
+                    pos["expiry"] = contract.lastTradeDateOrContractMonth
+                    pos["multiplier"] = contract.multiplier or "100"
+                positions.append(pos)
+
+            logging.info(f"✅ get_live_positions: {len(positions)} posiciones leídas desde IBKR.")
+            return positions
+
+        except Exception as e:
+            logging.error(f"❌ Error leyendo portfolio IBKR: {e}")
+            return []
 
     def fetch_live_price(self, symbol: str) -> float:
         """Extrae el precio de mercado en vivo directamente desde IBKR. Nada de hardcoding."""
