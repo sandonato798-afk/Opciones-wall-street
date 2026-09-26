@@ -17,19 +17,19 @@
       "long_call_premium_paid": 5870.0,
       "long_call_current_value_usd": 5419.0,
       "long_call_unrealized_pnl_usd": -451.0,
-      "short_call_strike": 787.0,
+      "short_call_strike": 790.6,
       "short_call_contracts": 1,
-      "short_call_dte": 4,
-      "short_call_expiration": "2026-09-30",
-      "short_call_delta_entry": 0.14,
-      "short_call_premium_collected": 125.0,
-      "short_call_current_buyback_cost": 79.0,
-      "rolls_completed_count": 5,
-      "accumulated_theta_income_usd": 528.3,
+      "short_call_dte": 6,
+      "short_call_expiration": "2026-10-02",
+      "short_call_delta_entry": 0.15,
+      "short_call_premium_collected": 127.0,
+      "short_call_current_buyback_cost": 98.0,
+      "rolls_completed_count": 6,
+      "accumulated_theta_income_usd": 652.3,
       "net_debit_paid_usd": 5572.0,
       "break_even_price": 782.62,
       "status": "ACTIVE_ROLLING_WEEKLY",
-      "total_unrealized_pnl_usd": 123.3
+      "total_unrealized_pnl_usd": 230.3
     }
   ],
   "closed_diagonals": [],
@@ -93,9 +93,21 @@
       "net_theta_profit_usd": 102.0,
       "roll_date": "2026-09-23 13:45:32",
       "status": "ROLLED_WEEKLY"
+    },
+    {
+      "trade_id": 202609001,
+      "cycle_num": 6,
+      "symbol": "SPY",
+      "short_strike": 787.0,
+      "expiration": "2026-09-30",
+      "premium_collected_usd": 125.0,
+      "recompra_paid_usd": 1.0,
+      "net_theta_profit_usd": 124.0,
+      "roll_date": "2026-09-25 23:31:15",
+      "status": "ROLLED_WEEKLY"
     }
   ],
-  "total_theta_collected_usd": 528.3,
-  "total_pnl_usd": 123.3,
-  "last_update": "2026-09-25 23:38:12"
+  "total_theta_collected_usd": 652.3,
+  "total_pnl_usd": 230.3,
+  "last_update": "2026-09-25 23:48:53"
 }
