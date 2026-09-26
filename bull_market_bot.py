@@ -13,6 +13,7 @@ import urllib.request
 from datetime import datetime, timedelta
 from options_engine import black_scholes
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
+from market_calendar import is_trading_day
 
 STATE_FILE = os.path.join(os.path.dirname(__file__), "bull_market_state.json")
 
@@ -179,6 +180,8 @@ class BullMarketBot:
 
     def monitor_positions(self):
         """Monitorea cotizaciones en vivo y gestiona la regla de rolleo semanal de la Short Call."""
+        if not is_trading_day():
+            return
         for diag in self.open_diagonals:
             symbol = diag["symbol"]
             current_px = self.fetch_live_price(symbol)

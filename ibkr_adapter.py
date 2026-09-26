@@ -21,13 +21,17 @@ except ImportError:
 
 
 class IBKRBrokerAdapter:
-    def __init__(self, host: str = "127.0.0.1", port: int = 4002, client_id: int = 1, is_paper: bool = True):
-        self.host = host
-        self.port = port
+    def __init__(self, host: str = None, port: int = None, client_id: int = 10, is_paper: bool = True):
+        # Leer host/puerto desde variable de entorno (permite conectar a VM Oracle/Hetzner)
+        # Si no hay variable, usa localhost (PC local con IB Gateway corriendo)
+        self.host = host or os.environ.get("IBKR_HOST", "127.0.0.1")
+        self.port = port or int(os.environ.get("IBKR_PORT", 4002))
         self.client_id = client_id
         self.is_paper = is_paper
         self.connected = False
         self.ib: Optional[Any] = None
+        self._cached_summary: Dict[str, float] = {}
+        self._last_summary_fetch: float = 0.0
         
         # Candados de Seguridad / Risk Management Locks
         self.max_daily_drawdown_pct = 0.02  # Max 2% pérdida en 1 día
@@ -49,6 +53,7 @@ class IBKRBrokerAdapter:
                 self.connected = self.ib.isConnected()
                 if self.connected:
                     logging.info("✅ Conexión establecida exitosamente con Interactive Brokers (IB Gateway / TWS).")
+                    self.update_account_summary_cache()
                     return True
             except Exception as e:
                 logging.warning(f"⚠️ No se pudo conectar al socket {self.host}:{self.port} de IBKR: {e}. Activando fallback de simulación.")
@@ -71,31 +76,40 @@ class IBKRBrokerAdapter:
         """Verifica si el socket real está activo."""
         return bool(self.ib and self.ib.isConnected())
 
-    def get_account_summary(self) -> Dict[str, float]:
-        """Obtiene liquidez, NAV total y margen disponible en vivo desde IBKR."""
+    def update_account_summary_cache(self) -> Dict[str, float]:
+        """Consulta y actualiza en cache las metricas reales de la cuenta IBKR."""
         if self.is_live_connected():
             try:
-                summary = self.ib.accountSummary()
+                values = self.ib.accountValues()
                 res = {}
-                for item in summary:
+                for item in values:
                     if item.tag in ["NetLiquidation", "TotalCashValue", "SettledCash", "BuyingPower", "UnrealizedPnL", "RealizedPnL", "AvailableFunds"]:
                         try:
                             res[item.tag] = float(item.value)
                         except ValueError:
                             pass
-                return res
+                if res:
+                    self._cached_summary = res
+                    self._last_summary_fetch = time.time()
+                    return res
             except Exception as e:
-                logging.error(f"Error consultando accountSummary en IBKR: {e}")
+                logging.debug(f"Account summary fetch debug: {e}")
 
-        # Estructura fallback / simulación
-        return {
-            "NetLiquidation": 113743.28,
-            "TotalCashValue": 82553.28,
-            "SettledCash": 82553.28,
-            "BuyingPower": 280000.0,
-            "AvailableFunds": 82553.28,
-            "UnrealizedPnL": 9824.0,
-            "RealizedPnL": 3919.28
+        return self._cached_summary
+
+    def get_account_summary(self) -> Dict[str, float]:
+        """Obtiene liquidez, NAV total y margen disponible en vivo desde IBKR."""
+        if self._cached_summary:
+            return self._cached_summary
+
+        return self.update_account_summary_cache() or {
+            "NetLiquidation": 1000000.0,
+            "TotalCashValue": 1000000.0,
+            "SettledCash": 1000000.0,
+            "BuyingPower": 4000000.0,
+            "AvailableFunds": 1000000.0,
+            "UnrealizedPnL": 0.0,
+            "RealizedPnL": 0.0
         }
 
     def place_bracket_option_order(self, symbol: str, option_type: str, strike: float, expiry: str, 
@@ -170,6 +184,83 @@ class IBKRBrokerAdapter:
             return False
         return True
 
+    def ping_heartbeat(self) -> Dict[str, Any]:
+        """Sistema de Latidos: Envía un ping al socket de IBKR para validar latencia y estado."""
+        start_t = time.time()
+        if self.is_live_connected():
+            try:
+                # Consulta liviana de tiempo/versión de servidor IBKR
+                _ = self.ib.client.serverVersion()
+                latency_ms = round((time.time() - start_t) * 1000, 2)
+                return {
+                    "status": "ONLINE",
+                    "latency_ms": max(latency_ms, 1.5),
+                    "last_heartbeat": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "live": True
+                }
+            except Exception as e:
+                logging.warning(f"⚠️ Fallo de latido (Heartbeat) en IBKR socket: {e}")
+                return {
+                    "status": "DEGRADED",
+                    "latency_ms": 999.0,
+                    "last_heartbeat": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "live": False,
+                    "error": str(e)
+                }
+        
+        return {
+            "status": "SIMULATED",
+            "latency_ms": 1.0,
+            "last_heartbeat": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "live": False
+        }
+
+
+import subprocess
+import os
+
+class IBKRWatchdog:
+    """Perro Guardián Auto-Healing: Supervisa la pasarela IB Gateway y auto-reinicia StartGateway.bat si cae."""
+    def __init__(self, adapter: IBKRBrokerAdapter, gateway_bat_path: Optional[str] = None):
+        self.adapter = adapter
+        user_profile = os.environ.get("USERPROFILE", "C:\\Users\\HP")
+        default_bat = os.path.join(user_profile, r"Dropbox\D+ARQ\2_FINANZAS_Y_CRIPTO\FINANZAS Y CRIPTO\02_INFRAESTRUCTURA_IBKR\IBC\StartGateway.bat")
+        self.gateway_bat_path = gateway_bat_path or default_bat
+        self.reconnect_count = 0
+        self.last_restart_time = 0.0
+
+    def check_and_heal(self) -> bool:
+        """Verifica la conectividad y si la pasarela cayó, intenta reconectar o auto-reinicia IB Gateway."""
+        hb = self.adapter.ping_heartbeat()
+        if hb["status"] == "ONLINE" or hb["status"] == "SIMULATED":
+            return True
+
+        logging.warning("🚨 Watchdog: Pasarela IBKR no responde. Iniciando protocolo de Auto-Healing...")
+        
+        # 1. Intentar reconexión simple de socket
+        if self.adapter.connect():
+            logging.info("✅ Watchdog: Reconexión exitosa a la API de IBKR.")
+            return True
+
+        # 2. Si falló la reconexión, auto-lanzar StartGateway.bat si transcurrieron >60s del último reinicio
+        now = time.time()
+        if now - self.last_restart_time > 60:
+            self.last_restart_time = now
+            self.reconnect_count += 1
+            logging.info(f"🔄 Watchdog: Lanzando StartGateway.bat automáticamente (Intento #{self.reconnect_count})...")
+            try:
+                if os.path.exists(self.gateway_bat_path):
+                    subprocess.Popen([self.gateway_bat_path], shell=True)
+                    logging.info("🚀 StartGateway.bat ejecutado en segundo plano. Esperando 15s a que inicie el socket...")
+                    time.sleep(15)
+                    return self.adapter.connect()
+                else:
+                    logging.error(f"❌ No se encontró el script StartGateway.bat en: {self.gateway_bat_path}")
+            except Exception as e:
+                logging.error(f"❌ Error ejecutando Watchdog StartGateway.bat: {e}")
+
+        return False
+
 
 # Alias para compatibilidad de imports
 IBKRAdapter = IBKRBrokerAdapter
@@ -178,5 +269,8 @@ if __name__ == "__main__":
     adapter = IBKRBrokerAdapter(port=4002, is_paper=True)
     success = adapter.connect()
     summary = adapter.get_account_summary()
+    hb = adapter.ping_heartbeat()
     print("Estado Conectado:", success)
     print("Resumen de Cuenta IBKR:", summary)
+    print("Latido (Heartbeat):", hb)
+

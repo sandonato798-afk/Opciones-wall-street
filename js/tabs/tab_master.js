@@ -6,21 +6,29 @@ async function loadMaster() {
         if(!res.ok) return;
         const data = await res.json();
         
-        // Header
-        setTxt('global-nav', formatUSD(data.consolidated_nav_usd));
+        // Header & Live IBKR metrics
+        const realNav = data.ibkr_summary?.NetLiquidation || data.consolidated_nav_usd;
+        const realCash = data.ibkr_summary?.AvailableFunds || data.margin?.free_margin_usd;
+        
+        setTxt('global-nav', formatUSD(realNav));
         setTxt('global-roi', sign(data.total_roi_pct) + formatPct(data.total_roi_pct));
         setClass('global-roi', colorClass(data.total_roi_pct));
         
+        if (data.ibkr_heartbeat) {
+            const hb = data.ibkr_heartbeat;
+            setTxt('system-status', hb.live ? `IBKR PAPER ONLINE (${hb.latency_ms}ms)` : `IBKR DISCONNECTED`);
+        }
+        
         // Home tab
-        setTxt('home-master-nav', formatUSD(data.consolidated_nav_usd));
+        setTxt('home-master-nav', formatUSD(realNav));
         setTxt('home-master-initial', formatUSD(data.initial_master_capital_usd));
         setTxt('home-master-pnl', sign(data.total_pnl_usd) + formatUSD(data.total_pnl_usd) + '  (' + sign(data.total_roi_pct) + formatPct(data.total_roi_pct) + ')');
         setClass('home-master-pnl', colorClass(data.total_pnl_usd));
 
-        const freeMargin = data.margin?.free_margin_usd !== undefined ? formatUSD(data.margin.free_margin_usd) : '$85,000.00';
+        const freeMargin = realCash !== undefined ? formatUSD(realCash) : '$85,000.00';
         const utilPct = data.margin?.margin_utilization_pct || 0;
         setTxt('home-margin-val', utilPct + '%');
-        setTxt('home-margin-status', `${freeMargin} LIBRE (POOL 100%)`);
+        setTxt('home-margin-status', `${freeMargin} LIBRE (IBKR LIVE)`);
         
         if (data.reinvestment_matrix_50_30_20) {
             const pending = data.reinvestment_matrix_50_30_20.pending_usd || 0;

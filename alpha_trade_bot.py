@@ -14,6 +14,7 @@ import json
 import urllib.request
 from datetime import datetime, timedelta
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
+from market_calendar import is_trading_day
 
 STATE_FILE = "alpha_trade_state.json"
 
@@ -214,6 +215,8 @@ class AlphaTradeBot:
         Lógica Institucional: Self-Funded Free Runner.
         Evalúa si la venta del 50% de los Long Calls cubre el 100% de la recompra de los Short Puts.
         """
+        if not is_trading_day():
+            return
         for pos in self.open_positions:
             if not pos.get("decoupled"):
                 symbol = pos["symbol"]

@@ -9,6 +9,10 @@ import json
 def get_master_summary(ctx, query):
     summary = ctx["master_portfolio"].get_master_summary()
     summary["health_pings"] = ctx["health_pings"]
+    if "ibkr_adapter" in ctx and ctx["ibkr_adapter"]:
+        adapter = ctx["ibkr_adapter"]
+        summary["ibkr_summary"] = adapter.get_account_summary()
+        summary["ibkr_heartbeat"] = adapter.ping_heartbeat()
     return 200, summary
 
 def get_collateral_status(ctx, query):

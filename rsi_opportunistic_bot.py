@@ -14,6 +14,7 @@ import os
 import json
 from datetime import datetime, timedelta
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
+from market_calendar import is_trading_day, is_market_open
 
 from options_engine import black_scholes
 
@@ -155,6 +156,9 @@ class RSIOpportunisticBot:
         Opens 1DTE Short Put ONLY when RSI < 30 (genuine oversold panic).
         Closes open trades when RSI > 70 or premium decays 90%.
         """
+        # GUARD: No operar en fines de semana ni feriados NYSE
+        if not is_trading_day() or not is_market_open():
+            return
         rsi_values = {}
         for symbol in ["SPY", "QQQ", "DIA"]:
             rsi, price = self._fetch_rsi(symbol)

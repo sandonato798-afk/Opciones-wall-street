@@ -11,6 +11,7 @@ STATE_FILE = "daytrade_state.json"
 CONFIG = {"target_profit_pct": 50}
 
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
+from market_calendar import is_trading_day, is_market_open
 
 class DaytradeOptionsBot:
     def __init__(self, initial_capital=100000.0, allocated_capital=15000.0):
@@ -136,6 +137,9 @@ class DaytradeOptionsBot:
             return round(target_strike * 0.005, 2)
 
     def scan_market(self):
+        # GUARD: No operar en fines de semana ni feriados NYSE
+        if not is_trading_day() or not is_market_open():
+            return
         if len(self.active_trades) > 0: return # Solo 1 trade activo a la vez para no saturar margen
         
         for symbol in ["SPY", "QQQ"]:

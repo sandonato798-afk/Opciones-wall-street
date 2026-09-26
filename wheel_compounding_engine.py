@@ -7,6 +7,7 @@ import math
 import urllib.request
 from datetime import datetime, timedelta
 from options_engine import black_scholes
+from market_calendar import is_trading_day
 
 STATE_FILE = os.path.join(os.path.dirname(__file__), "wheel_compounding_state.json")
 LOG_FILE = os.path.join(os.path.dirname(__file__), "wheel_compounding.log")
@@ -109,7 +110,7 @@ class WheelCompoundingEngine:
                 current_price = data["chart"]["result"][0]["meta"]["regularMarketPrice"]
                 return round(current_price, 2)
         except Exception:
-            return 560.50 if symbol == "SPY" else 485.20
+            return 773.00 if symbol == "SPY" else 493.00  # Precios reales Sep 2026
 
     def calculate_compounding_projections(self, years=10):
         """
@@ -279,6 +280,10 @@ class WheelCompoundingEngine:
 
     def auto_check_and_run_cycle(self):
         """Verifica automáticamente el ciclo y aplica reglas institucionales de Auto-Roleo defensivo"""
+        # GUARD: No operar en fines de semana ni feriados NYSE
+        if not is_trading_day():
+            log_msg("CALENDAR", "⏸️ Día no hábil (fin de semana/feriado NYSE) — ciclo suspendido.")
+            return None
         try:
             if not self.history:
                 log_msg("AUTO_WHEEL", "Iniciando primer ciclo automático de Rueda & Compuesto...")

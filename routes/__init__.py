@@ -10,6 +10,7 @@ from routes.alpha_routes import ALPHA_GET, ALPHA_POST
 from routes.rsi_routes import RSI_GET, RSI_POST
 from routes.daytrade_routes import DAYTRADE_GET, DAYTRADE_POST
 from routes.bullmarket_routes import BULLMARKET_GET, BULLMARKET_POST
+from routes.history_routes import HISTORY_GET
 
 ALL_GET_ROUTES = {}
 ALL_GET_ROUTES.update(MASTER_GET)
@@ -18,6 +19,7 @@ ALL_GET_ROUTES.update(ALPHA_GET)
 ALL_GET_ROUTES.update(RSI_GET)
 ALL_GET_ROUTES.update(DAYTRADE_GET)
 ALL_GET_ROUTES.update(BULLMARKET_GET)
+ALL_GET_ROUTES.update(HISTORY_GET)
 
 ALL_POST_ROUTES = {}
 ALL_POST_ROUTES.update(MASTER_POST)

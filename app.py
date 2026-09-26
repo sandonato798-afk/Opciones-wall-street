@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-app.py - Orquestador Principal del Sistema de Opciones (5 Capas)
-Servidor Web Modular y Coordinador de Hilos en Segundo Plano
-"""
-
 import sys
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 import http.server
@@ -15,6 +9,7 @@ import urllib.request
 import threading
 import time
 from datetime import datetime, timezone, timedelta
+from market_calendar import is_market_open, calendar_status
 
 # Importación de Motores y Bots
 from options_engine import OptionsTradingEngine
@@ -24,22 +19,25 @@ from alpha_trade_bot import AlphaTradeBot
 from rsi_opportunistic_bot import RSIOpportunisticBot
 from bull_market_bot import BullMarketBot
 from master_portfolio_manager import MasterPortfolioManager
-
-# Enrutador Modular de Endpoints
+from ibkr_adapter import IBKRBrokerAdapter, IBKRWatchdog
 from routes import dispatch_get, dispatch_post
 
-PORT = int(os.environ.get("PORT", 5050))
+PORT = int(os.environ.get("PORT", 10000))
 DIRECTORY = os.path.dirname(__file__)
 
 DAYTRADE_CONFIG = {"execution_mode": "PAPER_TRADING", "broker_name": "INTERACTIVE_BROKERS"}
 
-# Inicialización de Bots y Gestor Maestro
+# Inicialización de Bots, Adaptador IBKR y Gestor Maestro
 engine = OptionsTradingEngine()
 daytrade_bot = DaytradeOptionsBot()
 wheel_engine = WheelCompoundingEngine()
 alpha_bot = AlphaTradeBot()
 rsi_bot = RSIOpportunisticBot()
 bullmarket_bot = BullMarketBot(allocated_capital=15000.0)
+
+ibkr_adapter = IBKRBrokerAdapter(port=4002, is_paper=True)
+ibkr_adapter.connect()
+ibkr_watchdog = IBKRWatchdog(ibkr_adapter)
 
 master_portfolio = MasterPortfolioManager(wheel_engine, alpha_bot, rsi_bot, daytrade_bot, bullmarket_bot)
 
@@ -49,7 +47,8 @@ SYSTEM_HEALTH_PINGS = {
     "alpha": 0,
     "rsi": 0,
     "daytrade": 0,
-    "bullmarket": 0
+    "bullmarket": 0,
+    "ibkr": 0
 }
 
 # Contexto global inyectado a los controladores de rutas
@@ -63,16 +62,12 @@ APP_CONTEXT = {
     "daytrade_config": DAYTRADE_CONFIG,
     "bullmarket_bot": bullmarket_bot,
     "master_portfolio": master_portfolio,
+    "ibkr_adapter": ibkr_adapter,
+    "ibkr_watchdog": ibkr_watchdog,
     "health_pings": SYSTEM_HEALTH_PINGS
 }
 
-def is_market_open():
-    eastern = timezone(timedelta(hours=-4))
-    now = datetime.now(eastern)
-    if now.weekday() >= 5:
-        return False
-    time_num = now.hour * 100 + now.minute
-    return 930 <= time_num <= 1600
+# is_market_open() provisto por market_calendar — centralizado y con feriados NYSE
 
 trading_state_lock = threading.Lock()
 
@@ -84,6 +79,13 @@ def background_trading_loop():
         try:
             cycle += 1
             with trading_state_lock:
+                # Supervisión de Pasarela IBKR (Watchdog & Latido)
+                try:
+                    ibkr_watchdog.check_and_heal()
+                    SYSTEM_HEALTH_PINGS["ibkr"] = builtin_time.time()
+                except Exception as e_ib:
+                    print(f"⚠️ Watchdog IBKR alert: {e_ib}")
+
                 # Capa 1: Rueda & Compounding
                 wheel_engine.auto_check_and_run_cycle()
                 SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
@@ -162,6 +164,10 @@ class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
         if path == "/" or path == "":
             self.path = "/index.html"
             return super().do_GET()
+
+        # Endpoint de calendario — respuesta directa sin pasar por dispatch
+        if path == "/api/calendar/status":
+            return self.send_json_response(calendar_status())
 
         status, response = dispatch_get(path, query, APP_CONTEXT)
         if status is not None:
