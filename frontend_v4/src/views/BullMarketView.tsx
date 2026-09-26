@@ -91,7 +91,7 @@ export const BullMarketView: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1f2633]">
-            {trade.rollCycles?.map(rc => (
+            {trade.rollCycles?.map((rc: any) => (
               <tr key={rc.cycle} className="hover:bg-[#141924]">
                 <td className="py-2.5 font-bold text-white">Ciclo #{rc.cycle}</td>
                 <td className="py-2.5 text-gray-400">{rc.date}</td>

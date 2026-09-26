@@ -1,120 +1,19 @@
-import type { PortfolioSummary, TradePosition } from '../types/darq';
-
-export const portfolioSummary: PortfolioSummary = {
-  masterNav: 115038.40,
-  initialCapital: 100000.00,
-  pnlTotal: 15038.40,
-  pnlPercentage: 15.04,
-  roiAnualizado: 499.05,
-  maxDrawdown: -0.20,
-  thetaDiario: 27.00,
-  thetaGlobalTotal: 3842.00,
-  margenLibre: 83956.40,
-  margenUsoPorcentaje: 27,
-  winRate: 94.1,
-  tradesPositivos: 32,
-  tradesTotales: 34,
+export const portfolioSummary = {
+  roiAnualizado: 18.5,
+  maxDrawdown: 1.2,
+  thetaDiario: 145,
+  margenUsoPorcentaje: 0,
+  margenLibre: 100000,
+  masterNav: 100000,
+  pnlPercentage: 0
 };
 
-export const activeTrades: TradePosition[] = [
-  {
-    id: "#20260901",
-    layer: 'BULL_MARKET',
-    layerTitle: 'Capa 5: PMCC',
-    ticker: 'SPY',
-    strategy: 'Diagonal Synthetic LEAP (Colateral Sintético)',
-    strikeLong: 726.90,
-    strikeShort: 787.00,
-    dte: 3,
-    deltaNet: 0.71,
-    spotPrice: 771.35,
-    entryNet: -5572.00,
-    currentRebuy: -46.00,
-    pnlFlotante: 138.30,
-    status: 'ACTIVO_ROLLEANDO',
-    statusLabel: 'Activo y Rolleando (Ciclo Semanal #6)',
-    breakEven: 782.62,
-    rollCycles: [
-      { cycle: 5, date: '2026-09-23', strike: 793.5, credit: 127.0, rebuy: 25.0, net: 102.0, status: 'ROLLED_WEEKLY' },
-      { cycle: 4, date: '2026-09-22', strike: 792.6, credit: 126.0, rebuy: 108.0, net: 18.0, status: 'ROLLED_WEEKLY' },
-      { cycle: 3, date: '2026-09-22', strike: 792.6, credit: 127.0, rebuy: 98.0, net: 29.0, status: 'ROLLED_WEEKLY' },
-      { cycle: 2, date: '2026-09-22', strike: 792.6, credit: 127.0, rebuy: 1.0, net: 126.0, status: 'ROLLED_WEEKLY' },
-      { cycle: 1, date: '2026-09-17', strike: 788.0, credit: 298.0, rebuy: 44.7, net: 253.3, status: 'ROLLED_PROFIT_85%' }
-    ]
-  },
-  {
-    id: "#20260927-D1",
-    layer: 'DAYTRADING',
-    layerTitle: 'Capa 4: Daytrading',
-    ticker: 'SPY',
-    strategy: 'Put Vendida 0-1 DTE (Defender Chain)',
-    strike: 775.50,
-    dte: 1,
-    deltaNet: -0.68,
-    spotPrice: 771.35,
-    entryNet: 257.00,
-    currentRebuy: 808.00,
-    pnlFlotante: -279.00,
-    status: 'ALERTA_1555_ROLL_DEFENSIVO',
-    statusLabel: 'Mandato 15:55 Activo: Roll Defensivo',
-    protocolWarning: 'Corte interbancario a las 15:55 EST. Roll Out & Down hacia Strike $770 (+42d) con crédito neto +$0.45/sh'
-  },
-  {
-    id: "#20260927-R3",
-    layer: 'RSI',
-    layerTitle: 'Capa 3: RSI Pánico',
-    ticker: 'QQQ',
-    strategy: 'Put OTM 1DTE (Gatillo RSI < 30)',
-    strike: 736.30,
-    dte: 1,
-    deltaNet: -0.08,
-    spotPrice: 743.78,
-    entryNet: 295.00,
-    currentRebuy: 8.00,
-    pnlFlotante: 295.00,
-    status: 'TAKE_PROFIT_50_LISTO',
-    statusLabel: 'Take Profit 50% Alcanzado (100% capturado)',
-    protocolWarning: 'Cierre automático preventivo antes de 15:55 para evitar riesgo overnight'
-  },
-  {
-    id: "#178960001",
-    layer: 'ALPHA',
-    layerTitle: 'Capa 2: Alpha Trade',
-    ticker: 'QQQ',
-    strategy: 'Sintético Zero-Cost LEAP (Long Call Financiada)',
-    strikeLong: 715.00,
-    strikeShort: 670.00,
-    dte: 120,
-    deltaNet: 0.865,
-    spotPrice: 744.50,
-    entryNet: 0.00,
-    currentRebuy: 10.00,
-    pnlFlotante: 10264.00,
-    status: 'DESACOPLADO_RISK_FREE',
-    statusLabel: 'Put Desacoplada (100% Risk-Free Corriendo)'
-  },
-  {
-    id: "#20260922-R1",
-    layer: 'RUEDA',
-    layerTitle: 'Capa 1: La Rueda',
-    ticker: 'SPY',
-    strategy: 'Cash/Margin-Secured Put Overlay',
-    strike: 788.00,
-    dte: 45,
-    deltaNet: -0.68,
-    spotPrice: 773.38,
-    entryNet: 2950.00,
-    currentRebuy: 0.00,
-    pnlFlotante: 2950.00,
-    status: 'ALERTA_1555_ROLL_DEFENSIVO',
-    statusLabel: 'Colateral Intocable (Reset 6-8 Semanas)'
-  }
+export const collateralBreakdown = [
+  { ticker: 'SGOV', desc: '0-3 Month T-Bill ETF', alloc: 40, value: 40000, reqMargin: 1, freedBp: 39600, yieldAnual: 2120 },
+  { ticker: 'LQD', desc: 'iShares iBoxx $ Investment Grade', alloc: 20, value: 20000, reqMargin: 7, freedBp: 18600, yieldAnual: 1100 },
+  { ticker: 'SPY', desc: 'SPDR S&P 500 ETF Trust', alloc: 20, value: 20000, reqMargin: 15, freedBp: 17000, yieldAnual: 280 },
+  { ticker: 'QQQ', desc: 'Invesco QQQ Trust', alloc: 15, value: 15000, reqMargin: 15, freedBp: 12750, yieldAnual: 120 },
+  { ticker: 'GLD', desc: 'SPDR Gold Shares', alloc: 5, value: 5000, reqMargin: 12, freedBp: 4400, yieldAnual: 0 },
 ];
 
-export const collateralBreakdown = [
-  { ticker: 'SGOV', desc: 'Bonos Tesoro 0-3M / BOXX (5.1% APY)', alloc: 40, value: 41358.52, reqMargin: 2, freedBp: 40523.51, yieldAnual: 2108.88 },
-  { ticker: 'IGSB', desc: 'Bonos Corporativos AAA / Preferidas (5.8% APY)', alloc: 20, value: 20675.26, reqMargin: 7.5, freedBp: 19124.62, yieldAnual: 1199.17 },
-  { ticker: 'SPY', desc: 'S&P 500 Core Equity + Covered Calls', alloc: 20, value: 20675.26, reqMargin: 15, freedBp: 17573.97, yieldAnual: 310.13 },
-  { ticker: 'QQQ', desc: 'Nasdaq 100 Growth + LEAPS Overlay', alloc: 15, value: 15506.44, reqMargin: 15, freedBp: 13180.47, yieldAnual: 124.05 },
-  { ticker: 'GLD', desc: 'Oro Físico (Cobertura Inflación)', alloc: 5, value: 25160.82, reqMargin: 15, freedBp: 21393.50, yieldAnual: 1132.60 },
-];
+export const activeTrades: any[] = [];
