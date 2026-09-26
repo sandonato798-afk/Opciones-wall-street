@@ -1,13 +1,13 @@
 {
-  "last_update": "2026-09-26 01:06:38",
-  "initial_capital": 100000.0,
-  "cash_balance": 100000.0,
+  "last_update": "2026-09-26 01:53:23",
+  "initial_capital": 1000000.0,
+  "cash_balance": 1000000.0,
   "etf_shares": 0.0,
   "accumulated_premiums_usd": 584.0,
   "total_reinvested_usd": 0.0,
   "wheel_positions": [
     {
-      "id": "WHEEL_CSP_1790395598",
+      "id": "WHEEL_CSP_1790398403",
       "ticker": "SPY_PUT_748.2_30DTE",
       "symbol": "SPY",
       "strategy_type": "CASH_SECURED_PUT",
@@ -15,7 +15,7 @@
       "strike": 748.2,
       "contracts": 1,
       "premium_collected_usd": 584.0,
-      "issued_date": "2026-09-26 01:06:38",
+      "issued_date": "2026-09-26 01:53:23",
       "expiration_date": "2026-10-26",
       "target_dte": 30,
       "status": "ACTIVE"
@@ -23,14 +23,14 @@
   ],
   "history": [
     {
-      "timestamp": "2026-09-26 01:06:38",
+      "timestamp": "2026-09-26 01:53:23",
       "type": "CASH_SECURED_PUT",
       "symbol": "SPY",
       "etf_price": 771.35,
       "strike": 748.2,
       "premium_collected_usd": 584.0,
       "status": "ACTIVE",
-      "portfolio_nav_usd": 100000.0
+      "portfolio_nav_usd": 1000000.0
     }
   ]
 }
