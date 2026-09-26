@@ -19,7 +19,8 @@ from market_calendar import is_trading_day
 STATE_FILE = "alpha_trade_state.json"
 
 class AlphaTradeBot:
-    def __init__(self, initial_capital=100000.0, allocated_capital=20000.0):
+    def __init__(self, initial_capital=100000.0, allocated_capital=20000.0, ibkr_adapter=None):
+        self.ibkr_adapter = ibkr_adapter
         self.initial_capital = initial_capital
         self.allocated_capital = allocated_capital # $20,000 USD (20%)
         self.open_positions = []

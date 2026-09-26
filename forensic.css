@@ -1,0 +1,132 @@
+/* --- FORENSIC AUDIT CARD (V4.2) --- */
+.forensic-card {
+    background-color: #131720;
+    border: 1px solid #232936;
+    border-radius: 8px;
+    padding: 20px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: #e5e7eb;
+    margin-bottom: 16px;
+}
+.forensic-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #232936;
+}
+.forensic-title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.forensic-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+}
+.forensic-status-badge {
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 4px;
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    text-transform: uppercase;
+}
+.forensic-pnl-label {
+    font-size: 12px;
+    color: #9ca3af;
+    text-align: right;
+}
+.forensic-pnl-value {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: right;
+}
+.forensic-pnl-profit { color: #00e676; }
+.forensic-pnl-loss { color: #f87171; }
+
+.forensic-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid #232936;
+}
+.forensic-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.forensic-block-title {
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+.forensic-row { font-size: 12px; }
+.forensic-val-white { color: #ffffff; font-weight: 600; }
+.forensic-val-green { color: #00e676; font-weight: 600; }
+.forensic-val-amber { color: #fbbf24; font-weight: 600; }
+.forensic-val-cyan { color: #22d3ee; font-weight: 600; }
+.forensic-val-gray { color: #d1d5db; }
+
+.forensic-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+}
+.forensic-warning {
+    font-size: 12px;
+    color: #f87171;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.forensic-warning-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background-color: #ef4444;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+}
+
+.forensic-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+}
+.forensic-btn-tp {
+    background-color: #00e676;
+    color: #000000;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.forensic-btn-tp:hover { background-color: #00c853; }
+.forensic-btn-roll {
+    background-color: rgba(127, 29, 29, 0.8);
+    color: #fecaca;
+    border: 1px solid #b91c1c;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.forensic-btn-roll:hover { background-color: rgba(153, 27, 27, 1); }

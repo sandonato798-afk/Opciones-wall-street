@@ -14,7 +14,8 @@ from cloud_persistence import sync_state_to_github_async, load_state_from_github
 from market_calendar import is_trading_day, is_market_open
 
 class DaytradeOptionsBot:
-    def __init__(self, initial_capital=100000.0, allocated_capital=15000.0):
+    def __init__(self, initial_capital=100000.0, allocated_capital=15000.0, ibkr_adapter=None):
+        self.ibkr_adapter = ibkr_adapter
         self.allocated_capital = allocated_capital
         self.active_trades = []
         self.history = []

@@ -23,21 +23,21 @@ from ibkr_adapter import IBKRBrokerAdapter, IBKRWatchdog
 from routes import dispatch_get, dispatch_post
 
 PORT = int(os.environ.get("PORT", 10000))
-DIRECTORY = os.path.dirname(__file__)
+DIRECTORY = os.path.join(os.path.dirname(__file__), "frontend_v4", "dist")
 
 DAYTRADE_CONFIG = {"execution_mode": "PAPER_TRADING", "broker_name": "INTERACTIVE_BROKERS"}
-
-# Inicialización de Bots, Adaptador IBKR y Gestor Maestro
-engine = OptionsTradingEngine()
-daytrade_bot = DaytradeOptionsBot()
-wheel_engine = WheelCompoundingEngine()
-alpha_bot = AlphaTradeBot()
-rsi_bot = RSIOpportunisticBot()
-bullmarket_bot = BullMarketBot(allocated_capital=15000.0)
 
 ibkr_adapter = IBKRBrokerAdapter(port=4002, is_paper=True)
 ibkr_adapter.connect()
 ibkr_watchdog = IBKRWatchdog(ibkr_adapter)
+
+# Inicialización de Bots, Adaptador IBKR y Gestor Maestro
+engine = OptionsTradingEngine()
+daytrade_bot = DaytradeOptionsBot(ibkr_adapter=ibkr_adapter)
+wheel_engine = WheelCompoundingEngine(ibkr_adapter=ibkr_adapter)
+alpha_bot = AlphaTradeBot(ibkr_adapter=ibkr_adapter)
+rsi_bot = RSIOpportunisticBot(ibkr_adapter=ibkr_adapter)
+bullmarket_bot = BullMarketBot(allocated_capital=15000.0, ibkr_adapter=ibkr_adapter)
 
 master_portfolio = MasterPortfolioManager(wheel_engine, alpha_bot, rsi_bot, daytrade_bot, bullmarket_bot)
 
@@ -73,6 +73,12 @@ trading_state_lock = threading.Lock()
 
 def background_trading_loop():
     print("🚀 Motor de Opciones Híbrido (5 Capas + Portfolio Margin + Compounding) iniciado.")
+    import asyncio
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+    
     cycle = 0
     import time as builtin_time
     while True:

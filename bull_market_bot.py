@@ -26,7 +26,8 @@ BULLMARKET_UNIVERSE = {
 }
 
 class BullMarketBot:
-    def __init__(self, allocated_capital=15000.0):
+    def __init__(self, allocated_capital=15000.0, ibkr_adapter=None):
+        self.ibkr_adapter = ibkr_adapter
         self.allocated_capital = allocated_capital
         self.open_diagonals = []
         self.closed_diagonals = []

@@ -41,7 +41,8 @@ def log_msg(tag, text):
         pass
 
 class WheelCompoundingEngine:
-    def __init__(self):
+    def __init__(self, ibkr_adapter=None):
+        self.ibkr_adapter = ibkr_adapter
         self.initial_capital = CONFIG["initial_capital_usd"]
         self.cash_balance = self.initial_capital
         self.etf_shares = 0.0
@@ -168,13 +169,23 @@ class WheelCompoundingEngine:
         strike = round(etf_price * 0.97, 1) # Strike 3% OTM (Delta ~0.20-0.25)
         greeks = black_scholes("PUT", etf_price, strike, CONFIG["target_dte"]/365.0, 0.0525, 0.18)
         premium = max(2.50, greeks["price"])
-        
-        income_usd = round(premium * 100.0, 2)
+        # Ejecución Real en IBKR
+        exp_date = (datetime.now() + timedelta(days=CONFIG["target_dte"])).strftime("%Y-%m-%d")
+        avg_price = premium
+        commissions = 1.0
+        if self.ibkr_adapter:
+            exec_res = self.ibkr_adapter.execute_option_order_sync(
+                symbol=etf_symbol, right="P", strike=strike, expiry=exp_date,
+                action="SELL", quantity=1, limit_price=0.0 # Market Order for fast fill in paper
+            )
+            if exec_res.get("status") == "FILLED":
+                avg_price = exec_res.get("avg_price", premium)
+                commissions = exec_res.get("commission", 1.0)
+                log_msg("CASH_PUT", f"🟢 ORDEN LLENADA EN IBKR: ${avg_price}/sh. Comisión: ${commissions}")
+
+        income_usd = round(avg_price * 100.0 - commissions, 2)
         self.accumulated_premiums_usd += income_usd
 
-        log_msg("CASH_PUT", f"🟢 VENTA CASH/MARGIN-SECURED PUT [{etf_symbol} K=${strike}]: Prima Cobrada: +${income_usd} USD.")
-
-        exp_date = (datetime.now() + timedelta(days=CONFIG["target_dte"])).strftime("%Y-%m-%d")
         active_pos = {
             "id": f"WHEEL_CSP_{int(datetime.now().timestamp())}",
             "ticker": f"{etf_symbol}_PUT_{strike:.1f}_{CONFIG['target_dte']}DTE",

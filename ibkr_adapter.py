@@ -159,6 +159,73 @@ class IBKRBrokerAdapter:
             except Exception as e:
                 logging.error(f"Error enviando orden real a IBKR: {e}")
 
+    def execute_option_order_sync(self, symbol: str, right: str, strike: float, expiry: str, action: str, quantity: int, limit_price: float = 0.0) -> Dict:
+        """
+        Ejecuta una orden real (Market o Limit) y espera hasta 5 segundos para obtener el fill y la comisión.
+        Si limit_price > 0, es Limit. Si es 0.0, es Market.
+        """
+        if self.is_live_connected():
+            try:
+                clean_expiry = expiry.replace("-", "")
+                contract = Option(symbol, clean_expiry, strike, right, "SMART", currency="USD")
+                self.ib.qualifyContracts(contract)
+
+                if limit_price > 0:
+                    order = LimitOrder(action.upper(), quantity, limit_price)
+                else:
+                    order = MarketOrder(action.upper(), quantity)
+
+                trade = self.ib.placeOrder(contract, order)
+                logging.info(f"🚀 [IBKR Order Sent] {action} {quantity}x {symbol} {right}{strike} Exp: {expiry}")
+                
+                # Espera activa (pumps the asyncio event loop)
+                timeout = 5.0
+                start_t = time.time()
+                while not trade.isDone() and (time.time() - start_t) < timeout:
+                    self.ib.sleep(0.1)
+
+                if trade.orderStatus.status == 'Filled':
+                    commissions = sum([e.commission for e in trade.fills if e.commission])
+                    avg_price = trade.orderStatus.avgFillPrice
+                    logging.info(f"✅ [FILLED] AvgPrice: ${avg_price} | Comm: ${commissions}")
+                    return {
+                        "status": "FILLED",
+                        "filled": trade.orderStatus.filled,
+                        "avg_price": avg_price,
+                        "commission": commissions if commissions > 0 else 1.0
+                    }
+                elif trade.orderStatus.status in ['Submitted', 'PreSubmitted']:
+                    logging.warning(f"⏳ [PENDING] La orden quedó abierta (no se llenó en 5s).")
+                    return {
+                        "status": "SUBMITTED",
+                        "filled": trade.orderStatus.filled,
+                        "avg_price": trade.orderStatus.avgFillPrice,
+                        "commission": 0.0,
+                        "order_id": trade.order.orderId
+                    }
+                else:
+                    logging.warning(f"❌ [ORDER {trade.orderStatus.status}]")
+                    return {
+                        "status": trade.orderStatus.status,
+                        "filled": trade.orderStatus.filled,
+                        "avg_price": 0.0,
+                        "commission": 0.0
+                    }
+            except Exception as e:
+                logging.error(f"Error en execute_option_order_sync: {e}")
+                return {"status": "ERROR", "error": str(e)}
+
+        # Fallback de simulación (Paper sin conexión a TWS)
+        simulated_price = limit_price if limit_price > 0 else 1.0 # Precio ficticio
+        logging.info(f"🚀 [SIMULATED EXEC] {action} {quantity}x {symbol} {right}{strike} Exp: {expiry}")
+        return {
+            "status": "FILLED",
+            "filled": quantity,
+            "avg_price": simulated_price,
+            "commission": 1.0
+        }
+
+
         # Fallback de simulación
         order_payload = {
             "symbol": symbol,

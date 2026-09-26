@@ -21,7 +21,8 @@ from options_engine import black_scholes
 STATE_FILE = "rsi_opportunistic_state.json"
 
 class RSIOpportunisticBot:
-    def __init__(self, initial_capital=100000.0, allocated_capital=15000.0):
+    def __init__(self, initial_capital=100000.0, allocated_capital=15000.0, ibkr_adapter=None):
+        self.ibkr_adapter = ibkr_adapter
         self.initial_capital = initial_capital
         self.allocated_capital = allocated_capital # $15,000 USD (15%)
         self.status_mode = "IDLE_MONITORING" # IDLE_MONITORING or ACTIVE_TRADE
