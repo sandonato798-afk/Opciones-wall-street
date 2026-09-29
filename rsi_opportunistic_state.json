@@ -1,5 +1,5 @@
 {
-  "allocated_capital": 150000.0,
+  "allocated_capital": 0.0,
   "status_mode": "IDLE_MONITORING",
   "open_trades": [],
   "closed_trades": [],
@@ -10,5 +10,5 @@
     "QQQ": 50.0,
     "DIA": 50.0
   },
-  "last_update": "2026-09-29 13:30:49"
+  "last_update": "2026-09-29 00:00:00"
 }
