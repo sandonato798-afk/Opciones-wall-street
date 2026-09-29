@@ -308,8 +308,11 @@ class MasterPortfolioManager:
         if hasattr(self, 'bullmarket_bot') and self.bullmarket_bot:
             self.bullmarket_bot.load_state()
 
-        # 2. Datos de Mercado
-        spy_price = self.wheel_engine.fetch_etf_live_price("SPY")
+        # 2. Datos de Mercado — si IBKR no conectado, usar 0.0 (nunca crashear el servidor)
+        try:
+            spy_price = self.wheel_engine.fetch_etf_live_price("SPY")
+        except Exception:
+            spy_price = 0.0
 
         # 3. Metricas por Capa (con fallbacks a 0.0 limpios)
         wheel_shares    = getattr(self.wheel_engine, 'etf_shares', 0.0)
