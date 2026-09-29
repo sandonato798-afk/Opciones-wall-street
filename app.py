@@ -31,6 +31,29 @@ ibkr_adapter = IBKRBrokerAdapter(port=4002, is_paper=True)
 ibkr_adapter.connect()
 ibkr_watchdog = IBKRWatchdog(ibkr_adapter)
 
+# Calentar el price cache INMEDIATAMENTE desde el hilo principal (event loop correcto)
+PRICE_CACHE_SYMBOLS = ["SPY", "QQQ", "GLD", "IWM", "TLT", "SGOV", "IGSB"]
+ibkr_adapter.warm_price_cache(PRICE_CACHE_SYMBOLS)
+
+def _price_cache_refresh_loop():
+    """Hilo dedicado que refresca el price cache cada 60s desde el contexto del event loop original.
+    Usa ib.sleep() de ib_insync para mantener el event loop activo en este hilo."""
+    import time as _t
+    try:
+        from ib_insync import util
+        util.startLoop()  # Ejecuta el event loop en este hilo
+    except Exception:
+        pass
+    while True:
+        try:
+            _t.sleep(60)
+            ibkr_adapter.warm_price_cache(PRICE_CACHE_SYMBOLS)
+        except Exception as e:
+            print(f"[PRICE_CACHE_LOOP] Error: {e}")
+            _t.sleep(30)
+
+threading.Thread(target=_price_cache_refresh_loop, daemon=True).start()
+
 # Inicialización de Bots, Adaptador IBKR y Gestor Maestro
 engine = OptionsTradingEngine()
 daytrade_bot = DaytradeOptionsBot(ibkr_adapter=ibkr_adapter)
