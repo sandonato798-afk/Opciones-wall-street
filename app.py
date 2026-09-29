@@ -92,6 +92,13 @@ def background_trading_loop():
                 except Exception as e_ib:
                     print(f"⚠️ Watchdog IBKR alert: {e_ib}")
 
+                # Warm price cache desde este hilo (background_trading_loop tiene event loop)
+                # Los hilos HTTP del servidor leerán los precios de este cache
+                try:
+                    ibkr_adapter.warm_price_cache(["SPY", "QQQ", "GLD", "IWM", "TLT", "SGOV", "IGSB"])
+                except Exception as e:
+                    print(f"[PRICE_CACHE] Error warming cache: {e}")
+
                 if is_market_open():
                     # Capa 1: Rueda & Compounding
                     wheel_engine.auto_check_and_run_cycle()

@@ -34,11 +34,17 @@ class IBKRBrokerAdapter:
         self._last_summary_fetch: float = 0.0
         
         # Candados de Seguridad / Risk Management Locks
-        self.max_daily_drawdown_pct = 0.02  # Max 2% pérdida en 1 día
-        self.max_concurrent_trades = 4     # Máximo 4 posiciones en simultáneo
-        self.stop_loss_pct = 0.18           # Stop Loss al -18%
-        self.take_profit_pct = 0.50         # Take Profit institucional al 50%
-        self.max_delta = 0.25               # Delta máximo para venta de opciones (Rueda)
+        self.max_daily_drawdown_pct = 0.02
+        self.max_concurrent_trades = 4
+        self.stop_loss_pct = 0.18
+        self.take_profit_pct = 0.50
+        self.max_delta = 0.25
+
+        # Price cache thread-safe — se actualiza desde el hilo principal (event loop correcto)
+        # Los hilos HTTP secundarios leen de aquí sin tocar ib_insync
+        import threading
+        self._price_cache: Dict[str, float] = {}
+        self._price_cache_lock = threading.Lock()
 
     def connect(self) -> bool:
         """Conecta con IB Gateway o TWS."""
@@ -153,24 +159,64 @@ class IBKRBrokerAdapter:
             logging.error(f"❌ Error leyendo portfolio IBKR: {e}")
             return []
 
+    def warm_price_cache(self, symbols: list):
+        """
+        Actualiza el price cache desde el hilo principal (donde vive el event loop de ib_insync).
+        Debe llamarse periódicamente desde app.py en el hilo de trading principal.
+        """
+        if not self.is_live_connected():
+            return
+        for symbol in symbols:
+            try:
+                contract = Stock(symbol, 'SMART', 'USD')
+                self.ib.qualifyContracts(contract)
+                tickers = self.ib.reqTickers(contract)
+                if tickers:
+                    import math
+                    price = tickers[0].marketPrice()
+                    if math.isnan(price) or price <= 0:
+                        price = tickers[0].close
+                    if price and not math.isnan(price) and price > 0:
+                        with self._price_cache_lock:
+                            self._price_cache[symbol] = round(price, 2)
+                        logging.info(f"[PRICE_CACHE] {symbol} = ${self._price_cache[symbol]}")
+            except Exception as e:
+                logging.warning(f"[PRICE_CACHE] No se pudo actualizar {symbol}: {e}")
+
     def fetch_live_price(self, symbol: str) -> float:
-        """Extrae el precio de mercado en vivo directamente desde IBKR. Nada de hardcoding."""
-        if self.is_live_connected():
+        """
+        Retorna el precio de mercado en vivo.
+        - Desde el hilo principal: consulta IBKR directamente y actualiza el cache.
+        - Desde hilos HTTP secundarios: lee del cache (thread-safe, sin tocar asyncio).
+        """
+        import threading, math
+        is_main_thread = threading.current_thread() is threading.main_thread()
+
+        if is_main_thread and self.is_live_connected():
             try:
                 contract = Stock(symbol, 'SMART', 'USD')
                 self.ib.qualifyContracts(contract)
                 tickers = self.ib.reqTickers(contract)
                 if tickers:
                     price = tickers[0].marketPrice()
-                    import math
                     if math.isnan(price) or price <= 0:
                         price = tickers[0].close
                     if price and not math.isnan(price) and price > 0:
-                        return round(price, 2)
+                        with self._price_cache_lock:
+                            self._price_cache[symbol] = round(price, 2)
+                        return self._price_cache[symbol]
             except Exception as e:
                 logging.error(f"Error extrayendo precio real IBKR para {symbol}: {e}")
-                raise Exception(f"No se pudo obtener precio real de IBKR para {symbol}")
-        raise Exception("IBKR no está conectado. Abortando cálculo de precio por seguridad.")
+
+        # Desde hilo HTTP secundario — leer cache (nunca tocar ib_insync desde aquí)
+        with self._price_cache_lock:
+            cached = self._price_cache.get(symbol)
+        if cached and cached > 0:
+            return cached
+
+        # Sin cache disponible — retornar 0.0 para no crashear el dashboard
+        logging.warning(f"[PRICE_CACHE] Sin precio en cache para {symbol}. Retornando 0.0.")
+        return 0.0
 
     def place_bracket_option_order(self, symbol: str, option_type: str, strike: float, expiry: str, 
                                    action: str, quantity: int, limit_price: float) -> Dict:
