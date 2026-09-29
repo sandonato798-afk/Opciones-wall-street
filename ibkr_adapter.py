@@ -58,6 +58,9 @@ class IBKRBrokerAdapter:
                     self.ib.connect(self.host, self.port, clientId=self.client_id, timeout=4)
                 self.connected = self.ib.isConnected()
                 if self.connected:
+                    # Usar datos con delay gratuitos (15-20 min) — evita el error 10089
+                    # Para trading en papel es suficiente. Cambiar a 1 (Live) si se contrata suscripción.
+                    self.ib.reqMarketDataType(3)
                     logging.info("✅ Conexión establecida exitosamente con Interactive Brokers (IB Gateway / TWS).")
                     self.update_account_summary_cache()
                     return True
