@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from cloud_persistence import sync_state_to_github_async, load_state_from_github
 
-INITIAL_MASTER_CAPITAL_USD = 100000.0
+INITIAL_MASTER_CAPITAL_USD = 1000000.0
 REINVESTMENT_THRESHOLD_USD = 500.0   # Auto-ejecuta reinversión cuando hay $500+ acumulados
 REINVESTMENT_STATE_FILE = "reinvestment_state.json"
 

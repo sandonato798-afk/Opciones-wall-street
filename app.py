@@ -54,13 +54,13 @@ def _price_cache_refresh_loop():
 
 threading.Thread(target=_price_cache_refresh_loop, daemon=True).start()
 
-# Inicialización de Bots, Adaptador IBKR y Gestor Maestro
+# Inicialización de Bots, Adaptador IBKR y Gestor Maestro (Ajustado a NAV $1.000.000)
 engine = OptionsTradingEngine()
-daytrade_bot = DaytradeOptionsBot(ibkr_adapter=ibkr_adapter)
+daytrade_bot = DaytradeOptionsBot(initial_capital=1000000.0, allocated_capital=150000.0, ibkr_adapter=ibkr_adapter)
 wheel_engine = WheelCompoundingEngine(ibkr_adapter=ibkr_adapter)
-alpha_bot = AlphaTradeBot(ibkr_adapter=ibkr_adapter)
-rsi_bot = RSIOpportunisticBot(ibkr_adapter=ibkr_adapter)
-bullmarket_bot = BullMarketBot(allocated_capital=15000.0, ibkr_adapter=ibkr_adapter)
+alpha_bot = AlphaTradeBot(initial_capital=1000000.0, allocated_capital=200000.0, ibkr_adapter=ibkr_adapter)
+rsi_bot = RSIOpportunisticBot(initial_capital=1000000.0, allocated_capital=150000.0, ibkr_adapter=ibkr_adapter)
+bullmarket_bot = BullMarketBot(allocated_capital=150000.0, ibkr_adapter=ibkr_adapter)
 
 master_portfolio = MasterPortfolioManager(wheel_engine, alpha_bot, rsi_bot, daytrade_bot, bullmarket_bot)
 
