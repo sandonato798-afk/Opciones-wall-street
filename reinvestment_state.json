@@ -1,5 +1,5 @@
 {
-  "total_reinvested_usd": 1082341.0,
+  "total_reinvested_usd": 2062656.0,
   "reinvestment_history": [
     {
       "date": "2026-10-02 10:48:18",
@@ -24,16 +24,28 @@
         "qqq_15_usd": 147470.4,
         "gld_5_usd": 49156.8
       }
+    },
+    {
+      "date": "2026-10-02 11:18:27",
+      "total_reinvested_usd": 980315.0,
+      "method": "PROPORTIONAL_COLLATERAL_40_20_20_15_5",
+      "breakdown": {
+        "treasury_40_usd": 392126.0,
+        "corp_aaa_20_usd": 196063.0,
+        "spy_20_usd": 196063.0,
+        "qqq_15_usd": 147047.25,
+        "gld_5_usd": 49015.75
+      }
     }
   ],
   "last_update": "2026-09-26 00:00:00",
-  "treasury_accumulated_usd": 472936.4,
-  "sgov_accumulated_usd": 472936.4,
-  "corp_aaa_accumulated_usd": 236468.2,
-  "spy_accumulated_usd": 236468.2,
-  "qqq_accumulated_usd": 177351.15,
-  "gld_accumulated_usd": 59117.05,
-  "reinvestment_count": 2,
-  "last_reinvestment_date": "2026-10-02 11:02:37",
-  "last_updated": "2026-10-02 11:02:37"
+  "treasury_accumulated_usd": 865062.4,
+  "sgov_accumulated_usd": 865062.4,
+  "corp_aaa_accumulated_usd": 432531.2,
+  "spy_accumulated_usd": 432531.2,
+  "qqq_accumulated_usd": 324398.4,
+  "gld_accumulated_usd": 108132.8,
+  "reinvestment_count": 3,
+  "last_reinvestment_date": "2026-10-02 11:18:27",
+  "last_updated": "2026-10-02 11:18:27"
 }
