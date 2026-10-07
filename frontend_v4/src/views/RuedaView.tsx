@@ -58,7 +58,7 @@ export const RuedaView: React.FC = () => {
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
           <div className="text-[11px] text-gray-400 uppercase">COLATERAL RESPALDADO</div>
-          <div className="text-2xl font-bold text-white mt-1">${data.initial_capital_usd?.toLocaleString() || "0.00"}</div>
+          <div className="text-2xl font-bold text-white mt-1">${typeof data.initial_capital_usd === 'number' ? data.initial_capital_usd.toLocaleString() : "0.00"}</div>
           <div className="text-xs text-gray-400 mt-1">100% NAV (SGOV + GLD + TLT)</div>
         </div>
 
@@ -70,7 +70,7 @@ export const RuedaView: React.FC = () => {
 
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
           <div className="text-[11px] text-gray-400 uppercase">PRIMAS REINVERTIDAS</div>
-          <div className="text-2xl font-bold text-[#00e676] mt-1">${data.accumulated_premiums_usd?.toLocaleString() || "0.00"}</div>
+          <div className="text-2xl font-bold text-[#00e676] mt-1">${typeof data.accumulated_premiums_usd === 'number' ? data.accumulated_premiums_usd.toLocaleString() : "0.00"}</div>
           <div className="text-xs text-gray-400 mt-1">Interés Compuesto </div>
         </div>
 
@@ -125,7 +125,7 @@ export const RuedaView: React.FC = () => {
               </div>
               <div className="text-right">
                 <div className="text-xs text-gray-400">Prima Cobrada</div>
-                <div className="text-xl font-bold text-[#00e676]">${pos.premium_collected_usd?.toLocaleString()}</div>
+                <div className="text-xl font-bold text-[#00e676]">${typeof pos.premium_collected_usd === 'number' ? pos.premium_collected_usd.toLocaleString() : "0.00"}</div>
               </div>
             </div>
           </div>

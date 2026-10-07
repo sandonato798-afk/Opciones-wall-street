@@ -139,9 +139,15 @@ export const HomeView: React.FC = () => {
     { ticker: 'GLD', name: 'SPDR Gold Shares (Oro Físico)', shares: 'Colateral Intocable', currentPx: 'Precio Spot IBKR', totalUsd: 50000, pct: '5%', yieldApy: '4.50% APY' },
   ];
 
-  const pnlColor = (v: number) => v > 0 ? 'text-[#00e676]' : v < 0 ? 'text-red-400' : 'text-gray-400';
-  const fmt = (v: number) => v >= 0 ? `+$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : `-$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-  const fmtUsd = (v: number | null) => v !== null ? `$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '--';
+  const pnlColor = (v: number | null | undefined) => (v ?? 0) > 0 ? 'text-[#00e676]' : (v ?? 0) < 0 ? 'text-red-400' : 'text-gray-400';
+  const fmt = (v: number | null | undefined) => {
+    if (v === null || v === undefined || isNaN(v)) return '$0.00';
+    return v >= 0 ? `+$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : `-$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
+  const fmtUsd = (v: number | null | undefined) => {
+    if (v === null || v === undefined || isNaN(v)) return '--';
+    return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
 
   if (loading) {
     return (

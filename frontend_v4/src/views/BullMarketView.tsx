@@ -36,8 +36,11 @@ export const BullMarketView: React.FC = () => {
     );
   }
 
-  const fmt = (v: number) => v >= 0 ? `+$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : `-$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-  const pnlColor = (v: number) => v > 0 ? 'text-[#00e676]' : v < 0 ? 'text-red-400' : 'text-gray-400';
+  const fmt = (v: number | null | undefined) => {
+    if (v === null || v === undefined || isNaN(v)) return '$0.00';
+    return v >= 0 ? `+$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : `-$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
+  const pnlColor = (v: number | null | undefined) => (v ?? 0) > 0 ? 'text-[#00e676]' : (v ?? 0) < 0 ? 'text-red-400' : 'text-gray-400';
 
   return (
     <div className="space-y-6">

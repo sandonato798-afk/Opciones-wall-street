@@ -44,7 +44,7 @@ export const AlphaTradeView: React.FC = () => {
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
           <div className="text-[11px] text-gray-400 uppercase">MARGEN EN USO</div>
-          <div className="text-2xl font-bold text-white mt-1">${data.total_capital_allocated_usd?.toLocaleString() || "0.00"}</div>
+          <div className="text-2xl font-bold text-white mt-1">${typeof data.total_capital_allocated_usd === 'number' ? data.total_capital_allocated_usd.toLocaleString() : "0.00"}</div>
           <div className="text-xs text-gray-500 mt-1">Colateral en Riesgo</div>
         </div>
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
@@ -54,7 +54,7 @@ export const AlphaTradeView: React.FC = () => {
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
           <div className="text-[11px] text-gray-400 uppercase">PNL NO REALIZADO TOTAL</div>
           <div className={`text-2xl font-bold mt-1 ${pnlClass}`}>
-            ${pnl.toLocaleString()}
+            ${typeof pnl === 'number' && !isNaN(pnl) ? pnl.toLocaleString() : "0.00"}
           </div>
         </div>
       </div>

@@ -112,10 +112,10 @@ export const TerminalLayout: React.FC<Props> = ({ currentTab, onSelectTab, child
             <div className="text-xs text-gray-400">
               PORTFOLIO NAV: 
               <span className="text-white font-bold mx-2">
-                {nav !== null ? `$${nav.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '-- / OFFLINE'}
+                {nav !== null && nav !== undefined && !isNaN(nav) ? `$${nav.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '-- / OFFLINE'}
               </span>
-              <span className={`font-bold ${pnlPct >= 0 ? 'text-[#00e676]' : 'text-red-400'}`}>
-                {pnlPct >= 0 ? `+${pnlPct}%` : `${pnlPct}%`}
+              <span className={`font-bold ${(pnlPct ?? 0) >= 0 ? 'text-[#00e676]' : 'text-red-400'}`}>
+                {(pnlPct ?? 0) >= 0 ? `+${pnlPct ?? 0}%` : `${pnlPct ?? 0}%`}
               </span>
             </div>
           </div>

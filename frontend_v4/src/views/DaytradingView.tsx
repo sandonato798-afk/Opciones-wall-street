@@ -45,7 +45,7 @@ export const DaytradingView: React.FC = () => {
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
           <div className="text-[11px] text-gray-400 uppercase">MARGEN ASIGNADO</div>
-          <div className="text-2xl font-bold text-white mt-1">${data.allocated_capital?.toLocaleString() || "0.00"}</div>
+          <div className="text-2xl font-bold text-white mt-1">${typeof data.allocated_capital === 'number' ? data.allocated_capital.toLocaleString() : "0.00"}</div>
         </div>
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
           <div className="text-[11px] text-gray-400 uppercase">WIN RATE</div>
@@ -55,7 +55,7 @@ export const DaytradingView: React.FC = () => {
         <div className="bg-[#10141e] border border-[#1f2633] p-4 rounded">
           <div className="text-[11px] text-gray-400 uppercase">CERRADO ACUMULADO</div>
           <div className={`text-2xl font-bold mt-1 ${pnlClass}`}>
-            ${pnl.toLocaleString()}
+            ${typeof pnl === 'number' && !isNaN(pnl) ? pnl.toLocaleString() : "0.00"}
           </div>
         </div>
       </div>

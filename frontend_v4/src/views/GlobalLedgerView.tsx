@@ -110,14 +110,17 @@ export const GlobalLedgerView: React.FC = () => {
     : filterType === 'OPT' ? options
     : stocks;
 
-  const fmtUsd = (v: number) => `$${(v ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-  const fmtPnl = (v: number) => {
-    if (!v && v !== 0) return '—';
+  const fmtUsd = (v: number | null | undefined) => {
+    if (v === null || v === undefined || isNaN(v)) return '--';
+    return `$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+  };
+  const fmtPnl = (v: number | null | undefined) => {
+    if (v === null || v === undefined || isNaN(v)) return '—';
     return v >= 0
       ? `+$${v.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
       : `-$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
   };
-  const pnlColor = (v: number) => v > 0 ? 'text-[#00e676]' : v < 0 ? 'text-red-400' : 'text-gray-400';
+  const pnlColor = (v: number | null | undefined) => (v ?? 0) > 0 ? 'text-[#00e676]' : (v ?? 0) < 0 ? 'text-red-400' : 'text-gray-400';
 
   const collateralAssets = [
     { ticker: 'US-NOTES', name: 'US Treasury Notes (6 Bonos Escalonados 12/2027-12/2032)', shares: 'Escalonado 10% c/u', entryPx: '< 100.00 Par', pct: '60%', val: 600000, marginReq: '3.0%', yieldApy: '~5.00% APY (Cupones)', status: 'INTOCABLE / MARGEN' },
