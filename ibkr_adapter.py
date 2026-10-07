@@ -54,18 +54,27 @@ class IBKRBrokerAdapter:
         
         if IB_INSYNC_AVAILABLE:
             try:
-                if self.ib is None:
-                    self.ib = IB()
-                if not self.ib.isConnected():
-                    self.ib.connect(self.host, self.port, clientId=self.client_id, timeout=4)
-                self.connected = self.ib.isConnected()
-                if self.connected:
-                    # Usar datos con delay gratuitos (15-20 min) — evita el error 10089
-                    # Para trading en papel es suficiente. Cambiar a 1 (Live) si se contrata suscripción.
-                    self.ib.reqMarketDataType(3)
-                    logging.info("✅ Conexión establecida exitosamente con Interactive Brokers (IB Gateway / TWS).")
-                    self.update_account_summary_cache()
-                    return True
+                if not self.ib or not self.ib.isConnected():
+                    connected_ok = False
+                    for attempt_id in range(self.client_id, self.client_id + 15):
+                        try:
+                            self.ib = IB()
+                            self.ib.connect(self.host, self.port, clientId=attempt_id, timeout=4)
+                            self.client_id = attempt_id
+                            connected_ok = True
+                            break
+                        except Exception as conn_err:
+                            err_str = str(conn_err).lower()
+                            if "already in use" in err_str or "326" in err_str or "duplicado" in err_str or "clientid" in err_str:
+                                logging.warning(f"⚠️ Client ID {attempt_id} ocupado en IBKR. Reintentando con Client ID {attempt_id + 1}...")
+                                continue
+                            else:
+                                raise conn_err
+
+                    if not connected_ok:
+                        logging.error(f"❌ No se pudo encontrar un Client ID libre entre {self.client_id} y {self.client_id + 15}.")
+                        self.connected = False
+                        return False
             except Exception as e:
                 logging.warning(f"⚠️ No se pudo conectar al socket {self.host}:{self.port} de IBKR: {e}. Activando fallback de simulación.")
                 self.connected = False

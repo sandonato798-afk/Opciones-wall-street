@@ -244,6 +244,10 @@ class AlphaTradeBot:
         logging.info(f"[ALPHA] Monitoreando {len(self.open_positions)} posiciones sintéticas activos para desacople atómico...")
         return {"status": "MONITOR_COMPLETED", "open_count": len(self.open_positions)}
 
+    def monitor_positions(self) -> Dict[str, Any]:
+        """Alias para compatibilidad con el bucle de trading principal."""
+        return self.monitor_and_decouple()
+
     def get_status(self) -> Dict[str, Any]:
         """Devuelve el estado de la Capa 2 Alpha para la API y Dashboard."""
         return {

@@ -29,7 +29,7 @@ class BrokerManager:
                 cls._instance._initialized = False
             return cls._instance
 
-    def __init__(self, host: str = None, port: int = None, client_id: int = 10):
+    def __init__(self, host: str = None, port: int = None, client_id: int = 11):
         if self._initialized:
             return
         
@@ -45,28 +45,41 @@ class BrokerManager:
         self._initialized = True
 
     def connect(self) -> bool:
-        """Establece conexion con el socket de IB Gateway / TWS."""
+        """Establece conexion con el socket de IB Gateway / TWS con rotacion automatica de ClientID."""
         if not IB_INSYNC_AVAILABLE:
             logging.warning("[BROKER] ib_insync no esta disponible. Modo deshabilitado.")
             return False
 
         with self._lock:
             try:
-                if self.ib is None:
-                    self.ib = IB()
-                
-                # Configurar handlers de eventos de error de IBKR
-                self.ib.errorEvent += self._on_ib_error
-                
-                if not self.ib.isConnected():
-                    logging.info(f"[BROKER] Conectando a IBKR Gateway en {self.host}:{self.port} (ClientID: {self.client_id})...")
-                    self.ib.connect(self.host, self.port, clientId=self.client_id, timeout=5)
+                if not self.ib or not self.ib.isConnected():
+                    connected_ok = False
+                    for attempt_id in range(self.client_id, self.client_id + 15):
+                        try:
+                            logging.info(f"[BROKER] Intentando conexion a IBKR Gateway ({self.host}:{self.port}) con ClientID {attempt_id}...")
+                            self.ib = IB()
+                            self.ib.errorEvent += self._on_ib_error
+                            self.ib.connect(self.host, self.port, clientId=attempt_id, timeout=5)
+                            self.client_id = attempt_id
+                            connected_ok = True
+                            break
+                        except Exception as conn_err:
+                            err_str = str(conn_err).lower()
+                            if "already in use" in err_str or "326" in err_str or "duplicado" in err_str or "clientid" in err_str:
+                                logging.warning(f"⚠️ Client ID {attempt_id} ocupado. Probando Client ID {attempt_id + 1}...")
+                                continue
+                            else:
+                                raise conn_err
+
+                    if not connected_ok:
+                        logging.error(f"[BROKER] ❌ No se pudo encontrar Client ID libre entre {self.client_id} y {self.client_id + 15}.")
+                        self.connected = False
+                        return False
 
                 self.connected = self.ib.isConnected()
                 if self.connected:
-                    # Usar datos con delay (3) o en vivo (1)
                     self.ib.reqMarketDataType(3)
-                    logging.info("[BROKER] ✅ Conexion exitosa establecida con IB Gateway.")
+                    logging.info(f"[BROKER] ✅ Conexion exitosa con IB Gateway (ClientID: {self.client_id}).")
                     self.refresh_account_snapshot()
                     return True
             except Exception as e:
