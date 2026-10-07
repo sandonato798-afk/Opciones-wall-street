@@ -64,7 +64,7 @@ CAPA_2_ALPHA:
   MAX_POSITIONS_PER_SYMBOL: 2
 
 CAPA_3_RSI:
-  ENABLED: true                   # Habilitado para evaluación en Paper Trading
+  ENABLED: false                  # Pausado para evaluación enfocada en Capas 1, 2 y 4
   ALLOCATED_CAPITAL_USD: 150000.0
   UNIVERSE: ["SPY", "QQQ", "DIA"]
   RSI_PERIOD: 14                  # Wilder RSI 14 real sobre velas de 5 min / intradía
@@ -83,7 +83,7 @@ CAPA_4_DAYTRADE:
   MAX_PORTFOLIO_MARGIN_LEVERAGE: 1.5
 
 CAPA_5_BULLMARKET:
-  ENABLED: true
+  ENABLED: false                  # Pausado para evaluación enfocada en Capas 1, 2 y 4
   ALLOCATED_CAPITAL_USD: 150000.0
   UNIVERSE: ["SPY", "QQQ", "GLD", "IWM", "TLT"]
   LONG_LEAPS_DELTA_MIN: 0.75
