@@ -99,62 +99,74 @@ def _get_wheel_trades(ctx):
 
 
 def _get_alpha_trades(ctx):
-    """Extrae historial de Capa 2: Alpha LEAPS."""
+    """Extrae historial de Capa 2: Alpha LEAPS desglosado en 2 líneas apareadas (PUT arriba, CALL abajo)."""
     trades = []
     alpha = ctx.get("alpha_bot")
     if not alpha:
         return trades
 
-    for pos in getattr(alpha, "open_positions", []):
-        trades.append({
-            "id": str(pos.get("id", "")),
+    def _format_bag_pair(pos, status_override=None):
+        trade_id = str(pos.get("id", ""))
+        ts = pos.get("entry_date", pos.get("timestamp", ""))
+        spot = pos.get("spot_price", 0.0)
+        sym = pos.get("symbol", "SPY")
+        qty = pos.get("quantity", pos.get("contracts", 2))
+        expiry = pos.get("expiry", pos.get("expiration_date", "MAX_DTE"))
+        net_usd = pos.get("net_credit_usd", pos.get("realized_pnl_usd", 0.0))
+        status = status_override or pos.get("status", "ACTIVE")
+
+        # Pata 1 (Línea Superior): SHORT PUT
+        put_leg = {
+            "id": f"{trade_id}_PUT",
+            "bag_trade_id": trade_id,
             "capa": 2,
             "capa_nombre": CAPA_NOMBRES[2],
             "capa_color": CAPA_COLORES[2],
-            "tipo": pos.get("strategy", "ZERO_COST_SYNTHETIC"),
-            "simbolo": pos.get("symbol", "QQQ"),
-            "strike": pos.get("long_call_strike"),
-            "premium_usd": pos.get("long_call_premium_paid"),
-            "pnl_usd": pos.get("unrealized_pnl_usd"),
-            "estado": pos.get("status", "ACTIVE"),
-            "timestamp": pos.get("entry_date", ""),
-            "modo": "SIMULADO",
-            "detalle": pos
-        })
+            "tipo": "SHORT_PUT",
+            "leg": "PUT",
+            "simbolo": sym,
+            "precio_spot": spot,
+            "cantidad_contratos": qty,
+            "strike": pos.get("short_put_strike", pos.get("put_strike")),
+            "vencimiento": expiry,
+            "prima_usd": pos.get("short_put_premium", 0.0),
+            "neto_operacion_usd": net_usd,
+            "estado": status,
+            "timestamp": ts,
+            "formato_linea": f"{sym} / ${spot:.2f} / {ts} / {qty} Contratos / PUT {pos.get('short_put_strike', pos.get('put_strike'))} / {expiry} / +${pos.get('short_put_premium', 0.0):.2f} / NETO: +${net_usd:.2f}"
+        }
+
+        # Pata 2 (Línea Inferior): LONG CALL
+        call_leg = {
+            "id": f"{trade_id}_CALL",
+            "bag_trade_id": trade_id,
+            "capa": 2,
+            "capa_nombre": CAPA_NOMBRES[2],
+            "capa_color": CAPA_COLORES[2],
+            "tipo": "LONG_CALL",
+            "leg": "CALL",
+            "simbolo": sym,
+            "precio_spot": spot,
+            "cantidad_contratos": qty,
+            "strike": pos.get("long_call_strike", pos.get("call_strike")),
+            "vencimiento": expiry,
+            "prima_usd": -abs(pos.get("long_call_premium_paid", 0.0)),
+            "neto_operacion_usd": net_usd,
+            "estado": status,
+            "timestamp": ts,
+            "formato_linea": f"{sym} / ${spot:.2f} / {ts} / {qty} Contratos / CALL {pos.get('long_call_strike', pos.get('call_strike'))} / {expiry} / -${abs(pos.get('long_call_premium_paid', 0.0)):.2f} / NETO: +${net_usd:.2f}"
+        }
+
+        return [put_leg, call_leg]
+
+    for pos in getattr(alpha, "open_positions", []):
+        trades.extend(_format_bag_pair(pos, status_override="ACTIVE"))
 
     for pos in getattr(alpha, "decoupled_calls", []):
-        trades.append({
-            "id": str(pos.get("id", "")),
-            "capa": 2,
-            "capa_nombre": CAPA_NOMBRES[2],
-            "capa_color": CAPA_COLORES[2],
-            "tipo": "RISK_FREE_LONG_CALL",
-            "simbolo": pos.get("symbol", "QQQ"),
-            "strike": pos.get("long_call_strike"),
-            "premium_usd": pos.get("long_call_premium_paid"),
-            "pnl_usd": pos.get("unrealized_pnl_usd"),
-            "estado": pos.get("status", "RISK_FREE"),
-            "timestamp": pos.get("entry_date", ""),
-            "modo": "SIMULADO",
-            "detalle": pos
-        })
+        trades.extend(_format_bag_pair(pos, status_override="RISK_FREE"))
 
     for pos in getattr(alpha, "closed_positions", []):
-        trades.append({
-            "id": str(pos.get("id", "")),
-            "capa": 2,
-            "capa_nombre": CAPA_NOMBRES[2],
-            "capa_color": CAPA_COLORES[2],
-            "tipo": "CLOSED_SYNTHETIC",
-            "simbolo": pos.get("symbol", "QQQ"),
-            "strike": pos.get("long_call_strike"),
-            "premium_usd": pos.get("long_call_premium_paid"),
-            "pnl_usd": pos.get("realized_pnl_usd", 0),
-            "estado": "CLOSED",
-            "timestamp": pos.get("close_date", pos.get("entry_date", "")),
-            "modo": "SIMULADO",
-            "detalle": pos
-        })
+        trades.extend(_format_bag_pair(pos, status_override="CLOSED"))
 
     return trades
 
