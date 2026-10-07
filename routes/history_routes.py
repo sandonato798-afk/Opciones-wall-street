@@ -362,5 +362,6 @@ def get_unified_history(ctx, query):
 
 
 HISTORY_GET = {
+    "/api/history": get_unified_history,
     "/api/history/unified": get_unified_history,
 }

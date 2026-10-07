@@ -4,7 +4,7 @@ export const BullMarketView: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchBullStatus = () => {
     fetch('/api/master/summary')
       .then(res => res.json())
       .then(d => {
@@ -12,6 +12,12 @@ export const BullMarketView: React.FC = () => {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchBullStatus();
+    const interval = setInterval(fetchBullStatus, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const ibkrOnline = data !== null;

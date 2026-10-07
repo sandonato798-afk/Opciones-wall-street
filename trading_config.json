@@ -1,0 +1,48 @@
+{
+  "GLOBAL": {
+    "TRADING_ENABLED": false,
+    "NAV_USD": 1000000.0,
+    "market_open_est": "09:30",
+    "market_close_est": "16:00",
+    "reinvestment_threshold_usd": 500.0,
+    "collateral_distribution": {
+      "TREASURY_SGOV": 0.40,
+      "CORP_AAA_IGSB": 0.20,
+      "SPY": 0.20,
+      "QQQ": 0.15,
+      "GLD": 0.05
+    }
+  },
+  "CAPA_1_RUEDA": {
+    "allocated_capital_usd": 1000000.0,
+    "target_delta": 0.25,
+    "target_dte_min": 30,
+    "target_dte_max": 45,
+    "monthly_premium_target_pct": 2.0
+  },
+  "CAPA_2_ALPHA": {
+    "allocated_capital_usd": 200000.0,
+    "long_call_min_dte": 180,
+    "short_put_target_credit_pct": 100.0,
+    "max_net_debit_usd": 0.50
+  },
+  "CAPA_3_RSI": {
+    "allocated_capital_usd": 150000.0,
+    "rsi_entry_threshold": 30,
+    "target_dte": 1,
+    "take_profit_pct": 50.0,
+    "time_stop_est": "15:55"
+  },
+  "CAPA_4_DAYTRADE": {
+    "allocated_capital_usd": 150000.0,
+    "target_dte": 1,
+    "roll_defensivo_est": "15:55",
+    "roll_out_dte": 30
+  },
+  "CAPA_5_BULLMARKET": {
+    "allocated_capital_usd": 150000.0,
+    "long_leaps_delta": 0.80,
+    "short_call_delta_max": 0.30,
+    "short_call_dte": 14
+  }
+}

@@ -11,16 +11,23 @@ export const TerminalLayout: React.FC<Props> = ({ currentTab, onSelectTab, child
   const [nav, setNav] = useState(0);
   const [pnlPct, setPnlPct] = useState(0);
 
-  useEffect(() => {
+  const fetchNav = () => {
     fetch('/api/master/summary')
       .then(res => res.json())
       .then(data => {
-         if(data && data.collateral_portfolio) {
-            setNav(data.collateral_portfolio.current_liquidity_usd || 100000);
-            setPnlPct(0); // placeholder for real calculation
-         }
+         const realNav = data?.ibkr_summary?.NetLiquidation ?? null;
+         setNav(realNav);
+         const unPnL = data?.ibkr_summary?.UnrealizedPnL ?? 0;
+         const pnlP = (realNav && realNav > 0) ? (unPnL / realNav) * 100 : 0;
+         setPnlPct(parseFloat(pnlP.toFixed(2)));
       })
       .catch(err => console.error(err));
+  };
+
+  useEffect(() => {
+    fetchNav();
+    const interval = setInterval(fetchNav, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const menuItems: { id: LayerId; label: string; badge?: string }[] = [
@@ -104,8 +111,12 @@ export const TerminalLayout: React.FC<Props> = ({ currentTab, onSelectTab, child
             </div>
             <div className="text-xs text-gray-400">
               PORTFOLIO NAV: 
-              <span className="text-white font-bold mx-2">${nav.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-              <span className="text-[#00e676] font-bold">+{pnlPct}%</span>
+              <span className="text-white font-bold mx-2">
+                {nav !== null ? `$${nav.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '-- / OFFLINE'}
+              </span>
+              <span className={`font-bold ${pnlPct >= 0 ? 'text-[#00e676]' : 'text-red-400'}`}>
+                {pnlPct >= 0 ? `+${pnlPct}%` : `${pnlPct}%`}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-3">

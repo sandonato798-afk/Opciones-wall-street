@@ -7,6 +7,7 @@ Incluye candados de gestión de riesgo automáticos (Server-Side Bracket Orders)
 """
 
 import logging
+import os
 import time
 from typing import Dict, List, Optional, Any
 
@@ -44,6 +45,7 @@ class IBKRBrokerAdapter:
         # Los hilos HTTP secundarios leen de aquí sin tocar ib_insync
         import threading
         self._price_cache: Dict[str, float] = {}
+        self._close_cache: Dict[str, float] = {}
         self._price_cache_lock = threading.Lock()
 
     def connect(self) -> bool:
@@ -108,10 +110,11 @@ class IBKRBrokerAdapter:
 
     def get_account_summary(self) -> Dict[str, float]:
         """Obtiene liquidez, NAV total y margen disponible en vivo desde IBKR."""
-        if self._cached_summary:
+        now = time.time()
+        if self._cached_summary and (now - getattr(self, "_last_summary_fetch", 0) < 10):
             return self._cached_summary
 
-        return self.update_account_summary_cache() or {
+        return self.update_account_summary_cache() or self._cached_summary or {
             "NetLiquidation": 0.0,
             "TotalCashValue": 0.0,
             "SettledCash": 0.0,
@@ -177,12 +180,15 @@ class IBKRBrokerAdapter:
                 if tickers:
                     import math
                     price = tickers[0].marketPrice()
+                    close_p = getattr(tickers[0], 'close', None)
                     if math.isnan(price) or price <= 0:
-                        price = tickers[0].close
+                        price = close_p
                     if price and not math.isnan(price) and price > 0:
                         with self._price_cache_lock:
                             self._price_cache[symbol] = round(price, 2)
-                        logging.info(f"[PRICE_CACHE] {symbol} = ${self._price_cache[symbol]}")
+                            if close_p and not math.isnan(close_p) and close_p > 0:
+                                self._close_cache[symbol] = round(close_p, 2)
+                        logging.info(f"[PRICE_CACHE] {symbol} = ${self._price_cache[symbol]} (PrevClose: ${self._close_cache.get(symbol, 'N/A')})")
             except Exception as e:
                 logging.warning(f"[PRICE_CACHE] No se pudo actualizar {symbol}: {e}")
 
@@ -202,11 +208,14 @@ class IBKRBrokerAdapter:
                 tickers = self.ib.reqTickers(contract)
                 if tickers:
                     price = tickers[0].marketPrice()
+                    close_p = getattr(tickers[0], 'close', None)
                     if math.isnan(price) or price <= 0:
-                        price = tickers[0].close
+                        price = close_p
                     if price and not math.isnan(price) and price > 0:
                         with self._price_cache_lock:
                             self._price_cache[symbol] = round(price, 2)
+                            if close_p and not math.isnan(close_p) and close_p > 0:
+                                self._close_cache[symbol] = round(close_p, 2)
                         return self._price_cache[symbol]
             except Exception as e:
                 logging.error(f"Error extrayendo precio real IBKR para {symbol}: {e}")
@@ -221,6 +230,19 @@ class IBKRBrokerAdapter:
         logging.warning(f"[PRICE_CACHE] Sin precio en cache para {symbol}. Retornando 0.0.")
         return 0.0
 
+    def fetch_live_market_data(self, symbol: str) -> Dict[str, float]:
+        """
+        Retorna precio actual y precio de cierre anterior desde IBKR.
+        Thread-safe y sin depender de servicios externos.
+        """
+        px = self.fetch_live_price(symbol)
+        with self._price_cache_lock:
+            prev_close = self._close_cache.get(symbol, px)
+        return {
+            "current_price": px,
+            "previous_close": prev_close if prev_close > 0 else px
+        }
+
     def place_bracket_option_order(self, symbol: str, option_type: str, strike: float, expiry: str, 
                                    action: str, quantity: int, limit_price: float) -> Dict:
         """
@@ -233,8 +255,15 @@ class IBKRBrokerAdapter:
         if self.is_live_connected():
             try:
                 right = "C" if option_type.upper().startswith("C") else "P"
-                # Formato expiry YYYYMMDD
+                # Formato expiry YYYYMMDD ajustado a día hábil bursátil
+                from market_calendar import get_nearest_trading_day
+                from datetime import datetime as _dt
                 clean_expiry = expiry.replace("-", "")
+                try:
+                    exp_d = _dt.strptime(clean_expiry, "%Y%m%d").date()
+                    clean_expiry = get_nearest_trading_day(exp_d).strftime("%Y%m%d")
+                except Exception:
+                    pass
                 contract = Option(symbol, clean_expiry, strike, right, "SMART", currency="USD")
                 self.ib.qualifyContracts(contract)
 
@@ -275,7 +304,14 @@ class IBKRBrokerAdapter:
         """
         if self.is_live_connected():
             try:
+                from market_calendar import get_nearest_trading_day
+                from datetime import datetime as _dt
                 clean_expiry = expiry.replace("-", "")
+                try:
+                    exp_d = _dt.strptime(clean_expiry, "%Y%m%d").date()
+                    clean_expiry = get_nearest_trading_day(exp_d).strftime("%Y%m%d")
+                except Exception:
+                    pass
                 contract = Option(symbol, clean_expiry, strike, right, "SMART", currency="USD")
                 self.ib.qualifyContracts(contract)
 
@@ -333,6 +369,37 @@ class IBKRBrokerAdapter:
             "avg_price": simulated_price,
             "commission": 1.0
         }
+
+    def execute_stock_order_sync(self, symbol: str, action: str, quantity: int) -> Dict:
+        """
+        Ejecuta una orden de compra/venta de acciones/ETFs físicos en IBKR.
+        """
+        if self.is_live_connected():
+            try:
+                contract = Stock(symbol, "SMART", "USD")
+                self.ib.qualifyContracts(contract)
+                order = MarketOrder(action.upper(), quantity)
+                trade = self.ib.placeOrder(contract, order)
+                logging.info(f"🚀 [IBKR Stock Order Sent] {action} {quantity}x {symbol}")
+
+                timeout = 5.0
+                start_t = time.time()
+                while not trade.isDone() and (time.time() - start_t) < timeout:
+                    self.ib.sleep(0.1)
+
+                avg_price = trade.orderStatus.avgFillPrice or self.fetch_live_price(symbol)
+                return {
+                    "status": "FILLED" if trade.isDone() else "SUBMITTED",
+                    "filled": trade.orderStatus.filled or quantity,
+                    "avg_price": avg_price,
+                    "symbol": symbol
+                }
+            except Exception as e:
+                logging.error(f"Error en execute_stock_order_sync para {symbol}: {e}")
+                return {"status": "ERROR", "error": str(e)}
+
+        logging.info(f"🚀 [SIMULATED STOCK EXEC] {action} {quantity}x {symbol}")
+        return {"status": "FILLED", "filled": quantity, "avg_price": self.fetch_live_price(symbol) or 100.0}
 
 
         # Fallback de simulación

@@ -6,39 +6,43 @@ from cloud_persistence import sync_state_to_github_async, load_state_from_github
 
 INITIAL_MASTER_CAPITAL_USD = 1000000.0
 REINVESTMENT_THRESHOLD_USD = 500.0   # Auto-ejecuta reinversión cuando hay $500+ acumulados
-REINVESTMENT_STATE_FILE = "reinvestment_state.json"
+REINVESTMENT_STATE_FILE = os.path.join(os.path.dirname(__file__), "reinvestment_state.json")
 
-# Colateral diversificado institucional: 100% del NAV distribuido en 5 bloques de activos
+# Colateral diversificado intocable (100% NAV respaldo Portfolio Margin):
+# 60% Bonos Tesoro EE.UU. directos (6 bonos escalonados 10% c/u, 12/2027-12/2032, precio < par, yield ~5%)
+# 20% VOO (S&P 500)
+# 15% QQQ (Nasdaq 100)
+# 5% GLD (Oro Fisico)
 COLLATERAL_PORTFOLIO = {
-    "TREASURY": {
-        "pct": 0.40, "yield_apy": 0.051, "margin_req_pct": 2.0,
-        "primary": "SGOV",
-        "tickers": ["SGOV", "BOXX", "TBIL", "CSHI", "VTIP", "IBTG"],
-        "description": "Bonos Tesoro 0-3M / BOXX (5.1% APY)"
+    "TREASURY_BONDS_DIRECT": {
+        "pct": 0.60,
+        "yield_apy": 0.050,
+        "margin_req_pct": 2.0,
+        "number_of_bonds": 6,
+        "pct_per_bond": 0.10,
+        "max_price_of_par": 99.9,
+        "description": "60% Bonos del Tesoro EE.UU. Directos Escalonados (12/2027 a 12/2032, < Par, ~5.0% APY)"
     },
-    "CORP_AAA": {
-        "pct": 0.20, "yield_apy": 0.058, "margin_req_pct": 7.5,
-        "primary": "IGSB",
-        "tickers": ["IGSB", "VCSH", "PFF"],
-        "description": "Bonos Corporativos AAA / Preferidas (5.8% APY)"
-    },
-    "SPY": {
-        "pct": 0.20, "yield_apy": 0.015, "margin_req_pct": 15.0,
-        "primary": "SPY",
-        "tickers": ["SPY", "VOO"],
-        "description": "S&P 500 Core Equity + Covered Calls"
+    "VOO": {
+        "pct": 0.20,
+        "yield_apy": 0.015,
+        "margin_req_pct": 15.0,
+        "primary": "VOO",
+        "description": "20% Vanguard S&P 500 ETF (Colateral Intocable)"
     },
     "QQQ": {
-        "pct": 0.15, "yield_apy": 0.008, "margin_req_pct": 15.0,
+        "pct": 0.15,
+        "yield_apy": 0.008,
+        "margin_req_pct": 15.0,
         "primary": "QQQ",
-        "tickers": ["QQQ"],
-        "description": "Nasdaq 100 Growth + LEAPS Overlay"
+        "description": "15% Invesco Nasdaq 100 ETF (Colateral Intocable)"
     },
     "GLD": {
-        "pct": 0.05, "yield_apy": 0.045, "margin_req_pct": 15.0,
+        "pct": 0.05,
+        "yield_apy": 0.045,
+        "margin_req_pct": 15.0,
         "primary": "GLD",
-        "tickers": ["GLD"],
-        "description": "Oro Físico (Cobertura Inflación)"
+        "description": "5% SPDR Gold Shares Oro Fisico (Colateral Intocable)"
     }
 }
 
@@ -102,7 +106,7 @@ class MasterPortfolioManager:
 
     def _load_reinvestment_state(self):
         """Carga estado de reinversion desde nube o disco."""
-        cloud = load_state_from_github(REINVESTMENT_STATE_FILE)
+        cloud = load_state_from_github(os.path.basename(REINVESTMENT_STATE_FILE))
         if cloud:
             return cloud
         if os.path.exists(REINVESTMENT_STATE_FILE):
@@ -128,7 +132,7 @@ class MasterPortfolioManager:
         try:
             with open(REINVESTMENT_STATE_FILE, "w", encoding="utf-8") as f:
                 json.dump(self._reinvestment_state, f, indent=2, ensure_ascii=False)
-            sync_state_to_github_async(REINVESTMENT_STATE_FILE, self._reinvestment_state)
+            sync_state_to_github_async(os.path.basename(REINVESTMENT_STATE_FILE), self._reinvestment_state)
         except Exception as e:
             print(f"[REINVESTMENT] Error guardando estado: {e}")
 
@@ -137,37 +141,42 @@ class MasterPortfolioManager:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _fetch_collateral_prices(self, nav):
-        """Obtiene precios en vivo de SGOV, IGSB, SPY, QQQ y GLD."""
-        prices = {"SGOV": 100.5, "IGSB": 53.0, "SPY": 560.0, "QQQ": 485.0, "GLD": 235.0}
-        for symbol in ["SGOV", "IGSB", "SPY", "QQQ", "GLD"]:
+        """Obtiene precios en vivo del Pool de Colateral (Treasuries, VOO, QQQ, GLD)."""
+        prices = {"SGOV": 100.5, "VOO": 520.0, "SPY": 560.0, "QQQ": 485.0, "GLD": 235.0}
+        for symbol in ["VOO", "SPY", "QQQ", "GLD"]:
             try:
-                price = self.wheel_engine.fetch_etf_live_price(symbol)
-                if price and price > 0:
-                    prices[symbol] = price
+                if hasattr(self.wheel_engine, "fetch_etf_live_price"):
+                    price = self.wheel_engine.fetch_etf_live_price(symbol)
+                    if price and price > 0:
+                        prices[symbol] = price
             except Exception:
                 pass
 
         state = self._reinvestment_state
         collateral = {}
         for block_key, cfg in COLLATERAL_PORTFOLIO.items():
-            primary_sym = cfg["primary"]
-            target_usd = round(nav * cfg["pct"], 2)
+            primary_sym = cfg.get("primary", "US-TREASURY")
+            tickers = cfg.get("tickers", [primary_sym])
+            desc = cfg.get("description", block_key)
+            target_usd = round(nav * cfg.get("pct", 0.0), 2)
             actual_usd = round(state.get(f"{block_key.lower()}_accumulated_usd", target_usd), 2)
-            annual_yield = round(actual_usd * cfg["yield_apy"], 2)
+            annual_yield = round(actual_usd * cfg.get("yield_apy", 0.05), 2)
+            margin_req = cfg.get("margin_req_pct", 5.0)
+
             collateral[block_key] = {
                 "block_key": block_key,
                 "symbol": primary_sym,
-                "tickers": cfg["tickers"],
-                "description": cfg["description"],
-                "target_pct": round(cfg["pct"] * 100, 0),
+                "tickers": tickers,
+                "description": desc,
+                "target_pct": round(cfg.get("pct", 0.0) * 100, 0),
                 "target_usd": target_usd,
                 "actual_usd": actual_usd,
                 "price": prices.get(primary_sym, 100.0),
                 "shares_equiv": round(actual_usd / prices.get(primary_sym, 100.0), 4),
                 "annual_yield_usd": annual_yield,
                 "monthly_yield_usd": round(annual_yield / 12, 2),
-                "margin_req_pct": cfg["margin_req_pct"],
-                "collateral_unlocked_usd": round(actual_usd * (1 - cfg["margin_req_pct"] / 100), 2)
+                "margin_req_pct": margin_req,
+                "collateral_unlocked_usd": round(actual_usd * (1 - margin_req / 100), 2)
             }
 
         total_collateral_actual = sum(c["actual_usd"] for c in collateral.values())
@@ -277,6 +286,38 @@ class MasterPortfolioManager:
         self._save_reinvestment_state()
 
         return {"status": "EXECUTED", "record": record}
+
+    def execute_collateral_purchases(self, ibkr_adapter=None):
+        """
+        Envía a IBKR las 5 órdenes de compra de mercado para empaquetar el Colateral Físico:
+        - 40% SGOV ($400k)
+        - 20% IGSB ($200k)
+        - 20% SPY  ($200k)
+        - 15% QQQ  ($150k)
+        - 5%  GLD  ($50k)
+        """
+        adapter = ibkr_adapter or getattr(self, "ibkr_adapter", None)
+        if not adapter or not adapter.is_live_connected():
+            print("[COLLATERAL] ⚠️ IBKR no conectado. Abortando compra física de colateral.")
+            return False
+
+        allocations = [
+            ("SGOV", 400000.0, 100.50),
+            ("IGSB", 200000.0, 53.05),
+            ("SPY",  200000.0, 769.72),
+            ("QQQ",  150000.0, 550.00),
+            ("GLD",   50000.0, 275.00),
+        ]
+
+        results = {}
+        for symbol, target_usd, est_price in allocations:
+            px = adapter.fetch_live_price(symbol) or est_price
+            shares = max(1, int(target_usd / px))
+            res = adapter.execute_stock_order_sync(symbol, "BUY", shares)
+            results[symbol] = {"shares": shares, "price": px, "res": res}
+            print(f"[COLLATERAL] 🛒 Compra enviada a IBKR: BUY {shares}x {symbol} @ ${px:.2f} (Total: ${shares*px:.2f})")
+
+        return results
 
     def get_reinvestment_status(self):
         """Retorna el estado del motor de reinversion para el dashboard."""

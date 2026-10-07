@@ -1,1 +1,9 @@
-﻿{ " initial_capital\: 1000000.0, \cash_balance\: 1000000.0, \etf_shares\: 0.0, \accumulated_premiums_usd\: 0.0, \total_reinvested_usd\: 0.0, \wheel_positions\: [], \history\: [], \last_update\: \2026-09-30 00:00:00\ }
+{
+  "cash_balance": 1000000.0,
+  "etf_shares": 0.0,
+  "accumulated_premiums_usd": 0.0,
+  "total_reinvested_usd": 0.0,
+  "wheel_positions": [],
+  "history": [],
+  "last_update": "2026-10-06 00:00:00"
+}

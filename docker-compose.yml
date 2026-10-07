@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  ib-gateway:
+    image: gnzsnz/ib-gateway:latest
+    container_name: ibkr_gateway
+    restart: always
+    environment:
+      - TWS_USER=${TWS_USER:-cristoforo1997paper}
+      - TWS_PASSWORD=${TWS_PASSWORD:-rive3258}
+      - TRADING_MODE=${TRADING_MODE:-paper}
+      - READ_ONLY_API=no
+      - AUTO_RESTART_TIME=06:00
+      - IBC_INI_PATH=/root/ibc/config.ini
+    ports:
+      # Seguridad: Se vincula solo a localhost para no exponer la API al publico
+      - "127.0.0.1:4002:4002"
+    networks:
+      - darq_net
+
+  darq-bot:
+    build: .
+    container_name: darq_bot_app
+    restart: always
+    environment:
+      - PORT=10000
+      - IBKR_HOST=ib-gateway
+      - IBKR_PORT=4002
+      - RENDER_EXTERNAL_URL=http://localhost:10000
+    ports:
+      - "10000:10000"
+    depends_on:
+      - ib-gateway
+    networks:
+      - darq_net
+
+networks:
+  darq_net:
+    driver: bridge

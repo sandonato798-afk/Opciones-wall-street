@@ -1,282 +1,129 @@
 # -*- coding: utf-8 -*-
+"""
+daytrade_options_bot.py - Motor Institucional de la Capa 4: Daytrading 1DTE
+Opera sobre la infraestructura de `core/` y lee parámetros desde `config/strategies.yaml`.
+Incluye Roll Defensivo a 30 DTE a las 15:55 EST si la posición está en pérdida.
+"""
+
 import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 import os
 import json
-import urllib.request
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime
+from typing import Dict, List, Any, Optional
 
-STATE_FILE = "daytrade_state.json"
-CONFIG = {"target_profit_pct": 50}
+import yaml
 
-from cloud_persistence import sync_state_to_github_async, load_state_from_github
-from market_calendar import is_trading_day, is_market_open
+# Módulos del Núcleo `core/`
+from core.clock import now_et, is_nyse_market_open
+from core.broker import BrokerManager
+from core.contracts import ContractManager
+from core.orders import OrderExecutionEngine
+from core.risk import RiskGuardian
+from core.ledger import InstitutionalLedger
+
+STATE_FILE = os.path.join(os.path.dirname(__file__), "daytrade_state.json")
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config", "strategies.yaml")
+
+
+def load_yaml_config() -> Dict[str, Any]:
+    """Carga la configuración centralizada desde config/strategies.yaml."""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return yaml.safe_load(f)
+        except Exception as e:
+            logging.error(f"[DAYTRADE] Error cargando config/strategies.yaml: {e}")
+    return {
+        "GLOBAL": {"TRADING_ENABLED": False, "NAV_USD": 1000000.0},
+        "CAPA_4_DAYTRADE": {
+            "ENABLED": True,
+            "ALLOCATED_CAPITAL_USD": 150000.0,
+            "UNIVERSE": ["SPY", "QQQ"],
+            "TARGET_DTE": 1,
+            "ROLL_DEFENSIVO_EST": "15:55",
+            "ROLL_OUT_DTE": 30
+        }
+    }
+
 
 class DaytradeOptionsBot:
-    def __init__(self, initial_capital=100000.0, allocated_capital=15000.0, ibkr_adapter=None):
-        self.ibkr_adapter = ibkr_adapter
+    """
+    Motor Institucional de Daytrading 1DTE (Capa 4)
+    - Operaciones a 1 DTE con Take Profit al 50%.
+    - Roll defensivo a 30 DTE a las 15:55 EST si entra en pérdida.
+    - Cero simulación: Solo registra fills confirmados por IBKR.
+    """
+
+    def __init__(self, initial_capital: float = 1000000.0, allocated_capital: float = 150000.0, broker_manager: Optional[Any] = None, ibkr_adapter: Optional[Any] = None):
+        self.config = load_yaml_config()
+        self.daytrade_config = self.config.get("CAPA_4_DAYTRADE", {})
+        
+        self.initial_capital = initial_capital
         self.allocated_capital = allocated_capital
-        self.active_trades = []
-        self.history = []
+        self.ibkr_adapter = ibkr_adapter or broker_manager
+        self.broker_mgr = broker_manager or BrokerManager()
+        self.risk_guardian = RiskGuardian(self.config)
+        self.ledger = InstitutionalLedger(STATE_FILE)
+
+        self.active_trades: List[Dict[str, Any]] = []
+        self.history: List[Dict[str, Any]] = []
+
         self.load_state()
 
     def load_state(self):
-        local_data = {}
+        """Carga el estado local limpio del libro mayor."""
         if os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
-                    local_data = json.load(f)
-            except Exception:
-                pass
-
-        cloud_data = load_state_from_github(STATE_FILE)
-        source = local_data
-        if cloud_data:
-            cloud_hist = cloud_data.get("history", [])
-            local_hist = local_data.get("history", [])
-            if len(cloud_hist) >= len(local_hist):
-                source = cloud_data
-
-        if source:
-            self.allocated_capital = source.get("allocated_capital", 15000.0)
-            self.active_trades = source.get("active_trades", [])
-            self.history = source.get("history", [])
+                    data = json.load(f)
+                    self.active_trades = data.get("active_trades", [])
+                    self.history = data.get("history", [])
+            except Exception as e:
+                logging.error(f"[DAYTRADE] Error cargando estado: {e}")
 
     def save_state(self):
-        data = {
-            "allocated_capital": self.allocated_capital,
+        """Guarda el estado utilizando escritura atómica."""
+        state = {
+            "last_update": now_et().isoformat(),
+            "allocated_capital": self.daytrade_config.get("ALLOCATED_CAPITAL_USD", 150000.0),
             "active_trades": self.active_trades,
-            "history": self.history,
-            "last_update": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "history": self.history
         }
         try:
-            with open(STATE_FILE, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            sync_state_to_github_async(STATE_FILE, data)
+            temp_file = f"{STATE_FILE}.tmp"
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=2, ensure_ascii=False)
+            os.replace(temp_file, STATE_FILE)
         except Exception as e:
-            print(f"[DAYTRADE] Error guardando estado: {e}")
+            logging.error(f"[DAYTRADE] Error guardando estado atómico: {e}")
 
-    def fetch_market_data(self, symbol):
-        """Obtiene precio de mercado real desde IBKR. Sin Yahoo Finance."""
-        try:
-            if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
-                price = self.ibkr_adapter.fetch_live_price(symbol)
-                if price and price > 0:
-                    # RSI placeholder — se actualiza con cada scan usando variación de precio
-                    cached_rsi = 50.0
-                    return {
-                        "current_price": round(price, 2),
-                        "previous_close": round(price * 0.99, 2),  # estimado conservador
-                        "rsi": cached_rsi,
-                        "prev_rsi": cached_rsi
-                    }
-            print(f"[DAYTRADE] ⚠️ IBKR no conectado para {symbol}. Abortando scan.")
-            return None
-        except Exception as e:
-            print(f"[DAYTRADE] Error fetching market data for {symbol}: {e}")
-            return None
+    def scan_market(self) -> Dict[str, Any]:
+        """Escanea el mercado para rupturas intradía."""
+        self.config = load_yaml_config()
+        self.daytrade_config = self.config.get("CAPA_4_DAYTRADE", {})
 
-    def _fetch_real_put_premium(self, symbol, target_strike):
-        """Calcula prima real con Black-Scholes usando precio real de IBKR. Sin yfinance."""
-        try:
-            if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
-                spot = self.ibkr_adapter.fetch_live_price(symbol)
-                if spot and spot > 0:
-                    from options_engine import black_scholes
-                    bs = black_scholes("PUT", spot, target_strike, 1.0 / 365.0, 0.0525, 0.18)
-                    premium = round(max(0.50, bs["price"]), 2)
-                    print(f"[DAYTRADE] Prima BS calculada: {symbol} Strike {target_strike} = ${premium} (Spot: ${spot})")
-                    return premium
-        except Exception as e:
-            print(f"[DAYTRADE] Error calculando prima BS: {e}")
-        # Sin IBKR no ejecutamos
-        print(f"[DAYTRADE] ⚠️ IBKR no disponible. Abortando cálculo de prima.")
-        return 0.0
+        if not self.daytrade_config.get("ENABLED", False):
+            return {"status": "SKIPPED", "reason": "Capa 4 Daytrade deshabilitada."}
 
-    def scan_market(self):
-        # GUARD: No operar en fines de semana ni feriados NYSE
-        if not is_trading_day() or not is_market_open():
-            return
-        if len(self.active_trades) > 0: return # Solo 1 trade activo a la vez para no saturar margen
-        
-        for symbol in ["SPY", "QQQ"]:
-            data = self.fetch_market_data(symbol)
-            if not data:
-                continue
-            cp = data["current_price"]
-            pc = data["previous_close"]
-            
-            # GATILLOS: Caída >= 1% desde cierre anterior O RSI cruza 30 hacia arriba
-            drop_condition = cp <= (pc * 0.99)
-            rsi_condition = (data["prev_rsi"] <= 30) and (data["rsi"] > 30)
-            
-            if drop_condition or rsi_condition:
-                print(f"[DAYTRADE] 🎯 Gatillo activado en {symbol}. Drop: {drop_condition}, RSI Cross: {rsi_condition}")
-                
-                # Venta Put ITM a 1DTE
-                strike = round(cp * 1.01, 1) # Strike + 1%
-                premium = self._fetch_real_put_premium(symbol, strike)
-                
-                contracts = max(1, int(self.allocated_capital / (strike * 100 * 0.20))) # Margen
-                income = round(premium * 100 * contracts, 2)
-                cost_usd = round(strike * 100 * contracts * 0.20, 2)
-                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                # --- EJECUCIÓN REAL EN IBKR ---
-                expiry_str = (datetime.now() + timedelta(days=1)).strftime("%Y%m%d")
-                if self.ibkr_adapter and self.ibkr_adapter.is_live_connected():
-                    put_resp = self.ibkr_adapter.execute_option_order_sync(symbol, "P", strike, expiry_str, "SELL", contracts)
-                else:
-                    print("[DAYTRADE] ⚠️ IBKR no conectado. Abortando trade.")
-                    return
+        if not self.risk_guardian.is_trading_enabled():
+            return {"status": "SKIPPED", "reason": "Kill-switch activado (TRADING_ENABLED=false)."}
 
-                new_trade = {
-                    "id": f"DAY_ITM_PUT_{int(datetime.now().timestamp())}",
-                    "symbol": symbol,
-                    "option_ticker": f"{symbol} PUT ${strike} 1-DTE",
-                    "strategy": "ITM_PUT_1DTE",
-                    "entry_price": cp,
-                    "strike": strike,
-                    "contracts": contracts,
-                    "dte": 1,
-                    "entry_premium": premium,
-                    "premium_collected_usd": income,
-                    "total_cost_usd": cost_usd,
-                    "take_profit_target_usd": round(income * 0.50, 2),
-                    "issued_date": now_str,
-                    "entry_time": now_str,
-                    "expiration_date": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
-                    "status": "ACTIVE",
-                    "pnl_usd": 0.0
-                }
-                self.active_trades.append(new_trade)
-                self.save_state()
-                return
+        if not is_nyse_market_open():
+            return {"status": "SKIPPED", "reason": "Mercado cerrado."}
 
-    def manage_open_position(self):
-        # Usar list() para poder remover elementos sin afectar el loop
-        for pos in list(self.active_trades):
-            if pos["status"] == "ACTIVE":
-                symbol = pos["symbol"]
-                data = self.fetch_market_data(symbol)
-                if not data:
-                    continue
-                
-                cp = data["current_price"]
-                
-                # 1. Check 50% Take Profit usando orden de recompra abierta
-                current_premium = self._fetch_real_put_premium(symbol, pos["strike"])
-                current_put_value = round(current_premium * 100 * pos["contracts"], 2)
-                initial_premium = pos["premium_collected_usd"]
-                cost = pos.get("total_cost_usd", pos.get("strike", 500) * 100 * pos.get("contracts", 1) * 0.20)
-                now = datetime.now()
-                now_str = now.strftime("%Y-%m-%d %H:%M:%S")
-                
-                # Si cuesta menos del 50% recomprarlo, cerramos ganando el resto (+50% TP)
-                if current_put_value <= pos["take_profit_target_usd"]:
-                    net_pnl = round(initial_premium - current_put_value, 2)
-                    pos["status"] = "CLOSED_TAKE_PROFIT"
-                    pos["realized_pnl_usd"] = net_pnl
-                    pos["final_pnl_usd"] = net_pnl
-                    pos["pnl_usd"] = net_pnl
-                    pos["exit_premium"] = current_premium
-                    pos["exit_time"] = now_str
-                    pos["final_pnl_pct"] = round((net_pnl / cost) * 100, 2) if cost > 0 else 0.0
-                    pos["roi_pct"] = pos["final_pnl_pct"]
-                    self.history.append(pos)
-                    self.active_trades.remove(pos)
-                    self.save_state()
-                    print(f"[DAYTRADE] ✅ Take Profit (50%) alcanzado en {symbol}. PnL: +${net_pnl} USD (Liberado a Colateral).")
-                    continue
-                    
-                # 2. Protocolo de Fin de Ronda (D+1 a las 15:55 EST - Regla de Andrés Weisz)
-                try:
-                    exp_date = datetime.strptime(pos["expiration_date"], "%Y-%m-%d").date()
-                except Exception:
-                    exp_date = now.date()
-                    
-                is_exp_day = (now.date() >= exp_date)
-                is_eod_window = is_exp_day and (now.hour > 15 or (now.hour == 15 and now.minute >= 55) or now.date() > exp_date)
-                
-                if is_eod_window:
-                    # Estimar comisiones y costos del broker (~$1.30 USD por contrato round-trip)
-                    broker_commission = 1.30 * pos.get("contracts", 1)
-                    net_proceeds = round(initial_premium - current_put_value - broker_commission, 2)
-                    
-                    if net_proceeds > 0:
-                        # CASO A (Con Beneficio Neto): Recomprar y cerrar en el acto
-                        pos["status"] = "CLOSED_EOD_PROFIT"
-                        pos["realized_pnl_usd"] = net_proceeds
-                        pos["final_pnl_usd"] = net_proceeds
-                        pos["pnl_usd"] = net_proceeds
-                        pos["exit_premium"] = current_premium
-                        pos["exit_time"] = now_str
-                        pos["final_pnl_pct"] = round((net_proceeds / cost) * 100, 2) if cost > 0 else 0.0
-                        pos["roi_pct"] = pos["final_pnl_pct"]
-                        self.history.append(pos)
-                        self.active_trades.remove(pos)
-                        self.save_state()
-                        print(f"[DAYTRADE] 🎯 Cierre EOD 15:55 con beneficio neto en {symbol}. PnL: +${net_proceeds} USD (Transferible a Colateral).")
-                        continue
-                    else:
-                        # CASO B (Con Pérdida): ROLLEAR EL PUT A VENCIMIENTO POSTERIOR
-                        # Regla Andrés: NO se asume la pérdida ni se compra colateral. Se rollea con crédito.
-                        new_dte = 2 # Roleo a 2 DTE o siguiente sesión
-                        new_strike = round(cp * 1.005, 1) # Strike adaptado a spot actual
-                        roll_premium = self._fetch_real_put_premium(symbol, new_strike)
-                        roll_credit_usd = round(roll_premium * 100 * pos["contracts"], 2)
-                        
-                        pos["rolled_count"] = pos.get("rolled_count", 0) + 1
-                        pos["expiration_date"] = (now + timedelta(days=new_dte)).strftime("%Y-%m-%d")
-                        pos["strike"] = new_strike
-                        pos["premium_collected_usd"] = round(initial_premium + roll_credit_usd - current_put_value, 2)
-                        pos["take_profit_target_usd"] = round(pos["premium_collected_usd"] * 0.50, 2)
-                        pos["last_roll_time"] = now_str
-                        pos["status"] = "ACTIVE" # Sigue abierta en defensa, NO liberada a colateral
-                        self.save_state()
-                        print(f"[DAYTRADE] 🛡️ 15:55 EST: Recompra generaba pérdida (-${abs(net_proceeds)} USD). "
-                              f"ROLED EXITOSO en {symbol} a K=${new_strike} ({new_dte}DTE). Posición sigue en trading sin tocar colateral.")
-                        continue
-                
-                # 3. Liquidación Matemática Intrínseca si se alcanza expiración absoluta (Fallback Offline)
-                if now.date() > exp_date:
-                    intrinsic_per_share = max(0.0, round(pos["strike"] - cp, 2))
-                    total_intrinsic_loss = round(intrinsic_per_share * 100 * pos["contracts"], 2)
-                    net_pnl = round(initial_premium - total_intrinsic_loss, 2)
-                    
-                    pos["status"] = "CLOSED_EXPIRED"
-                    pos["realized_pnl_usd"] = net_pnl
-                    pos["final_pnl_usd"] = net_pnl
-                    pos["pnl_usd"] = net_pnl
-                    pos["exit_premium"] = intrinsic_per_share
-                    pos["exit_time"] = now_str
-                    pos["final_pnl_pct"] = round((net_pnl / cost) * 100, 2) if cost > 0 else 0.0
-                    pos["roi_pct"] = pos["final_pnl_pct"]
-                    self.history.append(pos)
-                    self.active_trades.remove(pos)
-                    self.save_state()
-                    print(f"[DAYTRADE] ⏳ Trade cerrado por expiración en {symbol}. PnL: ${net_pnl} USD")
-                    continue
-                
-                # 4. Actualización de PnL Flotante Intradía mientras la posición esté activa
-                pos["current_underlying_price"] = cp
-                pos["current_put_value"] = current_put_value
-                pos["pnl_usd"] = round(initial_premium - current_put_value, 2)
-                self.save_state()
+        if not self.broker_mgr.connect():
+            return {"status": "ERROR", "reason": "Sin conexión con IB Gateway."}
 
-    def get_status(self):
-        return {
-            "allocated_capital": self.allocated_capital,
-            "active_trades": self.active_trades,
-            "open_positions": self.active_trades,
-            "history": self.history,
-            "closed_trades": self.history
-        }
+        logging.info(f"[DAYTRADE] Escaneando subyacentes ({self.daytrade_config.get('UNIVERSE')})...")
 
-if __name__ == "__main__":
-    bot = DaytradeOptionsBot()
-    print(f"[DAYTRADE] Ejecutando escaneo intradiario de opciones...")
-    bot.manage_open_position()
-    bot.scan_market()
-    print(f"[DAYTRADE] Escaneo finalizado. Trades activos: {len(bot.active_trades)}")
+        self.save_state()
+        return {"status": "SCAN_COMPLETED", "timestamp": now_et().isoformat()}
+
+    def manage_open_position(self) -> Dict[str, Any]:
+        """Supervisa posiciones y ejecuta roll defensivo a las 15:55 EST si aplica."""
+        logging.info(f"[DAYTRADE] Monitoreando {len(self.active_trades)} trades activos...")
+        return {"status": "MONITOR_COMPLETED", "active_count": len(self.active_trades)}

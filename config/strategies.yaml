@@ -1,0 +1,90 @@
+# ==============================================================================
+# SISTEMA DE OPCIONES D+ARQ — CONFIGURACIÓN GLOBAL Y PARÁMETROS DE CAPAS
+# Unico archivo centralizado de parametros de trading (Fase 2)
+# ==============================================================================
+
+GLOBAL:
+  TRADING_ENABLED: true           # Habilitado para operar en Paper Trading
+  NAV_USD: 1000000.0              # Capital maestro ($1.000.000 USD)
+  TIMEZONE: "America/New_York"
+  MARKET_OPEN_EST: "09:30"
+  MARKET_CLOSE_EST: "16:00"
+  REINVESTMENT_THRESHOLD_USD: 500.0
+
+  COLLATERAL_DISTRIBUTION:
+    UNTOUCHABLE_HOLDINGS: true     # No se venden ni se operan opciones en contra
+    AUTO_REINVEST_DIVIDENDS: true  # Reorganización y reinversión sistemática de dividendos
+    
+    TREASURY_BONDS_DIRECT:
+      TOTAL_PCT: 0.60              # 60% en Bonos del Tesoro EE.UU. directos
+      NUMBER_OF_BONDS: 6           # 6 bonos escalonados a 10% cada uno
+      PCT_PER_BOND: 0.10           # 10% del capital por bono
+      MAX_PRICE_PCT_OF_PAR: 99.9   # Precio estrictamente bajo la par (< 100)
+      TARGET_YIELD_APY: 0.05       # Renta anual objetivo (~5.0% APY)
+      MATURITY_LADDER_MONTH: 12    # Vencimientos en diciembre (12/2027, 12/2028, 12/2029, 12/2030, 12/2031, 12/2032)
+      START_YEAR: 2027
+    
+    EQUITY_GOLD_POOL:
+      VOO: 0.20                    # 20% Vanguard S&P 500 ETF
+      QQQ: 0.15                    # 15% Invesco Nasdaq 100 ETF
+      GLD: 0.05                    # 5% SPDR Gold Shares (Oro Fisico)
+
+RISK_MANAGEMENT:
+  MAX_DAILY_DRAWDOWN_PCT: 0.02    # 2% Max daily drawdown ($20,000 USD)
+  MAX_CONCURRENT_TRADES: 10
+  MAX_PORTFOLIO_DELTA: 0.35
+  ORDER_TYPE: "LIMIT"             # NUNCA orden a mercado en opciones
+  LIMIT_OFFSET_TICKS: 1           # Precio medio (Mid) +- 1 tick
+
+CAPA_1_RUEDA:
+  ENABLED: true
+  ALLOCATED_CAPITAL_USD: 1000000.0
+  UNIVERSE: ["SPY", "QQQ", "IWM"]
+  TARGET_DELTA: 0.20              # Delta 0.20 (3-4% OTM)
+  TARGET_DTE_MIN: 30
+  TARGET_DTE_MAX: 45
+  MONTHLY_PREMIUM_TARGET_PCT: 2.0
+  CLOSE_PROFIT_PCT: 80.0          # Cierre anticipado al capturar 80% de la prima
+
+CAPA_2_ALPHA:
+  ENABLED: true                   # Habilitado para evaluación en Paper Trading
+  ALLOCATED_CAPITAL_USD: 200000.0
+  UNIVERSE: ["SPY", "QQQ"]
+  DMA_PERIOD: 200                 # SMA 200 semanas / días
+  RSI_WEEKLY_PERIOD: 14
+  LONG_CALL_MIN_DTE: 180
+  SHORT_PUT_TARGET_CREDIT_PCT: 100.0
+  MAX_NET_DEBIT_USD: 0.50
+  MAX_POSITIONS_PER_SYMBOL: 2
+
+CAPA_3_RSI:
+  ENABLED: true                   # Habilitado para evaluación en Paper Trading
+  ALLOCATED_CAPITAL_USD: 150000.0
+  UNIVERSE: ["SPY", "QQQ", "DIA"]
+  RSI_PERIOD: 14                  # Wilder RSI 14 real sobre velas de 5 min / intradía
+  RSI_ENTRY_THRESHOLD: 25.0       # RSI < 25 (Pánico de sobreventa)
+  TARGET_DTE_MAX: 1
+  TAKE_PROFIT_PCT: 50.0
+  TIME_STOP_EST: "15:55"
+
+CAPA_4_DAYTRADE:
+  ENABLED: true                   # Habilitado para evaluación en Paper Trading
+  ALLOCATED_CAPITAL_USD: 150000.0
+  UNIVERSE: ["SPY", "QQQ"]
+  TARGET_DTE: 1
+  ROLL_DEFENSIVO_EST: "15:55"
+  ROLL_OUT_DTE: 30
+  MAX_PORTFOLIO_MARGIN_LEVERAGE: 1.5
+
+CAPA_5_BULLMARKET:
+  ENABLED: true
+  ALLOCATED_CAPITAL_USD: 150000.0
+  UNIVERSE: ["SPY", "QQQ", "GLD", "IWM", "TLT"]
+  LONG_LEAPS_DELTA_MIN: 0.75
+  LONG_LEAPS_DELTA_MAX: 0.80
+  LONG_LEAPS_DTE_MIN: 60
+  SHORT_CALL_DELTA_MAX: 0.25
+  SHORT_CALL_DTE_MIN: 7
+  SHORT_CALL_DTE_MAX: 14
+  SHORT_CALL_TAKE_PROFIT_PCT: 80.0
+  ROLL_TRIGGER_DTE: 2

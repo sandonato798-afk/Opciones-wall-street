@@ -145,6 +145,22 @@ def next_market_open() -> datetime:
 
     return None  # no debería ocurrir
 
+def get_nearest_trading_day(target_date: date) -> date:
+    """Ajusta una fecha al día hábil bursátil más cercano (evita sábados, domingos y feriados NYSE)."""
+    while target_date.weekday() >= 5 or target_date in NYSE_HOLIDAYS:
+        target_date -= timedelta(days=1)
+    return target_date
+
+def get_valid_option_expiry(days_ahead: int = 30) -> str:
+    """
+    Calcula una fecha de expiración válida para opciones (formato YYYY-MM-DD).
+    Evita sábados, domingos y feriados ajustando al día hábil bursátil previo.
+    """
+    now_est = _now_est()
+    target_dt = now_est.date() + timedelta(days=days_ahead)
+    valid_date = get_nearest_trading_day(target_dt)
+    return valid_date.strftime("%Y-%m-%d")
+
 def calendar_status() -> dict:
     """
     Retorna un dict completo del estado del calendario para el dashboard.

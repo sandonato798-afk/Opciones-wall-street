@@ -1,0 +1,11 @@
+{
+  "accumulated_reinvestment_pool_usd": 0.0,
+  "total_reinvested_all_time_usd": 0.0,
+  "reinvestment_history": [],
+  "allocated_positions": {
+    "SGOV": 0.0,
+    "SPY": 0.0,
+    "ALPHA_DECOUPLE": 0.0
+  },
+  "last_update": "2026-10-06 00:00:00"
+}

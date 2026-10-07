@@ -52,10 +52,10 @@ def _price_cache_refresh_loop():
             print(f"[PRICE_CACHE_LOOP] Error: {e}")
             _t.sleep(30)
 
-threading.Thread(target=_price_cache_refresh_loop, daemon=True).start()
+# Removed _price_cache_refresh_loop thread
 
 # Inicialización de Bots, Adaptador IBKR y Gestor Maestro (Ajustado a NAV $1.000.000)
-engine = OptionsTradingEngine()
+engine = OptionsTradingEngine(ibkr_adapter=ibkr_adapter)
 daytrade_bot = DaytradeOptionsBot(initial_capital=1000000.0, allocated_capital=150000.0, ibkr_adapter=ibkr_adapter)
 wheel_engine = WheelCompoundingEngine(ibkr_adapter=ibkr_adapter)
 alpha_bot = AlphaTradeBot(initial_capital=1000000.0, allocated_capital=200000.0, ibkr_adapter=ibkr_adapter)
@@ -123,29 +123,29 @@ def background_trading_loop():
                     print(f"[PRICE_CACHE] Error warming cache: {e}")
 
                 if is_market_open():
+                    print("[DEBUG] MARKET IS OPEN. Running cycles...")
                     # Capa 1: Rueda & Compounding
                     wheel_engine.auto_check_and_run_cycle()
                     SYSTEM_HEALTH_PINGS["wheel"] = builtin_time.time()
 
                     # Capa 2: Alpha Trade (Sintéticos LEAPS)
                     alpha_bot.monitor_positions()
+                    alpha_bot.scan_and_open_alpha_trade()
                     SYSTEM_HEALTH_PINGS["alpha"] = builtin_time.time()
 
-                    # Capa 5: Bull Market PMCC (Diagonal Spread Alcista)
-                    bullmarket_bot.monitor_positions()
-                    SYSTEM_HEALTH_PINGS["bullmarket"] = builtin_time.time()
+                    # Capa 3: RSI Oportunista (0-1 DTE Scalp)
+                    rsi_bot.scan_market()
+                    SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
 
                     # Capa 4: Daytrading ITM 1DTE
                     daytrade_bot.scan_market()
                     daytrade_bot.manage_open_position()
                     SYSTEM_HEALTH_PINGS["daytrade"] = builtin_time.time()
-                    
-                    # Capa 3: RSI Oportunista
-                    rsi_bot.scan_market()
-                    SYSTEM_HEALTH_PINGS["rsi"] = builtin_time.time()
-                    
-                    # Capa 5: Bull Market PMCC escaneo
+
+                    # Capa 5: Bull Market PMCC (Diagonal Spread Alcista)
+                    bullmarket_bot.monitor_positions()
                     bullmarket_bot.scan_market()
+                    SYSTEM_HEALTH_PINGS["bullmarket"] = builtin_time.time()
                 else:
                     print("🌙 Mercado Cerrado. Hibernando hasta 09:30 AM EST...")
                     # Update health pings so Dashboard knows we are alive
@@ -161,10 +161,16 @@ def background_trading_loop():
                     if result and result.get("status") == "EXECUTED":
                         print(f"[REINVESTMENT] Reinversión ejecutada: ${result['record']['total_reinvested_usd']:.2f}")
 
-            builtin_time.sleep(60)
+            if getattr(ibkr_adapter, "ib", None) and ibkr_adapter.ib.isConnected():
+                ibkr_adapter.ib.sleep(60)
+            else:
+                builtin_time.sleep(60)
         except Exception as e:
             print(f"Error en bucle en segundo plano: {e}")
-            builtin_time.sleep(30)
+            if getattr(ibkr_adapter, "ib", None) and ibkr_adapter.ib.isConnected():
+                ibkr_adapter.ib.sleep(30)
+            else:
+                builtin_time.sleep(30)
 
 def self_ping_loop():
     time.sleep(15)
@@ -180,10 +186,6 @@ def self_ping_loop():
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] 🟢 Keep-Alive Self-Ping Exitoso (Status {resp.status})")
         except Exception as e:
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ⚠️ Self-Ping Warning: {e}")
-
-# Iniciar hilos en segundo plano
-threading.Thread(target=background_trading_loop, daemon=True).start()
-threading.Thread(target=self_ping_loop, daemon=True).start()
 
 class OptionsAPIHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
@@ -250,4 +252,10 @@ def run_server():
             print("\n🛑 Servidor detenido por el usuario.")
 
 if __name__ == "__main__":
-    run_server()
+    # Iniciar hilos en segundo plano
+    threading.Thread(target=self_ping_loop, daemon=True).start()
+    threading.Thread(target=run_server, daemon=True).start()
+    try:
+        background_trading_loop()
+    except KeyboardInterrupt:
+        print("\n🛑 Loop detenido por el usuario.")

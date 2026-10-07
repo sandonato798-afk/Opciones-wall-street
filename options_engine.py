@@ -73,7 +73,8 @@ def black_scholes(option_type, S, K, T, r, sigma):
     }
 
 class OptionsTradingEngine:
-    def __init__(self):
+    def __init__(self, ibkr_adapter=None):
+        self.ibkr_adapter = ibkr_adapter
         self.risk_free_rate = 0.0525  # 5.25% Fed Rate
         self.portfolio_capital = 100000.0
         self.positions = []
@@ -115,11 +116,12 @@ class OptionsTradingEngine:
     def fetch_live_etf_prices(self, ibkr_adapter=None):
         """Consulta cotizaciones reales en vivo de ETFs desde IBKR. Sin Yahoo Finance."""
         prices = {}
+        adapter = ibkr_adapter or self.ibkr_adapter
 
         for symbol in WALL_STREET_ETFS.keys():
             try:
-                if ibkr_adapter and ibkr_adapter.is_live_connected():
-                    price = ibkr_adapter.fetch_live_price(symbol)
+                if adapter and adapter.is_live_connected():
+                    price = adapter.fetch_live_price(symbol)
                     if price and price > 0:
                         prices[symbol] = {
                             "symbol": symbol,
@@ -141,7 +143,7 @@ class OptionsTradingEngine:
 
     def generate_option_chain(self, symbol, dte=30, strikes_count=7):
         """Genera la cadena de opciones (Calls & Puts) con griegas y primas reales"""
-        etf_data = self.fetch_live_etf_prices().get(symbol)
+        etf_data = self.fetch_live_etf_prices(self.ibkr_adapter).get(symbol)
         if not etf_data:
             return {}
 
